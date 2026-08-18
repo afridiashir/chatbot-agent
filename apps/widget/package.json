@@ -1,0 +1,29 @@
+{
+  "name": "@repo/widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3002 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 3002 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .turbo dist node_modules"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
+  }
+}

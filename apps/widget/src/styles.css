@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind 4 already emits its theme variables on `:root, :host`, so they
+ * resolve inside the shadow root. This only pins the widget to a light scheme
+ * regardless of what the embedding page declares.
+ */
+@layer theme {
+  :host {
+    color-scheme: light;
+  }
+}

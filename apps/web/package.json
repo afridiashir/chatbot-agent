@@ -1,0 +1,29 @@
+{
+  "name": "@repo/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/sync-widget.mjs && next dev --port 3000",
+    "build": "node scripts/sync-widget.mjs && next build",
+    "start": "next start --port 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .turbo .next node_modules"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*",
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.4",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "@repo/widget": "workspace:*"
+  }
+}

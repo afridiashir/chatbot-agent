@@ -1,0 +1,176 @@
+// Schema for the multi-branch chat MVP.
+//
+// Shape: Company -> Branch -> Agent -> Conversation -> Message.
+// Conversation load is deliberately NOT denormalised onto Agent; the routing
+// query counts ACTIVE conversations so the number can never drift out of sync.
+//
+// Prisma 7 takes the connection URL from prisma.config.ts (CLI) and from the
+// driver adapter passed to PrismaClient (runtime), not from this file.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ConversationStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum SenderType {
+  VISITOR
+  AGENT
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches Branch[]
+  admins   Admin[]
+  leads    Lead[]
+}
+
+/// Company-level operator. Deliberately a separate table from Agent: an admin
+/// has no branch, no availability and no conversations, and authenticates
+/// through its own endpoint.
+model Admin {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  /// Soft delete. An inactive branch is hidden from the widget and skipped by
+  /// routing, but its history is preserved.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  agents  Agent[]
+  leads   Lead[]
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive])
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  branchId     String
+  name         String
+  email        String   @unique
+  passwordHash String
+  isOnline     Boolean  @default(false)
+  /// Soft delete. An inactive agent cannot sign in and is never routed to.
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  // Routing locks and then scans the routable agents of one branch.
+  @@index([branchId, isOnline, isActive])
+}
+
+/// The person on the other end of the chat. Identified by the id the widget
+/// keeps in localStorage, with the contact details they give in the pre-chat
+/// form. Kept separate from Conversation so a returning visitor has one set of
+/// details rather than a copy per chat.
+/// Everyone who has ever submitted the pre-chat form, deduplicated by email.
+///
+/// Deliberately separate from Visitor: a Visitor is one browser (its id is the
+/// value in localStorage, and conversations are owned by it), whereas a Lead is
+/// a person, who may reach us from several browsers or devices over time.
+/// Recorded whether or not an agent was free, so the enquiries nobody answered
+/// are exactly the ones that can be followed up.
+model Lead {
+  id     String @id @default(cuid())
+  companyId String
+  name      String
+  email     String
+  phone     String
+  /// Branch chosen most recently. Kept nullable so removing a branch does not
+  /// destroy the lead.
+  branchId  String?
+  /// Times this person has started, or tried to start, a chat.
+  enquiryCount Int @default(0)
+  /// Of those, how many found nobody online. The follow-up list.
+  missedCount  Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, email])
+  @@index([companyId, updatedAt])
+  @@index([companyId, missedCount])
+}
+
+model Visitor {
+  id        String   @id
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations Conversation[]
+
+  @@index([email])
+}
+
+model Conversation {
+  id        String             @id @default(cuid())
+  agentId   String
+  visitorId String
+  status    ConversationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  closedAt  DateTime?
+
+  agent    Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  visitor  Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  // Counting an agent's live load, and listing their inbox.
+  @@index([agentId, status])
+  // Letting a returning visitor resume after a refresh.
+  @@index([visitorId, status])
+}
+
+model Message {
+  id             String     @id @default(cuid())
+  conversationId String
+  senderType     SenderType
+  content        String     @db.Text
+  /// Idempotency key generated by the sender before the first attempt. A queued
+  /// message that is retried after a dropped connection carries the same key, so
+  /// re-delivery returns the stored row instead of writing a duplicate.
+  /// Null for messages sent by clients that do not queue.
+  clientId       String?    @unique
+  createdAt      DateTime   @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}

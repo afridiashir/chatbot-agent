@@ -1,0 +1,24 @@
+node_modules/
+.turbo/
+dist/
+.next/
+out/
+build/
+
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Built widget bundle, copied in by apps/web/scripts/sync-widget.mjs
+apps/web/public/widget.js
