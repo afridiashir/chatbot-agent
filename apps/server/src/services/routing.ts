@@ -13,21 +13,25 @@ export interface AssignAgentInput {
 }
 
 /**
- * Records the person behind an enquiry, deduplicated on email within the
- * company. Runs on every submission — including the ones where nobody was
- * online — because an enquiry that never reached an agent is precisely the one
- * worth following up.
+ * Records one approach from one person.
  *
- * `missed` marks that this particular attempt found nobody available.
+ * The Lead row is deduplicated on email within the company, so the same person
+ * reaching us from a second device updates it rather than creating a twin. The
+ * Enquiry row is always new, which is what builds the history: every time they
+ * got in touch, which branch they wanted, and whether anyone answered.
+ *
+ * Runs on every submission — including the ones where nobody was online —
+ * because an enquiry that never reached an agent is precisely the one worth
+ * following up.
  */
-async function recordLead(
-  tx: Pick<typeof prisma, "lead">,
+async function recordEnquiry(
+  tx: Pick<typeof prisma, "lead" | "enquiry">,
   input: AssignAgentInput & { companyId: string },
-  missed: boolean,
+  outcome: { answered: boolean; conversationId?: string },
 ): Promise<void> {
   const email = input.visitor.email.trim().toLowerCase();
 
-  await tx.lead.upsert({
+  const lead = await tx.lead.upsert({
     where: { companyId_email: { companyId: input.companyId, email } },
     create: {
       companyId: input.companyId,
@@ -35,16 +39,22 @@ async function recordLead(
       name: input.visitor.name,
       phone: input.visitor.phone,
       branchId: input.branchId,
-      enquiryCount: 1,
-      missedCount: missed ? 1 : 0,
     },
     update: {
       // Latest details win: people correct their own typos.
       name: input.visitor.name,
       phone: input.visitor.phone,
       branchId: input.branchId,
-      enquiryCount: { increment: 1 },
-      ...(missed ? { missedCount: { increment: 1 } } : {}),
+    },
+    select: { id: true },
+  });
+
+  await tx.enquiry.create({
+    data: {
+      leadId: lead.id,
+      branchId: input.branchId,
+      conversationId: outcome.conversationId ?? null,
+      answered: outcome.answered,
     },
   });
 }
@@ -126,7 +136,11 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
     });
 
     if (existing) {
-      await recordLead(tx, { ...input, companyId: branch.companyId }, false);
+      await recordEnquiry(
+        tx,
+        { ...input, companyId: branch.companyId },
+        { answered: true, conversationId: existing.id },
+      );
       return { available: true, conversation: toConversationWithAgent(existing), resumed: true };
     }
 
@@ -144,7 +158,7 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
 
     if (locked.length === 0) {
       // The whole point: capture the enquiry even though no chat can start.
-      await recordLead(tx, { ...input, companyId: branch.companyId }, true);
+      await recordEnquiry(tx, { ...input, companyId: branch.companyId }, { answered: false });
       return { available: false, message: NO_AGENTS_MESSAGE };
     }
 
@@ -159,11 +173,9 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
 
     const chosen = pickLeastBusy(candidates);
     if (!chosen) {
-      await recordLead(tx, { ...input, companyId: branch.companyId }, true);
+      await recordEnquiry(tx, { ...input, companyId: branch.companyId }, { answered: false });
       return { available: false, message: NO_AGENTS_MESSAGE };
     }
-
-    await recordLead(tx, { ...input, companyId: branch.companyId }, false);
 
     const conversation = await tx.conversation.create({
       data: {
@@ -175,6 +187,12 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
       },
       include: { agent: true, visitor: true },
     });
+
+    await recordEnquiry(
+      tx,
+      { ...input, companyId: branch.companyId },
+      { answered: true, conversationId: conversation.id },
+    );
 
     return { available: true, conversation: toConversationWithAgent(conversation), resumed: false };
   });

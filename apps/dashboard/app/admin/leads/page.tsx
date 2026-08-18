@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle } from "lucide-react";
-import type { BranchWithAgents, Lead } from "@repo/types";
+import { AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
+import type { BranchWithAgents, Lead, LeadDetail } from "@repo/types";
 import { AdminShell } from "@/components/AdminShell";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
-import { formatListTime } from "@/lib/format";
+import { formatClock, formatDateSeparator, formatListTime } from "@/lib/format";
 
 export default function AdminLeadsPage() {
   return <AdminShell>{({ token }) => <Leads token={token} />}</AdminShell>;
@@ -21,6 +21,23 @@ function Leads({ token }: { token: string }) {
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [history, setHistory] = useState<LeadDetail | null>(null);
+
+  // Loaded on demand: the list only needs totals, the timeline only matters
+  // for the lead an admin actually opens.
+  function toggle(leadId: string) {
+    if (openLeadId === leadId) {
+      setOpenLeadId(null);
+      setHistory(null);
+      return;
+    }
+    setOpenLeadId(leadId);
+    setHistory(null);
+    void api<LeadDetail>(`/api/admin/leads/${leadId}`, { token })
+      .then(setHistory)
+      .catch(() => setError("Could not load that lead's history"));
+  }
 
   useEffect(() => {
     void api<BranchWithAgents[]>("/api/admin/branches", { token })
@@ -116,12 +133,20 @@ function Leads({ token }: { token: string }) {
           </p>
         ) : (
           rows.map((lead) => (
-            <div
-              key={lead.id}
+            <div key={lead.id} className="border-b last:border-b-0">
+            <button
+              type="button"
               data-testid="lead-row"
-              className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 last:border-b-0"
+              onClick={() => toggle(lead.id)}
+              aria-expanded={openLeadId === lead.id}
+              className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
             >
               <div className="flex min-w-0 items-center gap-3">
+                {openLeadId === lead.id ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                )}
                 <Avatar name={lead.name} seed={lead.id} size="md" />
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-sm font-medium">
@@ -137,13 +162,7 @@ function Leads({ token }: { token: string }) {
                     )}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    <a href={`mailto:${lead.email}`} className="hover:underline">
-                      {lead.email}
-                    </a>
-                    {" · "}
-                    <a href={`tel:${lead.phone}`} className="hover:underline">
-                      {lead.phone}
-                    </a>
+                    {lead.email} · {lead.phone}
                   </p>
                 </div>
               </div>
@@ -152,9 +171,61 @@ function Leads({ token }: { token: string }) {
                 <p>{lead.branchName ?? "Branch removed"}</p>
                 <p>
                   {lead.enquiryCount} enquir{lead.enquiryCount === 1 ? "y" : "ies"} ·{" "}
-                  {formatListTime(lead.updatedAt)}
+                  {lead.lastEnquiryAt ? formatListTime(lead.lastEnquiryAt) : "—"}
                 </p>
               </div>
+            </button>
+
+            {openLeadId === lead.id && (
+              <div data-testid="lead-history" className="bg-muted/40 px-4 py-3 pl-11">
+                {!history ? (
+                  <p className="text-xs text-muted-foreground">Loading history...</p>
+                ) : (
+                  <>
+                    <p className="mb-2 text-xs font-medium">
+                      Every time {history.name} got in touch
+                    </p>
+                    <ol className="flex flex-col gap-1.5">
+                      {history.enquiries.map((enquiry) => (
+                        <li
+                          key={enquiry.id}
+                          data-testid="enquiry-row"
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={[
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              enquiry.answered ? "bg-emerald-500" : "bg-amber-500",
+                            ].join(" ")}
+                          />
+                          <span className="text-muted-foreground">
+                            {formatDateSeparator(enquiry.createdAt)} at{" "}
+                            {formatClock(enquiry.createdAt)}
+                          </span>
+                          <span>{enquiry.branchName ?? "Branch removed"}</span>
+                          <span
+                            className={
+                              enquiry.answered ? "text-emerald-700" : "font-medium text-amber-700"
+                            }
+                          >
+                            {enquiry.answered ? "connected to an agent" : "nobody was online"}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="mt-2 flex gap-3 text-xs text-muted-foreground">
+                      <a href={`mailto:${history.email}`} className="underline-offset-4 hover:underline">
+                        Email {history.email}
+                      </a>
+                      <a href={`tel:${history.phone}`} className="underline-offset-4 hover:underline">
+                        Call {history.phone}
+                      </a>
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
             </div>
           ))
         )}
@@ -162,8 +233,9 @@ function Leads({ token }: { token: string }) {
 
       <p className="text-xs text-muted-foreground">
         Leads are deduplicated by email, so the same person enquiring twice updates one row rather
-        than creating a second. &quot;Missed&quot; counts the enquiries that arrived when nobody in
-        that branch was online.
+        than creating a second — but every individual enquiry is kept, so the history builds up over
+        time. Open a lead to see it. &quot;Missed&quot; counts the enquiries that arrived when nobody
+        in that branch was online.
       </p>
     </div>
   );

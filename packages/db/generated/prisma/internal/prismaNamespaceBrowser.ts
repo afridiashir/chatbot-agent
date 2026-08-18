@@ -56,6 +56,7 @@ export const ModelName = {
   Branch: 'Branch',
   Agent: 'Agent',
   Lead: 'Lead',
+  Enquiry: 'Enquiry',
   Visitor: 'Visitor',
   Conversation: 'Conversation',
   Message: 'Message'
@@ -134,13 +135,23 @@ export const LeadScalarFieldEnum = {
   email: 'email',
   phone: 'phone',
   branchId: 'branchId',
-  enquiryCount: 'enquiryCount',
-  missedCount: 'missedCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type LeadScalarFieldEnum = (typeof LeadScalarFieldEnum)[keyof typeof LeadScalarFieldEnum]
+
+
+export const EnquiryScalarFieldEnum = {
+  id: 'id',
+  leadId: 'leadId',
+  branchId: 'branchId',
+  conversationId: 'conversationId',
+  answered: 'answered',
+  createdAt: 'createdAt'
+} as const
+
+export type EnquiryScalarFieldEnum = (typeof EnquiryScalarFieldEnum)[keyof typeof EnquiryScalarFieldEnum]
 
 
 export const VisitorScalarFieldEnum = {

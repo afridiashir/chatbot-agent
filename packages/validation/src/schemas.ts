@@ -12,6 +12,7 @@ import {
 export const branchIdParamSchema = z.object({ branchId: idSchema });
 export const agentIdParamSchema = z.object({ agentId: idSchema });
 export const conversationIdParamSchema = z.object({ conversationId: idSchema });
+export const leadIdParamSchema = z.object({ leadId: idSchema });
 
 /* ----------------------------------- auth ---------------------------------- */
 

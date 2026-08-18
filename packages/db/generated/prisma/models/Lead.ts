@@ -30,20 +30,8 @@ export type LeadModel = runtime.Types.Result.DefaultSelection<Prisma.$LeadPayloa
 
 export type AggregateLead = {
   _count: LeadCountAggregateOutputType | null
-  _avg: LeadAvgAggregateOutputType | null
-  _sum: LeadSumAggregateOutputType | null
   _min: LeadMinAggregateOutputType | null
   _max: LeadMaxAggregateOutputType | null
-}
-
-export type LeadAvgAggregateOutputType = {
-  enquiryCount: number | null
-  missedCount: number | null
-}
-
-export type LeadSumAggregateOutputType = {
-  enquiryCount: number | null
-  missedCount: number | null
 }
 
 export type LeadMinAggregateOutputType = {
@@ -53,8 +41,6 @@ export type LeadMinAggregateOutputType = {
   email: string | null
   phone: string | null
   branchId: string | null
-  enquiryCount: number | null
-  missedCount: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -66,8 +52,6 @@ export type LeadMaxAggregateOutputType = {
   email: string | null
   phone: string | null
   branchId: string | null
-  enquiryCount: number | null
-  missedCount: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -79,23 +63,11 @@ export type LeadCountAggregateOutputType = {
   email: number
   phone: number
   branchId: number
-  enquiryCount: number
-  missedCount: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
-
-export type LeadAvgAggregateInputType = {
-  enquiryCount?: true
-  missedCount?: true
-}
-
-export type LeadSumAggregateInputType = {
-  enquiryCount?: true
-  missedCount?: true
-}
 
 export type LeadMinAggregateInputType = {
   id?: true
@@ -104,8 +76,6 @@ export type LeadMinAggregateInputType = {
   email?: true
   phone?: true
   branchId?: true
-  enquiryCount?: true
-  missedCount?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -117,8 +87,6 @@ export type LeadMaxAggregateInputType = {
   email?: true
   phone?: true
   branchId?: true
-  enquiryCount?: true
-  missedCount?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -130,8 +98,6 @@ export type LeadCountAggregateInputType = {
   email?: true
   phone?: true
   branchId?: true
-  enquiryCount?: true
-  missedCount?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -175,18 +141,6 @@ export type LeadAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: LeadAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: LeadSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: LeadMinAggregateInputType
@@ -217,8 +171,6 @@ export type LeadGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: LeadCountAggregateInputType | true
-  _avg?: LeadAvgAggregateInputType
-  _sum?: LeadSumAggregateInputType
   _min?: LeadMinAggregateInputType
   _max?: LeadMaxAggregateInputType
 }
@@ -230,13 +182,9 @@ export type LeadGroupByOutputType = {
   email: string
   phone: string
   branchId: string | null
-  enquiryCount: number
-  missedCount: number
   createdAt: Date
   updatedAt: Date
   _count: LeadCountAggregateOutputType | null
-  _avg: LeadAvgAggregateOutputType | null
-  _sum: LeadSumAggregateOutputType | null
   _min: LeadMinAggregateOutputType | null
   _max: LeadMaxAggregateOutputType | null
 }
@@ -266,12 +214,11 @@ export type LeadWhereInput = {
   email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
-  enquiryCount?: Prisma.IntFilter<"Lead"> | number
-  missedCount?: Prisma.IntFilter<"Lead"> | number
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
+  enquiries?: Prisma.EnquiryListRelationFilter
 }
 
 export type LeadOrderByWithRelationInput = {
@@ -281,12 +228,11 @@ export type LeadOrderByWithRelationInput = {
   email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   branchId?: Prisma.SortOrderInput | Prisma.SortOrder
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
   branch?: Prisma.BranchOrderByWithRelationInput
+  enquiries?: Prisma.EnquiryOrderByRelationAggregateInput
 }
 
 export type LeadWhereUniqueInput = Prisma.AtLeast<{
@@ -300,12 +246,11 @@ export type LeadWhereUniqueInput = Prisma.AtLeast<{
   email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
-  enquiryCount?: Prisma.IntFilter<"Lead"> | number
-  missedCount?: Prisma.IntFilter<"Lead"> | number
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
+  enquiries?: Prisma.EnquiryListRelationFilter
 }, "id" | "companyId_email">
 
 export type LeadOrderByWithAggregationInput = {
@@ -315,15 +260,11 @@ export type LeadOrderByWithAggregationInput = {
   email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   branchId?: Prisma.SortOrderInput | Prisma.SortOrder
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.LeadCountOrderByAggregateInput
-  _avg?: Prisma.LeadAvgOrderByAggregateInput
   _max?: Prisma.LeadMaxOrderByAggregateInput
   _min?: Prisma.LeadMinOrderByAggregateInput
-  _sum?: Prisma.LeadSumOrderByAggregateInput
 }
 
 export type LeadScalarWhereWithAggregatesInput = {
@@ -336,8 +277,6 @@ export type LeadScalarWhereWithAggregatesInput = {
   email?: Prisma.StringWithAggregatesFilter<"Lead"> | string
   phone?: Prisma.StringWithAggregatesFilter<"Lead"> | string
   branchId?: Prisma.StringNullableWithAggregatesFilter<"Lead"> | string | null
-  enquiryCount?: Prisma.IntWithAggregatesFilter<"Lead"> | number
-  missedCount?: Prisma.IntWithAggregatesFilter<"Lead"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Lead"> | Date | string
 }
@@ -347,12 +286,11 @@ export type LeadCreateInput = {
   name: string
   email: string
   phone: string
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
   branch?: Prisma.BranchCreateNestedOneWithoutLeadsInput
+  enquiries?: Prisma.EnquiryCreateNestedManyWithoutLeadInput
 }
 
 export type LeadUncheckedCreateInput = {
@@ -362,10 +300,9 @@ export type LeadUncheckedCreateInput = {
   email: string
   phone: string
   branchId?: string | null
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutLeadInput
 }
 
 export type LeadUpdateInput = {
@@ -373,12 +310,11 @@ export type LeadUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
   branch?: Prisma.BranchUpdateOneWithoutLeadsNestedInput
+  enquiries?: Prisma.EnquiryUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadUncheckedUpdateInput = {
@@ -388,10 +324,9 @@ export type LeadUncheckedUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadCreateManyInput = {
@@ -401,8 +336,6 @@ export type LeadCreateManyInput = {
   email: string
   phone: string
   branchId?: string | null
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -412,8 +345,6 @@ export type LeadUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -425,8 +356,6 @@ export type LeadUncheckedUpdateManyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -453,15 +382,8 @@ export type LeadCountOrderByAggregateInput = {
   email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type LeadAvgOrderByAggregateInput = {
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
 }
 
 export type LeadMaxOrderByAggregateInput = {
@@ -471,8 +393,6 @@ export type LeadMaxOrderByAggregateInput = {
   email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -484,15 +404,13 @@ export type LeadMinOrderByAggregateInput = {
   email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
-export type LeadSumOrderByAggregateInput = {
-  enquiryCount?: Prisma.SortOrder
-  missedCount?: Prisma.SortOrder
+export type LeadScalarRelationFilter = {
+  is?: Prisma.LeadWhereInput
+  isNot?: Prisma.LeadWhereInput
 }
 
 export type LeadCreateNestedManyWithoutCompanyInput = {
@@ -579,16 +497,22 @@ export type LeadUncheckedUpdateManyWithoutBranchNestedInput = {
   deleteMany?: Prisma.LeadScalarWhereInput | Prisma.LeadScalarWhereInput[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type LeadCreateNestedOneWithoutEnquiriesInput = {
+  create?: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
+  connectOrCreate?: Prisma.LeadCreateOrConnectWithoutEnquiriesInput
+  connect?: Prisma.LeadWhereUniqueInput
+}
+
+export type LeadUpdateOneRequiredWithoutEnquiriesNestedInput = {
+  create?: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
+  connectOrCreate?: Prisma.LeadCreateOrConnectWithoutEnquiriesInput
+  upsert?: Prisma.LeadUpsertWithoutEnquiriesInput
+  connect?: Prisma.LeadWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.LeadUpdateToOneWithWhereWithoutEnquiriesInput, Prisma.LeadUpdateWithoutEnquiriesInput>, Prisma.LeadUncheckedUpdateWithoutEnquiriesInput>
 }
 
 export type LeadCreateWithoutCompanyInput = {
@@ -596,11 +520,10 @@ export type LeadCreateWithoutCompanyInput = {
   name: string
   email: string
   phone: string
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   branch?: Prisma.BranchCreateNestedOneWithoutLeadsInput
+  enquiries?: Prisma.EnquiryCreateNestedManyWithoutLeadInput
 }
 
 export type LeadUncheckedCreateWithoutCompanyInput = {
@@ -609,10 +532,9 @@ export type LeadUncheckedCreateWithoutCompanyInput = {
   email: string
   phone: string
   branchId?: string | null
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutLeadInput
 }
 
 export type LeadCreateOrConnectWithoutCompanyInput = {
@@ -651,8 +573,6 @@ export type LeadScalarWhereInput = {
   email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
-  enquiryCount?: Prisma.IntFilter<"Lead"> | number
-  missedCount?: Prisma.IntFilter<"Lead"> | number
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
 }
@@ -662,11 +582,10 @@ export type LeadCreateWithoutBranchInput = {
   name: string
   email: string
   phone: string
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
+  enquiries?: Prisma.EnquiryCreateNestedManyWithoutLeadInput
 }
 
 export type LeadUncheckedCreateWithoutBranchInput = {
@@ -675,10 +594,9 @@ export type LeadUncheckedCreateWithoutBranchInput = {
   name: string
   email: string
   phone: string
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutLeadInput
 }
 
 export type LeadCreateOrConnectWithoutBranchInput = {
@@ -707,14 +625,72 @@ export type LeadUpdateManyWithWhereWithoutBranchInput = {
   data: Prisma.XOR<Prisma.LeadUpdateManyMutationInput, Prisma.LeadUncheckedUpdateManyWithoutBranchInput>
 }
 
+export type LeadCreateWithoutEnquiriesInput = {
+  id?: string
+  name: string
+  email: string
+  phone: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
+  branch?: Prisma.BranchCreateNestedOneWithoutLeadsInput
+}
+
+export type LeadUncheckedCreateWithoutEnquiriesInput = {
+  id?: string
+  companyId: string
+  name: string
+  email: string
+  phone: string
+  branchId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type LeadCreateOrConnectWithoutEnquiriesInput = {
+  where: Prisma.LeadWhereUniqueInput
+  create: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
+}
+
+export type LeadUpsertWithoutEnquiriesInput = {
+  update: Prisma.XOR<Prisma.LeadUpdateWithoutEnquiriesInput, Prisma.LeadUncheckedUpdateWithoutEnquiriesInput>
+  create: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
+  where?: Prisma.LeadWhereInput
+}
+
+export type LeadUpdateToOneWithWhereWithoutEnquiriesInput = {
+  where?: Prisma.LeadWhereInput
+  data: Prisma.XOR<Prisma.LeadUpdateWithoutEnquiriesInput, Prisma.LeadUncheckedUpdateWithoutEnquiriesInput>
+}
+
+export type LeadUpdateWithoutEnquiriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
+  branch?: Prisma.BranchUpdateOneWithoutLeadsNestedInput
+}
+
+export type LeadUncheckedUpdateWithoutEnquiriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type LeadCreateManyCompanyInput = {
   id?: string
   name: string
   email: string
   phone: string
   branchId?: string | null
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -724,11 +700,10 @@ export type LeadUpdateWithoutCompanyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branch?: Prisma.BranchUpdateOneWithoutLeadsNestedInput
+  enquiries?: Prisma.EnquiryUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadUncheckedUpdateWithoutCompanyInput = {
@@ -737,10 +712,9 @@ export type LeadUncheckedUpdateWithoutCompanyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadUncheckedUpdateManyWithoutCompanyInput = {
@@ -749,8 +723,6 @@ export type LeadUncheckedUpdateManyWithoutCompanyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -761,8 +733,6 @@ export type LeadCreateManyBranchInput = {
   name: string
   email: string
   phone: string
-  enquiryCount?: number
-  missedCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -772,11 +742,10 @@ export type LeadUpdateWithoutBranchInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
+  enquiries?: Prisma.EnquiryUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadUncheckedUpdateWithoutBranchInput = {
@@ -785,10 +754,9 @@ export type LeadUncheckedUpdateWithoutBranchInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutLeadNestedInput
 }
 
 export type LeadUncheckedUpdateManyWithoutBranchInput = {
@@ -797,12 +765,39 @@ export type LeadUncheckedUpdateManyWithoutBranchInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
-  enquiryCount?: Prisma.IntFieldUpdateOperationsInput | number
-  missedCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type LeadCountOutputType
+ */
+
+export type LeadCountOutputType = {
+  enquiries: number
+}
+
+export type LeadCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  enquiries?: boolean | LeadCountOutputTypeCountEnquiriesArgs
+}
+
+/**
+ * LeadCountOutputType without action
+ */
+export type LeadCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the LeadCountOutputType
+   */
+  select?: Prisma.LeadCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * LeadCountOutputType without action
+ */
+export type LeadCountOutputTypeCountEnquiriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EnquiryWhereInput
+}
 
 
 export type LeadSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -812,12 +807,12 @@ export type LeadSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   email?: boolean
   phone?: boolean
   branchId?: boolean
-  enquiryCount?: boolean
-  missedCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   branch?: boolean | Prisma.Lead$branchArgs<ExtArgs>
+  enquiries?: boolean | Prisma.Lead$enquiriesArgs<ExtArgs>
+  _count?: boolean | Prisma.LeadCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["lead"]>
 
 export type LeadSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -827,8 +822,6 @@ export type LeadSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   email?: boolean
   phone?: boolean
   branchId?: boolean
-  enquiryCount?: boolean
-  missedCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -842,8 +835,6 @@ export type LeadSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   email?: boolean
   phone?: boolean
   branchId?: boolean
-  enquiryCount?: boolean
-  missedCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -857,16 +848,16 @@ export type LeadSelectScalar = {
   email?: boolean
   phone?: boolean
   branchId?: boolean
-  enquiryCount?: boolean
-  missedCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type LeadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "email" | "phone" | "branchId" | "enquiryCount" | "missedCount" | "createdAt" | "updatedAt", ExtArgs["result"]["lead"]>
+export type LeadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "email" | "phone" | "branchId" | "createdAt" | "updatedAt", ExtArgs["result"]["lead"]>
 export type LeadInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   branch?: boolean | Prisma.Lead$branchArgs<ExtArgs>
+  enquiries?: boolean | Prisma.Lead$enquiriesArgs<ExtArgs>
+  _count?: boolean | Prisma.LeadCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type LeadIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -882,6 +873,11 @@ export type $LeadPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   objects: {
     company: Prisma.$CompanyPayload<ExtArgs>
     branch: Prisma.$BranchPayload<ExtArgs> | null
+    /**
+     * One row per time they got in touch. Counts are derived from these rather
+     * than denormalised onto the lead, so they cannot drift.
+     */
+    enquiries: Prisma.$EnquiryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -894,14 +890,6 @@ export type $LeadPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
      * destroy the lead.
      */
     branchId: string | null
-    /**
-     * Times this person has started, or tried to start, a chat.
-     */
-    enquiryCount: number
-    /**
-     * Of those, how many found nobody online. The follow-up list.
-     */
-    missedCount: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["lead"]>
@@ -1300,6 +1288,7 @@ export interface Prisma__LeadClient<T, Null = never, ExtArgs extends runtime.Typ
   readonly [Symbol.toStringTag]: "PrismaPromise"
   company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   branch<T extends Prisma.Lead$branchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Lead$branchArgs<ExtArgs>>): Prisma.Prisma__BranchClient<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  enquiries<T extends Prisma.Lead$enquiriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Lead$enquiriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EnquiryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1335,8 +1324,6 @@ export interface LeadFieldRefs {
   readonly email: Prisma.FieldRef<"Lead", 'String'>
   readonly phone: Prisma.FieldRef<"Lead", 'String'>
   readonly branchId: Prisma.FieldRef<"Lead", 'String'>
-  readonly enquiryCount: Prisma.FieldRef<"Lead", 'Int'>
-  readonly missedCount: Prisma.FieldRef<"Lead", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Lead", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Lead", 'DateTime'>
 }
@@ -1756,6 +1743,30 @@ export type Lead$branchArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    */
   include?: Prisma.BranchInclude<ExtArgs> | null
   where?: Prisma.BranchWhereInput
+}
+
+/**
+ * Lead.enquiries
+ */
+export type Lead$enquiriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Enquiry
+   */
+  select?: Prisma.EnquirySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Enquiry
+   */
+  omit?: Prisma.EnquiryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EnquiryInclude<ExtArgs> | null
+  where?: Prisma.EnquiryWhereInput
+  orderBy?: Prisma.EnquiryOrderByWithRelationInput | Prisma.EnquiryOrderByWithRelationInput[]
+  cursor?: Prisma.EnquiryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EnquiryScalarFieldEnum | Prisma.EnquiryScalarFieldEnum[]
 }
 
 /**

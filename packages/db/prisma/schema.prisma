@@ -64,9 +64,10 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  agents  Agent[]
-  leads   Lead[]
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  agents    Agent[]
+  leads     Lead[]
+  enquiries Enquiry[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive])
@@ -111,19 +112,41 @@ model Lead {
   /// Branch chosen most recently. Kept nullable so removing a branch does not
   /// destroy the lead.
   branchId  String?
-  /// Times this person has started, or tried to start, a chat.
-  enquiryCount Int @default(0)
-  /// Of those, how many found nobody online. The follow-up list.
-  missedCount  Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  /// One row per time they got in touch. Counts are derived from these rather
+  /// than denormalised onto the lead, so they cannot drift.
+  enquiries Enquiry[]
 
   @@unique([companyId, email])
   @@index([companyId, updatedAt])
-  @@index([companyId, missedCount])
+}
+
+/// A single approach from a lead: one submission of the pre-chat form.
+///
+/// Keeping every attempt, rather than only a counter on Lead, is what makes the
+/// history readable over time — when someone got in touch, which branch they
+/// wanted, and whether anyone was there to answer.
+model Enquiry {
+  id             String  @id @default(cuid())
+  leadId         String
+  branchId       String?
+  /// The chat that opened, when one did. Null for unanswered enquiries.
+  conversationId String?
+  /// False when nobody in that branch was online for this attempt.
+  answered       Boolean
+  createdAt      DateTime @default(now())
+
+  lead         Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  branch       Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+  @@index([branchId, createdAt])
+  @@index([answered, createdAt])
 }
 
 model Visitor {
@@ -148,9 +171,10 @@ model Conversation {
   updatedAt DateTime           @updatedAt
   closedAt  DateTime?
 
-  agent    Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  visitor  Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
-  messages Message[]
+  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  visitor   Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  enquiries Enquiry[]
 
   // Counting an agent's live load, and listing their inbox.
   @@index([agentId, status])

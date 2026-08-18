@@ -9,6 +9,7 @@ import type {
   Branch,
   DeactivateAgentResult,
   Lead,
+  LeadDetail,
 } from "@repo/types";
 import type {
   CreateAgentBody,
@@ -30,7 +31,10 @@ import {
   toConversation,
   toConversationDetail,
   toConversationSummary,
+  toEnquiry,
   toLead,
+  statsFromEnquiries,
+  type LeadStats,
 } from "../lib/serialize.js";
 
 const MESSAGE_ORDER = [{ createdAt: "asc" }, { id: "asc" }] as const;
@@ -284,7 +288,8 @@ export async function listLeads(
     where: {
       companyId: actor.companyId,
       ...(query.branchId ? { branchId: query.branchId } : {}),
-      ...(query.missedOnly ? { missedCount: { gt: 0 } } : {}),
+      // "Missed" is a property of the history now, not a column.
+      ...(query.missedOnly ? { enquiries: { some: { answered: false } } } : {}),
       ...(search
         ? {
             OR: [
@@ -300,7 +305,60 @@ export async function listLeads(
     include: { branch: { select: { name: true } } },
   });
 
-  return rows.map(toLead);
+  if (rows.length === 0) return [];
+
+  // Aggregate in the database rather than loading every enquiry: a long-lived
+  // lead could have hundreds, and the list only needs the totals.
+  const leadIds = rows.map((row) => row.id);
+  const [totals, missed] = await Promise.all([
+    prisma.enquiry.groupBy({
+      by: ["leadId"],
+      where: { leadId: { in: leadIds } },
+      _count: { _all: true },
+      _min: { createdAt: true },
+      _max: { createdAt: true },
+    }),
+    prisma.enquiry.groupBy({
+      by: ["leadId"],
+      where: { leadId: { in: leadIds }, answered: false },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const totalsBy = new Map(totals.map((row) => [row.leadId, row]));
+  const missedBy = new Map(missed.map((row) => [row.leadId, row._count._all]));
+
+  return rows.map((row) => {
+    const total = totalsBy.get(row.id);
+    const stats: LeadStats = {
+      enquiryCount: total?._count._all ?? 0,
+      missedCount: missedBy.get(row.id) ?? 0,
+      firstEnquiryAt: total?._min.createdAt?.toISOString() ?? null,
+      lastEnquiryAt: total?._max.createdAt?.toISOString() ?? null,
+    };
+    return toLead(row, stats);
+  });
+}
+
+/** One lead with its full history, newest first. */
+export async function getLead(leadId: string, actor: AdminTokenPayload): Promise<LeadDetail> {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    include: {
+      branch: { select: { name: true } },
+      enquiries: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        include: { branch: { select: { name: true } } },
+      },
+    },
+  });
+
+  if (!lead || lead.companyId !== actor.companyId) throw notFound("Lead not found");
+
+  return {
+    ...toLead(lead, statsFromEnquiries(lead.enquiries)),
+    enquiries: lead.enquiries.map((enquiry) => toEnquiry(enquiry)),
+  };
 }
 
 /* ---------------------------------- stats ---------------------------------- */
@@ -329,7 +387,9 @@ export async function getStats(actor: AdminTokenPayload): Promise<AdminStats> {
     prisma.conversation.count({ where: { ...conversationScope, status: "ACTIVE" } }),
     prisma.conversation.count({ where: { ...conversationScope, status: "CLOSED" } }),
     prisma.lead.count({ where: { companyId: actor.companyId } }),
-    prisma.lead.count({ where: { companyId: actor.companyId, missedCount: { gt: 0 } } }),
+    prisma.lead.count({
+      where: { companyId: actor.companyId, enquiries: { some: { answered: false } } },
+    }),
   ]);
 
   return {

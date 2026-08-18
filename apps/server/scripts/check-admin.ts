@@ -18,6 +18,7 @@ import type {
   BranchWithAgents,
   DeactivateAgentResult,
   Lead,
+  LeadDetail,
 } from "@repo/types";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
@@ -402,6 +403,51 @@ async function main(): Promise<void> {
   check(
     "agents cannot read the lead list",
     (await request("/api/admin/leads", { token: agentToken })).status,
+    401,
+  );
+
+  console.log("\n11e. Each approach is kept as its own dated enquiry");
+  const leadId = afterSecond.data?.[0]?.id;
+  if (!leadId) throw new Error("Expected a lead id");
+
+  const detail = await request<LeadDetail>(`/api/admin/leads/${leadId}`, { token });
+  check("both approaches are recorded separately", detail.data?.enquiries.length, 2);
+  check(
+    "each one says whether anyone answered",
+    detail.data?.enquiries.every((e) => e.answered === false),
+    true,
+  );
+  check(
+    "each one carries its own timestamp",
+    new Set(detail.data?.enquiries.map((e) => e.createdAt)).size,
+    2,
+  );
+  check("newest first", (() => {
+    const times = (detail.data?.enquiries ?? []).map((e) => Date.parse(e.createdAt));
+    return times.every((t, i) => i === 0 || times[i - 1]! >= t);
+  })(), true);
+  check("the branch is remembered per enquiry", detail.data?.enquiries[0]?.branchName, "Peshawar");
+
+  console.log("\n11f. An answered enquiry links back to its conversation");
+  const servedLead = await request<Lead[]>(`/api/admin/leads?search=${servedEmail}`, { token });
+  const servedId = servedLead.data?.[0]?.id;
+  if (!servedId) throw new Error("Expected the served lead");
+  const servedDetail = await request<LeadDetail>(`/api/admin/leads/${servedId}`, { token });
+  check("marked as answered", servedDetail.data?.enquiries[0]?.answered, true);
+  check(
+    "and points at the chat that opened",
+    typeof servedDetail.data?.enquiries[0]?.conversationId === "string",
+    true,
+  );
+
+  console.log("\n11g. Counts are derived, so they cannot drift");
+  check("enquiry count matches the history length", detail.data?.enquiryCount, 2);
+  check("missed count matches the unanswered ones", detail.data?.missedCount, 2);
+  check("first and last are exposed", typeof detail.data?.firstEnquiryAt === "string", true);
+
+  check(
+    "agents cannot read a lead history",
+    (await request(`/api/admin/leads/${leadId}`, { token: agentToken })).status,
     401,
   );
 

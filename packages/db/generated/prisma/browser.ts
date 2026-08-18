@@ -55,6 +55,15 @@ export type Agent = Prisma.AgentModel
  */
 export type Lead = Prisma.LeadModel
 /**
+ * Model Enquiry
+ * A single approach from a lead: one submission of the pre-chat form.
+ * 
+ * Keeping every attempt, rather than only a counter on Lead, is what makes the
+ * history readable over time — when someone got in touch, which branch they
+ * wanted, and whether anyone was there to answer.
+ */
+export type Enquiry = Prisma.EnquiryModel
+/**
  * Model Visitor
  * 
  */

@@ -3,6 +3,7 @@ import type {
   AgentRow,
   BranchRow,
   ConversationRow,
+  EnquiryRow,
   LeadRow,
   MessageRow,
   VisitorRow,
@@ -14,6 +15,7 @@ import type {
   Branch,
   Conversation,
   ConversationDetail,
+  Enquiry,
   Lead,
   ConversationSummary,
   ConversationWithAgent,
@@ -37,7 +39,32 @@ export function toBranch(row: BranchRow): Branch {
   };
 }
 
-export function toLead(row: LeadRow & { branch?: { name: string } | null }): Lead {
+export function toEnquiry(row: EnquiryRow & { branch?: { name: string } | null }): Enquiry {
+  return {
+    id: row.id,
+    leadId: row.leadId,
+    branchId: row.branchId,
+    branchName: row.branch?.name ?? null,
+    conversationId: row.conversationId,
+    answered: row.answered,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** Totals derived from the enquiry history — never stored on the lead. */
+export interface LeadStats {
+  enquiryCount: number;
+  missedCount: number;
+  firstEnquiryAt: string | null;
+  lastEnquiryAt: string | null;
+}
+
+/**
+ * `stats` is required rather than optional: the counts have exactly one source
+ * of truth, and passing it explicitly also stops `rows.map(toLead)` from
+ * silently handing the array index to a second parameter.
+ */
+export function toLead(row: LeadRow & { branch?: { name: string } | null }, stats: LeadStats): Lead {
   return {
     id: row.id,
     companyId: row.companyId,
@@ -46,10 +73,22 @@ export function toLead(row: LeadRow & { branch?: { name: string } | null }): Lea
     phone: row.phone,
     branchId: row.branchId,
     branchName: row.branch?.name ?? null,
-    enquiryCount: row.enquiryCount,
-    missedCount: row.missedCount,
+    ...stats,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/** Folds an already-loaded history into the same shape, for the single-lead view. */
+export function statsFromEnquiries(
+  history: Array<{ createdAt: Date; answered: boolean }>,
+): LeadStats {
+  const times = history.map((enquiry) => enquiry.createdAt.getTime());
+  return {
+    enquiryCount: history.length,
+    missedCount: history.filter((enquiry) => !enquiry.answered).length,
+    firstEnquiryAt: times.length ? new Date(Math.min(...times)).toISOString() : null,
+    lastEnquiryAt: times.length ? new Date(Math.max(...times)).toISOString() : null,
   };
 }
 

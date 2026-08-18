@@ -10,6 +10,7 @@ import {
   loginBodySchema,
   updateAgentBodySchema,
   updateBranchBodySchema,
+  leadIdParamSchema,
 } from "@repo/validation";
 import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
@@ -21,6 +22,7 @@ import {
   createBranch,
   getAdmin,
   getAnyConversation,
+  getLead,
   getStats,
   listAllConversations,
   listLeads,
@@ -137,6 +139,16 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseOrThrow(listLeadsQuerySchema, req.query, "query");
     sendOk(res, await listLeads(query, currentAdmin(req)));
+  }),
+);
+
+/** GET /api/admin/leads/:leadId — one lead with its full enquiry history. */
+adminRouter.get(
+  "/leads/:leadId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { leadId } = parseOrThrow(leadIdParamSchema, req.params, "lead id");
+    sendOk(res, await getLead(leadId, currentAdmin(req)));
   }),
 );
 

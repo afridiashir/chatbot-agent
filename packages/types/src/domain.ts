@@ -135,12 +135,32 @@ export interface Lead {
   phone: string;
   branchId: string | null;
   branchName: string | null;
-  /** Times they have started, or tried to start, a chat. */
+  /** Derived from the enquiry history, never stored, so it cannot drift. */
   enquiryCount: number;
   /** Of those, how many found nobody online. */
   missedCount: number;
+  /** When they first got in touch, and most recently. */
+  firstEnquiryAt: string | null;
+  lastEnquiryAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One approach from a lead — the unit of the history. */
+export interface Enquiry {
+  id: string;
+  leadId: string;
+  branchId: string | null;
+  branchName: string | null;
+  conversationId: string | null;
+  /** False when nobody in that branch was online at the time. */
+  answered: boolean;
+  createdAt: string;
+}
+
+/** A lead with its full history, newest first. */
+export interface LeadDetail extends Lead {
+  enquiries: Enquiry[];
 }
 
 /** Counts shown on the admin landing page. */

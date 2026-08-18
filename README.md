@@ -261,13 +261,27 @@ who may reach you from several devices over time. Enquiring again from a new
 phone updates the one lead row rather than creating a second, and the most
 recent name and number win, because people correct their own typos.
 
-Two counters make the list actionable: `enquiryCount` (how many times they got
-in touch) and `missedCount` (how many of those found nobody online). The admin
-list at `/admin/leads` filters on the latter, and the overview shows both.
+### The history, kept over time
+
+Deduplicating the person must not flatten *when* they got in touch, so every
+submission is also written as its own `Enquiry` row: its own timestamp, the
+branch that was asked for, whether anyone answered, and a link to the chat when
+one opened. Opening a lead in `/admin/leads` shows that timeline.
+
+`enquiryCount` and `missedCount` are **derived** from those rows rather than
+stored as columns — the same rule the routing code follows for agent load, and
+for the same reason: a stored counter is a second source of truth that can
+drift. The list aggregates them in the database (`groupBy`) rather than loading
+every enquiry, so a lead with hundreds of approaches still costs two queries.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/admin/leads` | Filter by branch, `missedOnly`, or a name/email/phone search |
+| GET | `/api/admin/leads/:leadId` | One lead with its full enquiry history |
+
+**`pnpm db:seed` no longer clears leads.** Conversations and visitors are demo
+traffic and get rebuilt, but leads are a record of real people who got in touch
+and are meant to accumulate. Use `pnpm db:reset` for a genuinely empty database.
 
 ### Surviving a lost connection
 
@@ -409,7 +423,7 @@ authentication and authorisation are exercised too.
 pnpm --filter @repo/server check:routing   # 12 — routing rules + the race (no server needed)
 pnpm --filter @repo/server check:flow      # 25 — the full scenario end to end
 pnpm --filter @repo/server check:realtime  # 26 — sockets, typing, idempotent re-delivery
-pnpm --filter @repo/server check:admin     # 54 — admin CRUD, soft delete, leads
+pnpm --filter @repo/server check:admin     # 65 — admin CRUD, soft delete, leads, history
 pnpm check                                 # all three, then re-seeds
 ```
 
@@ -451,3 +465,4 @@ further messages refused, and a new chat can start.
 - [x] Chat-client styling for the agent inbox, with generated avatars
 - [x] Offline resilience — persisted drafts, queued sends, reconnect resync
 - [x] Lead capture — every enquiry saved and deduplicated, answered or not
+- [x] Enquiry history — each approach kept as a dated row, counts derived

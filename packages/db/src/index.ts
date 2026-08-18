@@ -8,6 +8,7 @@ export type {
   Agent as AgentRow,
   Branch as BranchRow,
   Company as CompanyRow,
+  Enquiry as EnquiryRow,
   Lead as LeadRow,
   Conversation as ConversationRow,
   Message as MessageRow,

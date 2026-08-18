@@ -402,6 +402,7 @@ export const ModelName = {
   Branch: 'Branch',
   Agent: 'Agent',
   Lead: 'Lead',
+  Enquiry: 'Enquiry',
   Visitor: 'Visitor',
   Conversation: 'Conversation',
   Message: 'Message'
@@ -420,7 +421,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "company" | "admin" | "branch" | "agent" | "lead" | "visitor" | "conversation" | "message"
+    modelProps: "company" | "admin" | "branch" | "agent" | "lead" | "enquiry" | "visitor" | "conversation" | "message"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -794,6 +795,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Enquiry: {
+      payload: Prisma.$EnquiryPayload<ExtArgs>
+      fields: Prisma.EnquiryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EnquiryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EnquiryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        findFirst: {
+          args: Prisma.EnquiryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EnquiryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        findMany: {
+          args: Prisma.EnquiryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>[]
+        }
+        create: {
+          args: Prisma.EnquiryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        createMany: {
+          args: Prisma.EnquiryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EnquiryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>[]
+        }
+        delete: {
+          args: Prisma.EnquiryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        update: {
+          args: Prisma.EnquiryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        deleteMany: {
+          args: Prisma.EnquiryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EnquiryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EnquiryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>[]
+        }
+        upsert: {
+          args: Prisma.EnquiryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnquiryPayload>
+        }
+        aggregate: {
+          args: Prisma.EnquiryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEnquiry>
+        }
+        groupBy: {
+          args: Prisma.EnquiryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnquiryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EnquiryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnquiryCountAggregateOutputType> | number
+        }
+      }
+    }
     Visitor: {
       payload: Prisma.$VisitorPayload<ExtArgs>
       fields: Prisma.VisitorFieldRefs
@@ -1112,13 +1187,23 @@ export const LeadScalarFieldEnum = {
   email: 'email',
   phone: 'phone',
   branchId: 'branchId',
-  enquiryCount: 'enquiryCount',
-  missedCount: 'missedCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type LeadScalarFieldEnum = (typeof LeadScalarFieldEnum)[keyof typeof LeadScalarFieldEnum]
+
+
+export const EnquiryScalarFieldEnum = {
+  id: 'id',
+  leadId: 'leadId',
+  branchId: 'branchId',
+  conversationId: 'conversationId',
+  answered: 'answered',
+  createdAt: 'createdAt'
+} as const
+
+export type EnquiryScalarFieldEnum = (typeof EnquiryScalarFieldEnum)[keyof typeof EnquiryScalarFieldEnum]
 
 
 export const VisitorScalarFieldEnum = {
@@ -1224,20 +1309,6 @@ export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
- * Reference to a field of type 'Int'
- */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-/**
- * Reference to a field of type 'Int[]'
- */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
-    
-
-
-/**
  * Reference to a field of type 'ConversationStatus'
  */
 export type EnumConversationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ConversationStatus'>
@@ -1266,16 +1337,16 @@ export type ListEnumSenderTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$P
 
 
 /**
- * Reference to a field of type 'Float'
+ * Reference to a field of type 'Int'
  */
-export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
     
 
 
 /**
- * Reference to a field of type 'Float[]'
+ * Reference to a field of type 'Int[]'
  */
-export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 /**
@@ -1434,6 +1505,7 @@ export type GlobalOmitConfig = {
   branch?: Prisma.BranchOmit
   agent?: Prisma.AgentOmit
   lead?: Prisma.LeadOmit
+  enquiry?: Prisma.EnquiryOmit
   visitor?: Prisma.VisitorOmit
   conversation?: Prisma.ConversationOmit
   message?: Prisma.MessageOmit

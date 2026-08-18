@@ -70,9 +70,13 @@ async function main(): Promise<void> {
   // seeds produce the exact load figures the routing example depends on.
   // Cascades handle messages.
   await prisma.conversation.deleteMany({});
-  // Visitors and leads are demo traffic too; conversations cascade from visitors.
+  // Visitors are demo traffic; conversations cascade from them.
   await prisma.visitor.deleteMany({});
-  await prisma.lead.deleteMany({});
+
+  // Leads and their enquiry history are deliberately NOT cleared. They are a
+  // record of real people who got in touch, accumulated over time, and wiping
+  // them on every reseed would defeat the point of keeping the history at all.
+  // Use `pnpm db:reset` for a genuinely empty database.
 
   // Anything an admin (or a test run) created is removed, so "seeded" really
   // does mean the exact state this file describes. Deleting a branch cascades
