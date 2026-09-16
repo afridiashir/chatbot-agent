@@ -51,12 +51,15 @@ export async function setAgentStatus(
   agentId: string,
   isOnline: boolean,
   actor: AgentTokenPayload,
-): Promise<{ agent: Agent; event: AgentStatusPayload }> {
+): Promise<{ agent: Agent; event: AgentStatusPayload; companyId: string }> {
   if (actor.agentId !== agentId) {
     throw forbidden("You can only change your own availability");
   }
 
-  const existing = await prisma.agent.findUnique({ where: { id: agentId } });
+  const existing = await prisma.agent.findUnique({
+    where: { id: agentId },
+    include: { branch: { select: { companyId: true } } },
+  });
   if (!existing) throw notFound("Agent not found");
   if (!existing.isActive) throw forbidden("This account has been deactivated");
 
@@ -68,5 +71,6 @@ export async function setAgentStatus(
   return {
     agent: toAgent(updated),
     event: { agentId: updated.id, branchId: updated.branchId, isOnline: updated.isOnline },
+    companyId: existing.branch.companyId,
   };
 }

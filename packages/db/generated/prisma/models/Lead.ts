@@ -497,10 +497,6 @@ export type LeadUncheckedUpdateManyWithoutBranchNestedInput = {
   deleteMany?: Prisma.LeadScalarWhereInput | Prisma.LeadScalarWhereInput[]
 }
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
-}
-
 export type LeadCreateNestedOneWithoutEnquiriesInput = {
   create?: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
   connectOrCreate?: Prisma.LeadCreateOrConnectWithoutEnquiriesInput

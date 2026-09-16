@@ -15,6 +15,8 @@ export interface AdminTokenPayload {
   role: "ADMIN";
   adminId: string;
   companyId: string;
+  /** Null for a company admin; the one branch a branch admin is confined to. */
+  branchId: string | null;
 }
 
 export type TokenPayload = AgentTokenPayload | AdminTokenPayload;
@@ -34,6 +36,10 @@ const tokenPayloadSchema = z.discriminatedUnion("role", [
     role: z.literal("ADMIN"),
     adminId: z.string().min(1),
     companyId: z.string().min(1),
+    // Tokens issued before branch admins existed carry no claim. The claim is
+    // never trusted for access anyway: requireAdmin reloads the scope from the
+    // database on every request.
+    branchId: z.string().min(1).nullable().default(null),
   }),
 ]);
 

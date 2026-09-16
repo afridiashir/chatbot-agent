@@ -1,10 +1,5 @@
 import { rooms } from "@repo/types";
-import type {
-  AgentStatusPayload,
-  Conversation,
-  ConversationWithAgent,
-  Message,
-} from "@repo/types";
+import type { AgentStatusPayload, Conversation, ConversationWithAgent, Message } from "@repo/types";
 import type { AppServer } from "./types.js";
 
 /**
@@ -35,6 +30,12 @@ export function emitConversationClosed(conversation: Conversation): void {
     .emit("conversation:closed", conversation);
 }
 
-export function emitAgentStatus(payload: AgentStatusPayload): void {
-  io?.to(rooms.admin()).emit("agent:status", payload);
+/**
+ * Company admins hear about every branch of their own company; branch admins
+ * only about theirs. Nobody hears about another company.
+ */
+export function emitAgentStatus(payload: AgentStatusPayload, companyId: string): void {
+  io?.to(rooms.adminCompany(companyId))
+    .to(rooms.adminBranch(payload.branchId))
+    .emit("agent:status", payload);
 }

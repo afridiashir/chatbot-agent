@@ -17,5 +17,27 @@ services:
       timeout: 5s
       retries: 10
 
+  # Object storage for chat media (images, video, audio, voice notes). The API
+  # keeps the bucket private and hands out short-lived signed URLs.
+  minio:
+    image: minio/minio:latest
+    container_name: mbca-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-chatminio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-chatminio-secret}
+    ports:
+      - "${MINIO_API_PORT:-9100}:9000"
+      - "${MINIO_CONSOLE_PORT:-9101}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres-data:
+  minio-data:

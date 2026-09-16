@@ -59,7 +59,8 @@ export const ModelName = {
   Enquiry: 'Enquiry',
   Visitor: 'Visitor',
   Conversation: 'Conversation',
-  Message: 'Message'
+  Message: 'Message',
+  Attachment: 'Attachment'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -91,9 +92,11 @@ export type CompanyScalarFieldEnum = (typeof CompanyScalarFieldEnum)[keyof typeo
 export const AdminScalarFieldEnum = {
   id: 'id',
   companyId: 'companyId',
+  branchId: 'branchId',
   name: 'name',
   email: 'email',
   passwordHash: 'passwordHash',
+  isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -119,6 +122,7 @@ export const AgentScalarFieldEnum = {
   name: 'name',
   email: 'email',
   passwordHash: 'passwordHash',
+  avatarKey: 'avatarKey',
   isOnline: 'isOnline',
   isActive: 'isActive',
   createdAt: 'createdAt',
@@ -189,6 +193,22 @@ export const MessageScalarFieldEnum = {
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const AttachmentScalarFieldEnum = {
+  id: 'id',
+  messageId: 'messageId',
+  key: 'key',
+  kind: 'kind',
+  mimeType: 'mimeType',
+  fileName: 'fileName',
+  size: 'size',
+  durationMs: 'durationMs',
+  waveform: 'waveform',
+  createdAt: 'createdAt'
+} as const
+
+export type AttachmentScalarFieldEnum = (typeof AttachmentScalarFieldEnum)[keyof typeof AttachmentScalarFieldEnum]
 
 
 export const SortOrder = {

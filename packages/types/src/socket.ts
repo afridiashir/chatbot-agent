@@ -4,8 +4,10 @@ import type { Conversation, ConversationWithAgent, Message, SenderType } from ".
 export const rooms = {
   conversation: (conversationId: string) => `conversation:${conversationId}` as const,
   agent: (agentId: string) => `agent:${agentId}` as const,
-  /** Admin sockets only — carries company-wide status changes. */
-  admin: () => "admin" as const,
+  /** Company admins — status changes across every branch of their company. */
+  adminCompany: (companyId: string) => `admin:company:${companyId}` as const,
+  /** Branch admins — status changes in their one branch. */
+  adminBranch: (branchId: string) => `admin:branch:${branchId}` as const,
 };
 
 export interface AgentStatusPayload {
@@ -45,7 +47,7 @@ export interface ServerToClientEvents {
   "conversation:closed": (conversation: Conversation) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "typing:update": (payload: TypingPayload) => void;
-  "error": (payload: { message: string }) => void;
+  error: (payload: { message: string }) => void;
 }
 
 /** Events clients emit to the server. The ack callback keeps failures visible. */
@@ -56,19 +58,24 @@ export interface ClientToServerEvents {
   ) => void;
   "conversation:leave": (payload: { conversationId: string }) => void;
   "message:send": (
-    payload: { conversationId: string; content: string; clientId?: string },
+    payload: {
+      conversationId: string;
+      content: string;
+      clientId?: string;
+      /** From an upload ticket; `durationMs` for voice notes and audio. */
+      attachment?: { uploadToken: string; durationMs?: number; waveform?: number[] };
+    },
     ack?: (result: SocketAck<Message>) => void,
   ) => void;
   /**
    * Best-effort and deliberately unacknowledged: a lost typing notice is
    * invisible to the user, so it is not worth a round trip.
    */
-  "typing": (payload: { conversationId: string; isTyping: boolean }) => void;
+  typing: (payload: { conversationId: string; isTyping: boolean }) => void;
 }
 
 export type SocketAck<T = undefined> =
-  | (T extends undefined ? { ok: true } : { ok: true; data: T })
-  | { ok: false; message: string };
+  (T extends undefined ? { ok: true } : { ok: true; data: T }) | { ok: false; message: string };
 
 /**
  * Handshake auth. Visitors identify with the id they keep in localStorage;

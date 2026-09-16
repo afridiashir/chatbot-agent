@@ -9,6 +9,7 @@ import {
 } from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
 import { verifyAgentToken, verifyAdminToken } from "../lib/auth.js";
+import { loadAdminScope } from "../middleware/require-agent.js";
 import { HttpError } from "../lib/http.js";
 import { env } from "../env.js";
 import { addMessage, assertConversationAccess } from "../services/conversations.js";
@@ -26,7 +27,7 @@ function toAckError(error: unknown): { ok: false; message: string } {
 }
 
 /** Resolves the handshake `auth` payload into the same Actor the REST API uses. */
-function authenticate(socket: AppSocket): Actor {
+async function authenticate(socket: AppSocket): Promise<Actor> {
   const parsed = socketAuthSchema.safeParse(socket.handshake.auth);
   if (!parsed.success) {
     throw new Error("Invalid handshake: expected a visitorId or an agent token");
@@ -38,8 +39,15 @@ function authenticate(socket: AppSocket): Actor {
   }
 
   if (parsed.data.role === "ADMIN") {
-    const payload = verifyAdminToken(parsed.data.token);
-    return { type: "ADMIN", adminId: payload.adminId, companyId: payload.companyId };
+    // Same database check as the REST middleware: a deactivated admin cannot
+    // keep watching, and the branch scope is the current one, not the token's.
+    const scope = await loadAdminScope(verifyAdminToken(parsed.data.token).adminId);
+    return {
+      type: "ADMIN",
+      adminId: scope.adminId,
+      companyId: scope.companyId,
+      branchId: scope.branchId,
+    };
   }
 
   return { type: "VISITOR", visitorId: parsed.data.visitorId };
@@ -94,7 +102,8 @@ function registerHandlers(socket: AppSocket): void {
   socket.on("message:send", (payload, ack) => {
     void (async () => {
       try {
-        const { conversationId, content, clientId } = socketMessagePayloadSchema.parse(payload);
+        const { conversationId, content, clientId, attachment } =
+          socketMessagePayloadSchema.parse(payload);
         if (actor.type === "ADMIN") {
           // Admin access to conversations is observation only.
           ack?.({ ok: false, message: "Admins cannot send messages" });
@@ -107,7 +116,7 @@ function registerHandlers(socket: AppSocket): void {
         // broadcast only reports what was already durably stored.
         const { message, created } = await addMessage(
           conversationId,
-          { content, senderType, clientId },
+          { content, senderType, clientId, attachment },
           actor,
         );
         if (created) emitMessage(message);
@@ -131,12 +140,14 @@ export function createSocketServer(httpServer: HttpServer): AppServer {
   });
 
   io.use((socket, next) => {
-    try {
-      socket.data = authenticate(socket);
-      next();
-    } catch (error) {
-      next(error instanceof Error ? error : new Error("Authentication failed"));
-    }
+    authenticate(socket)
+      .then((actor) => {
+        socket.data = actor;
+        next();
+      })
+      .catch((error: unknown) => {
+        next(error instanceof Error ? error : new Error("Authentication failed"));
+      });
   });
 
   io.on("connection", (socket) => {
@@ -149,8 +160,10 @@ export function createSocketServer(httpServer: HttpServer): AppServer {
     }
 
     if (actor.type === "ADMIN") {
-      // Company-wide status changes.
-      void socket.join(rooms.admin());
+      // Status changes for exactly what this admin is allowed to see.
+      void socket.join(
+        actor.branchId ? rooms.adminBranch(actor.branchId) : rooms.adminCompany(actor.companyId),
+      );
     }
 
     registerHandlers(socket);

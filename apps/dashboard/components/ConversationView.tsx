@@ -1,12 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Clock, Send } from "lucide-react";
-import type { ConversationDetail, Message } from "@repo/types";
+import { CheckCheck, Clock, FileAudio, Film, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import {
+  ATTACHMENT_ACCEPT,
+  formatBytes,
+  kindForFile,
+  type AttachmentKind,
+  type ConversationDetail,
+  type Message,
+} from "@repo/types";
+import { MessageMedia } from "@/components/MessageMedia";
+import { LiveWaveform } from "@/components/Waveform";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
+import { checkFile } from "@/lib/media";
 import { loadDrafts, saveDraft, type QueuedMessage } from "@/lib/outbox";
+import { cn } from "@/lib/utils";
+
+export interface MediaSend {
+  kind: AttachmentKind;
+  file: Blob;
+  fileName: string;
+  caption: string;
+  durationMs?: number;
+  waveform?: number[];
+  onProgress: (fraction: number) => void;
+}
 
 interface ConversationViewProps {
   detail: ConversationDetail | null;
@@ -15,6 +37,8 @@ interface ConversationViewProps {
   /** Sent but not yet stored by the server. */
   pending: QueuedMessage[];
   onSend: (content: string) => Promise<void>;
+  /** Uploads and sends one media message; rejects with a readable error. */
+  onSendMedia: (media: MediaSend) => Promise<void>;
   onTyping: () => void;
   onClose: (conversationId: string) => Promise<void>;
 }
@@ -36,7 +60,7 @@ function PendingBubble({ message }: { message: QueuedMessage }) {
 }
 
 /** Three dots, staggered so they ripple. */
-function TypingDots() {
+export function TypingDots() {
   return (
     <span className="flex items-center gap-1" aria-hidden="true">
       {[0, 150, 300].map((delay) => (
@@ -50,7 +74,7 @@ function TypingDots() {
   );
 }
 
-function DaySeparator({ iso }: { iso: string }) {
+export function DaySeparator({ iso }: { iso: string }) {
   return (
     <div className="my-2 flex justify-center">
       <span className="rounded-md bg-chat-panel px-2.5 py-1 text-[11px] font-medium text-chat-meta shadow-sm">
@@ -60,22 +84,62 @@ function DaySeparator({ iso }: { iso: string }) {
   );
 }
 
-function Bubble({ message }: { message: Message }) {
+/** Time plus, on the agent's own messages, WhatsApp's grey "delivered" ticks. */
+function Stamp({ iso, outgoing }: { iso: string; outgoing: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+      {formatClock(iso)}
+      {outgoing && <CheckCheck className="size-3.5" aria-label="Delivered" />}
+    </span>
+  );
+}
+
+export function Bubble({
+  message,
+  sender,
+}: {
+  message: Message;
+  /** Who sent it; voice notes show their photo. */
+  sender?: { name: string; seed: string; photo?: string | null };
+}) {
   const fromAgent = message.senderType === "AGENT";
+  const media = message.attachment;
+  // A voice note without a caption owns the whole bubble, footer included.
+  const bareVoice = media?.kind === "VOICE" && !message.content;
 
   return (
     <div className={fromAgent ? "flex justify-end" : "flex justify-start"}>
       <div
-        className={[
-          "max-w-[75%] min-w-24 px-2.5 py-1.5 shadow-sm",
+        className={cn(
+          "max-w-[75%] min-w-24 shadow-sm",
+          media ? "p-1" : "px-2.5 py-1.5",
           fromAgent ? "chat-bubble-out" : "chat-bubble-in",
-        ].join(" ")}
+        )}
       >
-        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-        {/* Sits on the trailing edge of the last line, the way a chat app does. */}
-        <span className="float-right mt-0.5 ml-2 text-[10px] leading-none text-chat-meta">
-          {formatClock(message.createdAt)}
-        </span>
+        {media && (
+          <MessageMedia
+            attachment={media}
+            outgoing={fromAgent}
+            sender={sender}
+            footer={bareVoice ? <Stamp iso={message.createdAt} outgoing={fromAgent} /> : undefined}
+          />
+        )}
+        {message.content && (
+          <p className={cn("text-sm whitespace-pre-wrap break-words", media && "px-1.5 pt-1")}>
+            {message.content}
+          </p>
+        )}
+        {!bareVoice && (
+          // Sits on the trailing edge of the last line, the way a chat app does.
+          <span
+            className={cn(
+              "float-right mt-0.5 ml-2 text-[10px] leading-none text-chat-meta",
+              media && "mr-1.5 mb-0.5",
+            )}
+          >
+            <Stamp iso={message.createdAt} outgoing={fromAgent} />
+          </span>
+        )}
       </div>
     </div>
   );
@@ -87,11 +151,11 @@ export function ConversationView({
   visitorTyping,
   pending,
   onSend,
+  onSendMedia,
   onTyping,
   onClose,
 }: ConversationViewProps) {
   const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -118,22 +182,6 @@ export function ConversationView({
   }
 
   const isClosed = detail.status === "CLOSED";
-  // Deliberately not gated on `connected`: an offline send is queued, not lost.
-  const canSend = !isClosed && !sending && draft.trim().length > 0;
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!canSend) return;
-    const content = draft.trim();
-    setSending(true);
-    setDraft("");
-    if (conversationId) saveDraft(conversationId, "");
-    try {
-      await onSend(content);
-    } finally {
-      setSending(false);
-    }
-  }
 
   async function handleClose() {
     if (!detail) return;
@@ -147,13 +195,13 @@ export function ConversationView({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="flex items-center gap-3 border-b bg-chat-panel px-4 py-2.5">
+      <header className="flex items-center gap-3 border-b bg-chat-header px-4 py-2.5">
         <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{detail.visitor.name}</p>
           {visitorTyping ? (
-            <p className="text-xs font-medium text-emerald-600">typing...</p>
+            <p className="text-xs font-medium text-success">typing...</p>
           ) : (
             <p className="truncate text-xs text-chat-meta">
               <a href={`mailto:${detail.visitor.email}`} className="hover:underline">
@@ -180,7 +228,18 @@ export function ConversationView({
             {isNewDay(message.createdAt, detail.messages[index - 1]?.createdAt) && (
               <DaySeparator iso={message.createdAt} />
             )}
-            <Bubble message={message} />
+            <Bubble
+              message={message}
+              sender={
+                message.senderType === "AGENT"
+                  ? {
+                      name: detail.agent.name,
+                      seed: detail.agent.id,
+                      photo: detail.agent.avatarUrl,
+                    }
+                  : { name: detail.visitor.name, seed: detail.visitor.id }
+              }
+            />
           </div>
         ))}
 
@@ -200,33 +259,309 @@ export function ConversationView({
       </div>
 
       {isClosed ? (
-        <p className="border-t bg-chat-panel px-4 py-3 text-sm text-chat-meta">
+        <p className="border-t bg-chat-header px-4 py-3 text-sm text-chat-meta">
           This conversation is closed and no longer counts toward your active load.
         </p>
       ) : (
-        <form
-          onSubmit={submit}
-          className="flex items-center gap-2 border-t bg-chat-panel px-3 py-2.5"
+        <Composer
+          key={detail.id}
+          conversationId={detail.id}
+          draft={draft}
+          onDraftChange={(value) => {
+            setDraft(value);
+            saveDraft(detail.id, value);
+            onTyping();
+          }}
+          connected={connected}
+          onSend={onSend}
+          onSendMedia={onSendMedia}
+        />
+      )}
+    </div>
+  );
+}
+
+/* --------------------------------- composer -------------------------------- */
+
+interface Staged {
+  file: File;
+  kind: Exclude<AttachmentKind, "VOICE">;
+  previewUrl: string | null;
+}
+
+function Composer({
+  conversationId,
+  draft,
+  onDraftChange,
+  connected,
+  onSend,
+  onSendMedia,
+}: {
+  conversationId: string;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  connected: boolean;
+  onSend: (content: string) => Promise<void>;
+  onSendMedia: (media: MediaSend) => Promise<void>;
+}) {
+  const [sending, setSending] = useState(false);
+  const [staged, setStaged] = useState<Staged | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recorder = useVoiceRecorder();
+
+  // Object URLs hold the file in memory until revoked.
+  useEffect(
+    () => () => {
+      if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+    },
+    [staged],
+  );
+
+  const hasText = draft.trim().length > 0;
+  const busy = sending || progress !== null;
+
+  function clearDraft() {
+    onDraftChange("");
+    saveDraft(conversationId, "");
+  }
+
+  function pickFile(file: File | undefined) {
+    setMediaError(null);
+    if (!file) return;
+    const kind = kindForFile(file.type);
+    if (!kind) {
+      setMediaError("Only images, videos and audio files can be sent.");
+      return;
+    }
+    const problem = checkFile(kind, file);
+    if (problem) {
+      setMediaError(problem);
+      return;
+    }
+    setStaged({
+      file,
+      kind,
+      previewUrl: kind === "IMAGE" || kind === "VIDEO" ? URL.createObjectURL(file) : null,
+    });
+  }
+
+  async function sendMedia(media: Omit<MediaSend, "onProgress">) {
+    setMediaError(null);
+    setProgress(0);
+    try {
+      await onSendMedia({ ...media, onProgress: setProgress });
+      return true;
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Could not send that file");
+      return false;
+    } finally {
+      setProgress(null);
+    }
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+
+    if (staged) {
+      const ok = await sendMedia({
+        kind: staged.kind,
+        file: staged.file,
+        fileName: staged.file.name,
+        caption: draft.trim(),
+      });
+      if (ok) {
+        setStaged(null);
+        clearDraft();
+      }
+      return;
+    }
+
+    if (!hasText) return;
+    const content = draft.trim();
+    setSending(true);
+    clearDraft();
+    try {
+      await onSend(content);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function sendVoice() {
+    const note = await recorder.finish();
+    if (!note) {
+      setMediaError("That recording was too short.");
+      return;
+    }
+    await sendMedia({
+      kind: "VOICE",
+      file: note.blob,
+      fileName: note.fileName,
+      caption: "",
+      durationMs: note.durationMs,
+      waveform: note.waveform,
+    });
+  }
+
+  const error = mediaError ?? recorder.error;
+
+  return (
+    <div className="border-t bg-chat-header">
+      {staged && (
+        <div className="flex items-center gap-3 border-b px-3 py-2">
+          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-chat-panel">
+            {staged.kind === "IMAGE" && staged.previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local preview
+              <img src={staged.previewUrl} alt="" className="size-full object-cover" />
+            ) : staged.kind === "VIDEO" ? (
+              <Film className="size-6 text-chat-meta" aria-hidden />
+            ) : (
+              <FileAudio className="size-6 text-chat-meta" aria-hidden />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{staged.file.name}</p>
+            <p className="text-xs text-chat-meta">
+              {formatBytes(staged.file.size)} · {staged.kind.toLowerCase()}
+              {progress !== null && ` · uploading ${Math.round(progress * 100)}%`}
+            </p>
+            {progress !== null && (
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-chat-panel">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width]"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setStaged(null)}
+            disabled={busy}
+            aria-label="Remove attachment"
+            className="flex size-8 items-center justify-center rounded-full text-chat-meta hover:bg-accent disabled:opacity-40"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="flex items-center justify-between gap-2 px-4 pt-2 text-xs text-destructive"
         >
-          <input
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              if (conversationId) saveDraft(conversationId, e.target.value);
-              onTyping();
+          {error}
+          <button
+            type="button"
+            onClick={() => {
+              setMediaError(null);
+              recorder.clearError();
             }}
-            placeholder={connected ? "Type a reply..." : "Offline - messages will send on reconnect"}
-            aria-label="Reply"
-            className="min-w-0 flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            aria-label="Dismiss"
+            className="text-chat-meta hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </p>
+      )}
+
+      {recorder.recording ? (
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={recorder.cancel}
+            aria-label="Discard recording"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="size-5" />
+          </button>
+          <div
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-full bg-chat-panel px-4 py-1.5 text-sm"
+            aria-live="polite"
+          >
+            <span
+              className="size-2.5 shrink-0 animate-pulse rounded-full bg-destructive"
+              aria-hidden
+            />
+            <span className="w-10 shrink-0 font-medium tabular-nums">
+              {formatDuration(recorder.elapsedMs)}
+            </span>
+            <LiveWaveform levels={recorder.levels} count={LIVE_BARS} />
+            <span className="sr-only">Recording voice message…</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void sendVoice()}
+            aria-label="Send voice message"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Send className="size-4" />
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="flex items-center gap-2 px-3 py-2.5">
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ATTACHMENT_ACCEPT}
+            className="hidden"
+            onChange={(e) => {
+              pickFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
           />
           <button
-            type="submit"
-            disabled={!canSend}
-            aria-label="Send"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={!connected || busy}
+            aria-label="Attach a photo, video or audio file"
+            title={connected ? "Attach" : "Attachments need a connection"}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
+            <Paperclip className="size-5" />
           </button>
+          <input
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+            placeholder={
+              staged
+                ? "Add a caption…"
+                : connected
+                  ? "Type a reply..."
+                  : "Offline - messages will send on reconnect"
+            }
+            aria-label={staged ? "Caption" : "Reply"}
+            className="min-w-0 flex-1 rounded-lg border-0 bg-chat-panel px-4 py-2 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+          />
+          {hasText || staged ? (
+            <button
+              type="submit"
+              // Text may be sent offline (it is queued); media needs a connection.
+              disabled={busy || (staged !== null && !connected)}
+              aria-label="Send"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void recorder.start()}
+              disabled={!connected || busy}
+              aria-label="Record a voice message"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {progress !== null ? (
+                <span className="text-[10px] font-semibold">{Math.round(progress * 100)}%</span>
+              ) : (
+                <Mic className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          )}
         </form>
       )}
     </div>

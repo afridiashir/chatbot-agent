@@ -7,7 +7,7 @@ export function StatusDot({ online, className }: { online: boolean; className?: 
       aria-hidden="true"
       className={cn(
         "inline-block h-2 w-2 shrink-0 rounded-full",
-        online ? "bg-emerald-500" : "bg-neutral-400",
+        online ? "bg-online" : "bg-muted-foreground/50",
         className,
       )}
     />

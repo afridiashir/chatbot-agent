@@ -104,7 +104,14 @@ All endpoints answer with the same envelope:
 | --- | --- | --- |
 | POST | `/api/admin/auth/login` | Admin sign in |
 | GET | `/api/admin/auth/me` | Revalidate an admin token |
+| PATCH | `/api/admin/auth/me` | Update the signed-in admin's name |
+| POST | `/api/admin/auth/password` | Change password (requires the current one) |
+| GET | `/api/admin/search` | Top-bar search: agents, branches, leads, conversations (`?q=`) |
+| GET | `/api/admin/admins` | Every admin account **(company admin)** |
+| POST | `/api/admin/admins` | Create an admin; `branchId: null` for a company admin **(company admin)** |
+| PATCH | `/api/admin/admins/:id` | Rename, change email or access, reset password, deactivate **(company admin)** |
 | GET | `/api/admin/stats` | Counts for the overview |
+| GET | `/api/admin/analytics` | Overview charts: `?days=1\|7\|14\|30\|90&tz=Asia/Karachi` |
 | GET | `/api/admin/branches` | Every branch with agents, **including inactive** |
 | POST | `/api/admin/branches` | Create a branch |
 | PATCH | `/api/admin/branches/:id` | Rename / activate / deactivate |
@@ -138,7 +145,30 @@ There are two account types, in two tables, with two login endpoints:
 | | Table | Login | Can do |
 | --- | --- | --- | --- |
 | Agent | `Agent` | `POST /api/auth/login` | Answer and close their own chats, set availability |
-| Admin | `Admin` | `POST /api/admin/auth/login` | Manage branches and agents, read every conversation |
+| Company admin | `Admin` (`branchId` null) | `POST /api/admin/auth/login` | Every branch: branches, agents, admins, conversations, leads |
+| Branch admin | `Admin` (`branchId` set) | `POST /api/admin/auth/login` | One branch: its overview, conversations and leads, and its agents |
+
+#### Branch admins
+
+A branch admin sees exactly one branch. Every admin query builds its filter
+from `apps/server/src/lib/admin-scope.ts`, so the rule lives in one place:
+
+- **Reads** (stats, analytics, conversations, leads, search, sockets) cover
+  their branch only. A lead appears if they ever contacted that branch, and
+  its counts and history include only those enquiries.
+- **Agents** in their branch can be added, edited, reset and deactivated, but
+  never moved to another branch.
+- **Branches and admin accounts** are company-admin only (`403`).
+- Anything outside their branch answers `404`, so ids cannot be probed.
+
+`requireAdmin` reloads the admin from the database on every request, and the
+socket handshake does the same, so deactivating an admin or changing their
+branch takes effect on their next click rather than when the token expires.
+Nobody can deactivate or re-scope their own account, and a company always keeps
+at least one active company admin.
+
+`pnpm db:seed` creates `<branch>.admin@acme.example` for each seeded branch,
+with the seeded admin password.
 
 Each account holds its **own** password, hashed with scrypt from `node:crypto`
 (no dependency needed). The stored format is
@@ -150,10 +180,65 @@ admin route just because both are signed with the same secret. A login against a
 missing account still verifies against a dummy hash, so "no such account" and
 "wrong password" take the same time and cannot be told apart from outside.
 
-Remaining limitation: tokens are not revocable before their 7-day expiry.
+Agent tokens are not revocable before their 7-day expiry. Admin tokens effectively are: see Branch admins above.
 
 Going offline does **not** close an agent's existing conversations; they keep
 them, and only stop receiving new ones.
+
+## Media messages
+
+Agents and visitors can send **photos, videos, audio files and voice notes**.
+Files live in MinIO (S3-compatible), which `docker compose up -d` starts next to
+PostgreSQL on **9100** (API) and **9101** (console), since 9000/9001 are often
+taken by another MinIO. The bucket is created on server start and stays private.
+
+**Sending**
+
+1. `POST /api/conversations/:id/uploads` with `{ kind, fileName, mimeType, size }`
+   (plus `visitorId` for visitors) returns a one-shot upload form and an
+   `uploadToken`. The server picks the object key; nobody else can.
+2. The browser POSTs the file **straight to MinIO**. MinIO itself enforces the
+   granted key, content type and size ceiling, so a client cannot upload
+   something bigger or different from what it asked for.
+3. The message is sent as usual (socket `message:send` or REST) with
+   `attachment: { uploadToken, durationMs? }`; `content` becomes an optional
+   caption.
+
+Before the message is stored, the server checks the upload token (right
+conversation, right sender, unused), confirms the object exists within the size,
+and reads its first bytes to check the **real** file type, so an HTML page
+renamed to `.png` is deleted and refused. SVG is never accepted.
+
+| Kind | Types | Agent max | Visitor max |
+| --- | --- | --- | --- |
+| Image | JPEG, PNG, WebP, GIF | 10 MB | 5 MB |
+| Video | MP4, WebM, MOV | 50 MB | 25 MB |
+| Audio | MP3, M4A/AAC, OGG, WAV, WebM | 20 MB | 10 MB |
+| Voice note | WebM/Opus, OGG, M4A (recorded in the browser) | 10 MB, 5 min | 10 MB, 5 min |
+
+The limits live in `packages/types/src/media.ts`, shared by the API and both clients.
+
+**Viewing.** A message's `attachment.url` is an API path signed for 12 hours
+(`/api/media/:id?sig=`). It redirects to a 5-minute MinIO URL with the verified
+content type pinned, so `<img>`, `<video>` and `<audio>` work without auth
+headers and video seeking goes straight to storage. Refetching a conversation
+hands out fresh links.
+
+Media is not queued offline the way text is: the upload needs the network, so
+the attach and mic buttons are disabled while disconnected. Files uploaded but
+never sent are not yet cleaned up automatically.
+
+### Agent profile photos
+
+An agent sets their own photo by clicking their avatar in the inbox. It uses the
+same upload flow (JPEG, PNG or WebP, up to 2 MB, contents checked) through
+`POST /api/agents/:id/avatar/uploads`, `PUT /api/agents/:id/avatar` and
+`DELETE /api/agents/:id/avatar`, and only the agent themself can change it.
+
+`Agent.avatarUrl` is `/api/avatars/:agentId/:version`. It is public, because
+website visitors see the photo in the widget; the version is random and changes
+with every new photo, so an old or guessed link returns 404 and each version
+can be cached. Everywhere an avatar is drawn, initials remain the fallback.
 
 ## Agent routing
 
@@ -277,9 +362,12 @@ every enquiry, so a lead with hundreds of approaches still costs two queries.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/admin/leads` | Filter by branch, `missedOnly`, or a name/email/phone search |
+| GET | `/api/admin/leads/table` | Paginated table: `search`, `branchId`, `agentId`, `outcome`, `conversation`, `visits`, `from`/`to`, `sort`/`dir`, `page`/`pageSize` |
 | GET | `/api/admin/leads/:leadId` | One lead with its full enquiry history |
 
-**`pnpm db:seed` no longer clears leads.** Conversations and visitors are demo
+**Every conversation is a lead.** Routing records one on each form submission, the seed records one for each demo chat, and migration `20260916120000_backfill_conversation_leads` added them for conversations that predate this.
+
+**`pnpm db:seed` keeps real leads.** Conversations and visitors are demo
 traffic and get rebuilt, but leads are a record of real people who got in touch
 and are meant to accumulate. Use `pnpm db:reset` for a genuinely empty database.
 

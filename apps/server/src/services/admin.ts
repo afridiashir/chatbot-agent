@@ -1,27 +1,41 @@
-import { DUMMY_PASSWORD_HASH, hashPassword, prisma, verifyPassword } from "@repo/db";
+import { DUMMY_PASSWORD_HASH, hashPassword, Prisma, prisma, verifyPassword } from "@repo/db";
 import type {
   Admin,
   AdminConversationDetail,
   AdminConversationSummary,
   AdminLoginResult,
+  AdminSearchResults,
   AdminStats,
   Agent,
   Branch,
   DeactivateAgentResult,
   Lead,
   LeadDetail,
+  LeadTablePage,
 } from "@repo/types";
 import type {
+  AdminSearchQuery,
+  ChangePasswordBody,
+  CreateAdminBody,
+  UpdateAdminBody,
+  UpdateAdminProfileBody,
   CreateAgentBody,
   CreateBranchBody,
   ListAdminConversationsQuery,
   ListLeadsQuery,
+  LeadsTableQuery,
   LoginBody,
   UpdateAgentBody,
   UpdateBranchBody,
 } from "@repo/validation";
 import type { Conversation } from "@repo/types";
-import { conflict, notFound, unauthorized } from "../lib/http.js";
+import { conflict, forbidden, HttpError, notFound, unauthorized } from "../lib/http.js";
+import {
+  assertBranchAllowed,
+  branchScope,
+  requireCompanyAdmin,
+  sqlInBranch,
+} from "../lib/admin-scope.js";
 import type { AdminTokenPayload } from "../lib/auth.js";
 import { signAdminToken } from "../lib/auth.js";
 import {
@@ -33,6 +47,7 @@ import {
   toConversationSummary,
   toEnquiry,
   toLead,
+  MESSAGE_INCLUDE,
   statsFromEnquiries,
   type LeadStats,
 } from "../lib/serialize.js";
@@ -52,16 +67,250 @@ export async function loginAdmin(input: LoginBody): Promise<AdminLoginResult> {
   );
   if (!admin || !passwordOk) throw unauthorized("Incorrect email or password");
 
+  // Checked after the password, as for agents, so a deactivated account cannot
+  // be identified without its credentials.
+  if (!admin.isActive) {
+    throw unauthorized("This account has been deactivated. Contact your company admin.");
+  }
+
+  const branch = admin.branchId
+    ? await prisma.branch.findUnique({ where: { id: admin.branchId }, select: { name: true } })
+    : null;
+
   return {
-    token: signAdminToken({ adminId: admin.id, companyId: admin.companyId }),
-    admin: toAdmin(admin),
+    token: signAdminToken({
+      adminId: admin.id,
+      companyId: admin.companyId,
+      branchId: admin.branchId,
+    }),
+    admin: toAdmin({ ...admin, branch }),
   };
 }
 
+const ADMIN_BRANCH = { branch: { select: { name: true } } } as const;
+
 export async function getAdmin(adminId: string): Promise<Admin> {
-  const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+  const admin = await prisma.admin.findUnique({ where: { id: adminId }, include: ADMIN_BRANCH });
   if (!admin) throw notFound("Admin not found");
   return toAdmin(admin);
+}
+
+export async function updateAdminProfile(
+  input: UpdateAdminProfileBody,
+  actor: AdminTokenPayload,
+): Promise<Admin> {
+  const admin = await prisma.admin.update({
+    where: { id: actor.adminId },
+    data: { name: input.name },
+    include: ADMIN_BRANCH,
+  });
+  return toAdmin(admin);
+}
+
+/**
+ * Requires the current password even though the caller holds a valid token, so
+ * an unattended signed-in browser cannot be used to take over the account.
+ */
+export async function changeAdminPassword(
+  input: ChangePasswordBody,
+  actor: AdminTokenPayload,
+): Promise<void> {
+  const admin = await prisma.admin.findUnique({ where: { id: actor.adminId } });
+  if (!admin) throw notFound("Admin not found");
+
+  if (!(await verifyPassword(input.currentPassword, admin.passwordHash))) {
+    // 400 rather than 401: the session is fine, only this field is wrong, and
+    // a 401 would read to the client as "signed out".
+    throw new HttpError(400, "VALIDATION_ERROR", "Current password is incorrect", {
+      currentPassword: ["Current password is incorrect"],
+    });
+  }
+
+  await prisma.admin.update({
+    where: { id: admin.id },
+    data: { passwordHash: await hashPassword(input.newPassword) },
+  });
+}
+
+/* ------------------------------ admin accounts ----------------------------- */
+
+/** Every admin in the company, company admins first. Company admins only. */
+export async function listAdmins(actor: AdminTokenPayload): Promise<Admin[]> {
+  requireCompanyAdmin(actor);
+  const rows = await prisma.admin.findMany({
+    where: { companyId: actor.companyId },
+    include: ADMIN_BRANCH,
+    orderBy: [{ isActive: "desc" }, { branchId: { sort: "asc", nulls: "first" } }, { name: "asc" }],
+  });
+  return rows.map(toAdmin);
+}
+
+async function assertBranchInCompanyForAdmin(branchId: string, companyId: string) {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  if (!branch || branch.companyId !== companyId) throw notFound("Branch not found");
+}
+
+export async function createAdmin(
+  input: CreateAdminBody,
+  actor: AdminTokenPayload,
+): Promise<Admin> {
+  requireCompanyAdmin(actor);
+  if (input.branchId) await assertBranchInCompanyForAdmin(input.branchId, actor.companyId);
+
+  const email = input.email.trim().toLowerCase();
+  const existing = await prisma.admin.findUnique({ where: { email }, select: { id: true } });
+  if (existing) throw conflict("An admin with that email already exists");
+
+  const admin = await prisma.admin.create({
+    data: {
+      companyId: actor.companyId,
+      branchId: input.branchId,
+      name: input.name,
+      email,
+      passwordHash: await hashPassword(input.password),
+    },
+    include: ADMIN_BRANCH,
+  });
+  return toAdmin(admin);
+}
+
+/**
+ * Edit, move between company and branch scope, reset a password, deactivate.
+ *
+ * Two guards keep a company from locking itself out: nobody can deactivate or
+ * re-scope their own account, and the last active company admin can be neither
+ * deactivated nor narrowed to a branch.
+ */
+export async function updateAdmin(
+  adminId: string,
+  input: UpdateAdminBody,
+  actor: AdminTokenPayload,
+): Promise<Admin> {
+  requireCompanyAdmin(actor);
+
+  const target = await prisma.admin.findUnique({ where: { id: adminId } });
+  if (!target || target.companyId !== actor.companyId) throw notFound("Admin not found");
+
+  const isSelf = target.id === actor.adminId;
+  if (isSelf && input.isActive === false) throw forbidden("You cannot deactivate your own account");
+  if (isSelf && input.branchId !== undefined && input.branchId !== target.branchId) {
+    throw forbidden("You cannot change your own access level");
+  }
+
+  if (input.branchId) await assertBranchInCompanyForAdmin(input.branchId, actor.companyId);
+
+  const losesCompanyScope =
+    target.branchId === null &&
+    target.isActive &&
+    (input.isActive === false || (input.branchId !== undefined && input.branchId !== null));
+  if (losesCompanyScope) {
+    const others = await prisma.admin.count({
+      where: { companyId: actor.companyId, branchId: null, isActive: true, id: { not: target.id } },
+    });
+    if (others === 0) throw conflict("A company must keep at least one active company admin");
+  }
+
+  const email = input.email?.trim().toLowerCase();
+  if (email && email !== target.email) {
+    const duplicate = await prisma.admin.findUnique({ where: { email }, select: { id: true } });
+    if (duplicate) throw conflict("An admin with that email already exists");
+  }
+
+  const admin = await prisma.admin.update({
+    where: { id: adminId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(input.branchId !== undefined ? { branchId: input.branchId } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
+    },
+    include: ADMIN_BRANCH,
+  });
+  return toAdmin(admin);
+}
+
+/* ---------------------------------- search --------------------------------- */
+
+const SEARCH_LIMIT = 5;
+
+/** One box, every kind of record an admin looks things up by. */
+export async function searchAdmin(
+  query: AdminSearchQuery,
+  actor: AdminTokenPayload,
+): Promise<AdminSearchResults> {
+  const contains = { contains: query.q, mode: "insensitive" as const };
+  const companyBranch = branchScope(actor);
+
+  const [agents, branches, leads, conversations] = await Promise.all([
+    prisma.agent.findMany({
+      where: { branch: companyBranch, OR: [{ name: contains }, { email: contains }] },
+      include: { branch: { select: { name: true } } },
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      take: SEARCH_LIMIT,
+    }),
+    prisma.branch.findMany({
+      where: { ...companyBranch, name: contains },
+      include: { _count: { select: { agents: { where: { isActive: true } } } } },
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      take: SEARCH_LIMIT,
+    }),
+    prisma.lead.findMany({
+      where: {
+        companyId: actor.companyId,
+        // A branch admin finds only people who got in touch with their branch.
+        ...(actor.branchId ? { enquiries: { some: { branchId: actor.branchId } } } : {}),
+        OR: [{ name: contains }, { email: contains }, { phone: { contains: query.q } }],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: SEARCH_LIMIT,
+    }),
+    prisma.conversation.findMany({
+      where: {
+        agent: { branch: companyBranch },
+        visitor: {
+          OR: [{ name: contains }, { email: contains }, { phone: { contains: query.q } }],
+        },
+      },
+      include: {
+        visitor: { select: { name: true, email: true } },
+        agent: { select: { name: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: SEARCH_LIMIT,
+    }),
+  ]);
+
+  return {
+    agents: agents.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      email: agent.email,
+      branchName: agent.branch.name,
+      isOnline: agent.isOnline,
+      isActive: agent.isActive,
+    })),
+    branches: branches.map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      isActive: branch.isActive,
+      agentCount: branch._count.agents,
+    })),
+    leads: leads.map((lead) => ({
+      id: lead.id,
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+    })),
+    conversations: conversations.map((conversation) => ({
+      id: conversation.id,
+      visitorName: conversation.visitor.name,
+      visitorEmail: conversation.visitor.email,
+      agentName: conversation.agent.name,
+      status: conversation.status,
+      updatedAt: conversation.updatedAt.toISOString(),
+    })),
+  };
 }
 
 /* --------------------------------- branches -------------------------------- */
@@ -70,6 +319,7 @@ export async function createBranch(
   input: CreateBranchBody,
   actor: AdminTokenPayload,
 ): Promise<Branch> {
+  requireCompanyAdmin(actor);
   const duplicate = await prisma.branch.findFirst({
     where: { companyId: actor.companyId, name: input.name },
     select: { id: true },
@@ -92,6 +342,7 @@ export async function updateBranch(
   input: UpdateBranchBody,
   actor: AdminTokenPayload,
 ): Promise<Branch> {
+  requireCompanyAdmin(actor);
   const branch = await prisma.branch.findUnique({ where: { id: branchId } });
   if (!branch || branch.companyId !== actor.companyId) throw notFound("Branch not found");
 
@@ -127,6 +378,7 @@ export async function createAgent(
   input: CreateAgentBody,
   actor: AdminTokenPayload,
 ): Promise<Agent> {
+  assertBranchAllowed(actor, input.branchId);
   await assertBranchInCompany(input.branchId, actor.companyId);
 
   const email = input.email.trim().toLowerCase();
@@ -161,8 +413,13 @@ export async function updateAgent(
     include: { branch: { select: { companyId: true } } },
   });
   if (!agent || agent.branch.companyId !== actor.companyId) throw notFound("Agent not found");
+  // A branch admin manages their own agents, and cannot move one elsewhere.
+  if (actor.branchId && agent.branchId !== actor.branchId) throw notFound("Agent not found");
 
-  if (input.branchId) await assertBranchInCompany(input.branchId, actor.companyId);
+  if (input.branchId) {
+    assertBranchAllowed(actor, input.branchId);
+    await assertBranchInCompany(input.branchId, actor.companyId);
+  }
 
   const email = input.email?.trim().toLowerCase();
   if (email && email !== agent.email) {
@@ -223,10 +480,9 @@ export async function listAllConversations(
     where: {
       agent: {
         ...(query.agentId ? { id: query.agentId } : {}),
-        branch: {
-          companyId: actor.companyId,
-          ...(query.branchId ? { id: query.branchId } : {}),
-        },
+        // AND, not a spread: a branch admin asking for another branch gets
+        // nothing, rather than their requested id overriding their scope.
+        branch: { AND: [branchScope(actor), query.branchId ? { id: query.branchId } : {}] },
       },
       ...(query.status ? { status: query.status } : {}),
     },
@@ -235,7 +491,11 @@ export async function listAllConversations(
     include: {
       agent: { include: { branch: { select: { id: true, name: true } } } },
       visitor: true,
-      messages: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 },
+      messages: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        include: MESSAGE_INCLUDE,
+      },
       _count: { select: { messages: true } },
     },
   });
@@ -257,11 +517,15 @@ export async function getAnyConversation(
     include: {
       agent: { include: { branch: { select: { id: true, name: true, companyId: true } } } },
       visitor: true,
-      messages: { orderBy: [...MESSAGE_ORDER] },
+      messages: { orderBy: [...MESSAGE_ORDER], include: MESSAGE_INCLUDE },
     },
   });
 
-  if (!conversation || conversation.agent.branch.companyId !== actor.companyId) {
+  if (
+    !conversation ||
+    conversation.agent.branch.companyId !== actor.companyId ||
+    (actor.branchId !== null && conversation.agent.branch.id !== actor.branchId)
+  ) {
     throw notFound("Conversation not found");
   }
 
@@ -278,18 +542,24 @@ export async function getAnyConversation(
  * activity, with the unanswered enquiries reachable through `missedOnly` —
  * that filter is the follow-up list.
  */
-export async function listLeads(
-  query: ListLeadsQuery,
-  actor: AdminTokenPayload,
-): Promise<Lead[]> {
+export async function listLeads(query: ListLeadsQuery, actor: AdminTokenPayload): Promise<Lead[]> {
   const search = query.search?.trim();
 
   const rows = await prisma.lead.findMany({
     where: {
       companyId: actor.companyId,
       ...(query.branchId ? { branchId: query.branchId } : {}),
-      // "Missed" is a property of the history now, not a column.
-      ...(query.missedOnly ? { enquiries: { some: { answered: false } } } : {}),
+      AND: [
+        // "Missed" is a property of the history now, not a column.
+        query.missedOnly
+          ? {
+              enquiries: {
+                some: { answered: false, ...(actor.branchId ? { branchId: actor.branchId } : {}) },
+              },
+            }
+          : {},
+        actor.branchId ? { enquiries: { some: { branchId: actor.branchId } } } : {},
+      ],
       ...(search
         ? {
             OR: [
@@ -313,14 +583,18 @@ export async function listLeads(
   const [totals, missed] = await Promise.all([
     prisma.enquiry.groupBy({
       by: ["leadId"],
-      where: { leadId: { in: leadIds } },
+      where: { leadId: { in: leadIds }, ...(actor.branchId ? { branchId: actor.branchId } : {}) },
       _count: { _all: true },
       _min: { createdAt: true },
       _max: { createdAt: true },
     }),
     prisma.enquiry.groupBy({
       by: ["leadId"],
-      where: { leadId: { in: leadIds }, answered: false },
+      where: {
+        leadId: { in: leadIds },
+        answered: false,
+        ...(actor.branchId ? { branchId: actor.branchId } : {}),
+      },
       _count: { _all: true },
     }),
   ]);
@@ -340,6 +614,195 @@ export async function listLeads(
   });
 }
 
+/**
+ * Whitelisted ORDER BY expressions. The sort key is validated against LEAD_SORTS
+ * already; mapping it here as well means no request value ever reaches SQL text.
+ */
+const LEAD_ORDER: Record<LeadsTableQuery["sort"], Prisma.Sql> = {
+  name: Prisma.sql`lower(l."name")`,
+  email: Prisma.sql`l."email"`,
+  branch: Prisma.sql`lower(b."name")`,
+  enquiries: Prisma.sql`s.enquiry_count`,
+  missed: Prisma.sql`s.missed_count`,
+  firstEnquiryAt: Prisma.sql`s.first_at`,
+  lastEnquiryAt: Prisma.sql`s.last_at`,
+};
+
+/** `%` and `_` in a search are literal characters, not wildcards. */
+const likePattern = (text: string) => `%${text.replace(/[\\%_]/g, "\\$&")}%`;
+
+/**
+ * The leads table: every filter, sort and page in one query. The counts are
+ * derived from enquiries in the same statement, so a filter like "returning"
+ * or a sort by "missed" is exact rather than approximated from a page.
+ */
+export async function listLeadsTable(
+  query: LeadsTableQuery,
+  actor: AdminTokenPayload,
+): Promise<LeadTablePage> {
+  const where: Prisma.Sql[] = [Prisma.sql`l."companyId" = ${actor.companyId}`];
+
+  const search = query.search?.trim();
+  if (search) {
+    const pattern = likePattern(search);
+    where.push(
+      Prisma.sql`(l."name" ILIKE ${pattern} OR l."email" ILIKE ${pattern} OR l."phone" LIKE ${pattern})`,
+    );
+  }
+  if (query.branchId) where.push(Prisma.sql`l."branchId" = ${query.branchId}`);
+  // A branch admin sees the people who got in touch with their branch, and the
+  // counts below only include those enquiries.
+  if (actor.branchId) where.push(Prisma.sql`s.enquiry_count > 0`);
+  const enquiryInBranch = (alias: string) => sqlInBranch(actor, Prisma.raw(`${alias}."branchId"`));
+  if (query.outcome === "missed") where.push(Prisma.sql`s.missed_count > 0`);
+  if (query.outcome === "answered") {
+    where.push(Prisma.sql`s.missed_count = 0 AND s.enquiry_count > 0`);
+  }
+  if (query.visits === "new") where.push(Prisma.sql`s.enquiry_count = 1`);
+  if (query.visits === "returning") where.push(Prisma.sql`s.enquiry_count > 1`);
+  if (query.conversation === "open") where.push(Prisma.sql`latest.status = 'ACTIVE'`);
+  if (query.conversation === "closed") where.push(Prisma.sql`latest.status = 'CLOSED'`);
+  if (query.conversation === "none") where.push(Prisma.sql`latest.conversation_id IS NULL`);
+  if (query.agentId) {
+    where.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "Enquiry" ea
+      JOIN "Conversation" ca ON ca."id" = ea."conversationId"
+      WHERE ea."leadId" = l."id" AND ca."agentId" = ${query.agentId} ${enquiryInBranch("ea")}
+    )`);
+  }
+  if (query.from || query.to) {
+    where.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "Enquiry" ed
+      WHERE ed."leadId" = l."id" ${enquiryInBranch("ed")}
+        ${query.from ? Prisma.sql`AND ed."createdAt" >= ${new Date(query.from)}` : Prisma.empty}
+        ${query.to ? Prisma.sql`AND ed."createdAt" < ${new Date(query.to)}` : Prisma.empty}
+    )`);
+  }
+
+  const direction = query.dir === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+  const offset = (query.page - 1) * query.pageSize;
+
+  const rows = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      companyId: string;
+      name: string;
+      email: string;
+      phone: string;
+      branchId: string | null;
+      branchName: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      enquiry_count: number;
+      missed_count: number;
+      first_at: Date | null;
+      last_at: Date | null;
+      conversation_id: string | null;
+      conversation_status: "ACTIVE" | "CLOSED" | null;
+      agent_id: string | null;
+      agent_name: string | null;
+      conversation_updated_at: Date | null;
+      total: number;
+    }>
+  >`
+    WITH s AS (
+      SELECT
+        l."id" AS lead_id,
+        count(e."id")::int AS enquiry_count,
+        (count(e."id") FILTER (WHERE NOT e."answered"))::int AS missed_count,
+        min(e."createdAt") AS first_at,
+        max(e."createdAt") AS last_at
+      FROM "Lead" l
+      LEFT JOIN "Enquiry" e ON e."leadId" = l."id" ${enquiryInBranch("e")}
+      WHERE l."companyId" = ${actor.companyId}
+      GROUP BY l."id"
+    ),
+    latest AS (
+      SELECT DISTINCT ON (e."leadId")
+        e."leadId" AS lead_id,
+        c."id" AS conversation_id,
+        c."status"::text AS status,
+        a."id" AS agent_id,
+        a."name" AS agent_name,
+        c."updatedAt" AS updated_at
+      FROM "Enquiry" e
+      JOIN "Lead" l ON l."id" = e."leadId" AND l."companyId" = ${actor.companyId} ${enquiryInBranch("e")}
+      JOIN "Conversation" c ON c."id" = e."conversationId"
+      JOIN "Agent" a ON a."id" = c."agentId"
+      ORDER BY e."leadId", e."createdAt" DESC, e."id" DESC
+    )
+    SELECT
+      l."id", l."companyId", l."name", l."email", l."phone", l."branchId",
+      b."name" AS "branchName", l."createdAt", l."updatedAt",
+      s.enquiry_count, s.missed_count, s.first_at, s.last_at,
+      latest.conversation_id, latest.status AS conversation_status,
+      latest.agent_id, latest.agent_name, latest.updated_at AS conversation_updated_at,
+      (count(*) OVER ())::int AS total
+    FROM "Lead" l
+    JOIN s ON s.lead_id = l."id"
+    LEFT JOIN "Branch" b ON b."id" = l."branchId"
+    LEFT JOIN latest ON latest.lead_id = l."id"
+    WHERE ${Prisma.join(where, " AND ")}
+    ORDER BY ${LEAD_ORDER[query.sort]} ${direction} NULLS LAST, l."id" ${direction}
+    LIMIT ${query.pageSize} OFFSET ${offset}
+  `;
+
+  // A page past the end has no rows to carry the window total, so count it.
+  let total = rows[0]?.total ?? 0;
+  if (rows.length === 0 && query.page > 1) {
+    const [row] = await prisma.$queryRaw<Array<{ total: number }>>`
+      WITH s AS (
+        SELECT l."id" AS lead_id, count(e."id")::int AS enquiry_count,
+          (count(e."id") FILTER (WHERE NOT e."answered"))::int AS missed_count
+        FROM "Lead" l LEFT JOIN "Enquiry" e ON e."leadId" = l."id" ${enquiryInBranch("e")}
+        WHERE l."companyId" = ${actor.companyId}
+        GROUP BY l."id"
+      ),
+      latest AS (
+        SELECT DISTINCT ON (e."leadId") e."leadId" AS lead_id, c."id" AS conversation_id,
+          c."status"::text AS status
+        FROM "Enquiry" e JOIN "Conversation" c ON c."id" = e."conversationId"
+        WHERE TRUE ${enquiryInBranch("e")}
+        ORDER BY e."leadId", e."createdAt" DESC, e."id" DESC
+      )
+      SELECT count(*)::int AS total
+      FROM "Lead" l
+      JOIN s ON s.lead_id = l."id"
+      LEFT JOIN "Branch" b ON b."id" = l."branchId"
+      LEFT JOIN latest ON latest.lead_id = l."id"
+      WHERE ${Prisma.join(where, " AND ")}
+    `;
+    total = row?.total ?? 0;
+  }
+
+  return {
+    rows: rows.map((row) => ({
+      ...toLead(
+        { ...row, branch: row.branchName ? { name: row.branchName } : null },
+        {
+          enquiryCount: row.enquiry_count,
+          missedCount: row.missed_count,
+          firstEnquiryAt: row.first_at?.toISOString() ?? null,
+          lastEnquiryAt: row.last_at?.toISOString() ?? null,
+        },
+      ),
+      latestConversation:
+        row.conversation_id && row.conversation_status && row.agent_id && row.agent_name
+          ? {
+              id: row.conversation_id,
+              status: row.conversation_status,
+              agentId: row.agent_id,
+              agentName: row.agent_name,
+              updatedAt: (row.conversation_updated_at ?? row.updatedAt).toISOString(),
+            }
+          : null,
+    })),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
+}
+
 /** One lead with its full history, newest first. */
 export async function getLead(leadId: string, actor: AdminTokenPayload): Promise<LeadDetail> {
   const lead = await prisma.lead.findUnique({
@@ -347,6 +810,8 @@ export async function getLead(leadId: string, actor: AdminTokenPayload): Promise
     include: {
       branch: { select: { name: true } },
       enquiries: {
+        // A branch admin sees only the times this person contacted their branch.
+        where: actor.branchId ? { branchId: actor.branchId } : {},
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         include: { branch: { select: { name: true } } },
       },
@@ -354,6 +819,7 @@ export async function getLead(leadId: string, actor: AdminTokenPayload): Promise
   });
 
   if (!lead || lead.companyId !== actor.companyId) throw notFound("Lead not found");
+  if (actor.branchId && lead.enquiries.length === 0) throw notFound("Lead not found");
 
   return {
     ...toLead(lead, statsFromEnquiries(lead.enquiries)),
@@ -364,9 +830,10 @@ export async function getLead(leadId: string, actor: AdminTokenPayload): Promise
 /* ---------------------------------- stats ---------------------------------- */
 
 export async function getStats(actor: AdminTokenPayload): Promise<AdminStats> {
-  const branchScope = { companyId: actor.companyId };
-  const agentScope = { branch: branchScope };
+  const branchWhere = branchScope(actor);
+  const agentScope = { branch: branchWhere };
   const conversationScope = { agent: agentScope };
+  const leadInBranch = actor.branchId ? { branchId: actor.branchId } : {};
 
   const [
     branches,
@@ -379,16 +846,24 @@ export async function getStats(actor: AdminTokenPayload): Promise<AdminStats> {
     leads,
     missedLeads,
   ] = await Promise.all([
-    prisma.branch.count({ where: branchScope }),
-    prisma.branch.count({ where: { ...branchScope, isActive: true } }),
+    prisma.branch.count({ where: branchWhere }),
+    prisma.branch.count({ where: { ...branchWhere, isActive: true } }),
     prisma.agent.count({ where: agentScope }),
     prisma.agent.count({ where: { ...agentScope, isActive: true } }),
     prisma.agent.count({ where: { ...agentScope, isActive: true, isOnline: true } }),
     prisma.conversation.count({ where: { ...conversationScope, status: "ACTIVE" } }),
     prisma.conversation.count({ where: { ...conversationScope, status: "CLOSED" } }),
-    prisma.lead.count({ where: { companyId: actor.companyId } }),
     prisma.lead.count({
-      where: { companyId: actor.companyId, enquiries: { some: { answered: false } } },
+      where: {
+        companyId: actor.companyId,
+        ...(actor.branchId ? { enquiries: { some: leadInBranch } } : {}),
+      },
+    }),
+    prisma.lead.count({
+      where: {
+        companyId: actor.companyId,
+        enquiries: { some: { answered: false, ...leadInBranch } },
+      },
     }),
   ]);
 

@@ -10,7 +10,9 @@ import type {
 import type { CreateConversationBody, CreateMessageBody } from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
 import { conflict, forbidden, notFound } from "../lib/http.js";
+import { verifyUpload } from "./media.js";
 import {
+  MESSAGE_INCLUDE,
   toConversation,
   toConversationDetail,
   toConversationSummary,
@@ -26,20 +28,36 @@ export function createConversation(input: CreateConversationBody): Promise<Assig
 }
 
 function assertAccess(
-  conversation: { agentId: string; visitorId: string },
+  conversation: {
+    agentId: string;
+    visitorId: string;
+    agent: { branchId: string; branch: { companyId: string } };
+  },
   actor: Actor,
 ): void {
-  // Admin company scoping is enforced by the admin service, which loads the
-  // branch alongside the conversation; here an admin simply is not the wrong
-  // party for any conversation.
+  if (actor.type === "ADMIN") {
+    // Admins read conversations in their own company, and a branch admin only
+    // in their branch. Anything else is reported as missing, not forbidden, so
+    // other companies' and branches' conversation ids cannot be probed.
+    const inScope =
+      conversation.agent.branch.companyId === actor.companyId &&
+      (actor.branchId === null || conversation.agent.branchId === actor.branchId);
+    if (!inScope) throw notFound("Conversation not found");
+    return;
+  }
+
   const allowed =
-    actor.type === "ADMIN" ||
-    (actor.type === "AGENT"
+    actor.type === "AGENT"
       ? conversation.agentId === actor.agentId
-      : conversation.visitorId === actor.visitorId);
+      : conversation.visitorId === actor.visitorId;
 
   if (!allowed) throw forbidden("This conversation belongs to someone else");
 }
+
+/** What `assertAccess` needs loaded alongside a conversation. */
+const ACCESS_AGENT = {
+  select: { branchId: true, branch: { select: { companyId: true } } },
+} as const;
 
 /**
  * Cheap ownership check for socket room joins — avoids loading the whole
@@ -51,7 +69,7 @@ export async function assertConversationAccess(
 ): Promise<void> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { agentId: true, visitorId: true },
+    select: { agentId: true, visitorId: true, agent: ACCESS_AGENT },
   });
   if (!conversation) throw notFound("Conversation not found");
 
@@ -64,7 +82,11 @@ export async function getConversation(
 ): Promise<ConversationDetail> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    include: { agent: true, visitor: true, messages: { orderBy: [...MESSAGE_ORDER] } },
+    include: {
+      agent: { include: { branch: { select: { companyId: true } } } },
+      visitor: true,
+      messages: { orderBy: [...MESSAGE_ORDER], include: MESSAGE_INCLUDE },
+    },
   });
   if (!conversation) throw notFound("Conversation not found");
 
@@ -88,9 +110,13 @@ export async function addMessage(
 ): Promise<{ message: Message; created: boolean }> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { id: true, agentId: true, visitorId: true, status: true },
+    select: { id: true, agentId: true, visitorId: true, status: true, agent: ACCESS_AGENT },
   });
   if (!conversation) throw notFound("Conversation not found");
+
+  // Admins observe; they never speak. Without this an admin token would fall
+  // through to the VISITOR branch below and could post as the visitor.
+  if (actor.type === "ADMIN") throw forbidden("Admins cannot send messages");
 
   assertAccess(conversation, actor);
 
@@ -104,7 +130,10 @@ export async function addMessage(
   // conversation was open must still resolve after it closes, otherwise a
   // reconnecting client retries forever against a 409.
   if (input.clientId) {
-    const existing = await prisma.message.findUnique({ where: { clientId: input.clientId } });
+    const existing = await prisma.message.findUnique({
+      where: { clientId: input.clientId },
+      include: MESSAGE_INCLUDE,
+    });
     if (existing) {
       if (existing.conversationId !== conversationId) {
         throw conflict("That message key belongs to another conversation");
@@ -117,6 +146,18 @@ export async function addMessage(
     throw conflict("This conversation has been closed");
   }
 
+  // Checked against storage before anything is written, so a message never
+  // points at a missing, oversized or mislabelled file.
+  const upload = input.attachment
+    ? await verifyUpload(
+        input.attachment.uploadToken,
+        conversationId,
+        expectedSender,
+        input.attachment.durationMs,
+        input.attachment.waveform,
+      )
+    : null;
+
   // Bumping the conversation keeps `updatedAt` meaningful as "last activity",
   // which is what the agent inbox sorts on.
   try {
@@ -127,7 +168,9 @@ export async function addMessage(
           senderType: input.senderType,
           content: input.content,
           clientId: input.clientId ?? null,
+          ...(upload ? { attachment: { create: upload } } : {}),
         },
+        include: MESSAGE_INCLUDE,
       }),
       prisma.conversation.update({
         where: { id: conversationId },
@@ -144,7 +187,10 @@ export async function addMessage(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      const stored = await prisma.message.findUnique({ where: { clientId: input.clientId } });
+      const stored = await prisma.message.findUnique({
+        where: { clientId: input.clientId },
+        include: MESSAGE_INCLUDE,
+      });
       if (stored) return { message: toMessage(stored), created: false };
     }
     throw error;
@@ -165,6 +211,7 @@ export async function closeConversation(
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
+    include: { agent: ACCESS_AGENT },
   });
   if (!conversation) throw notFound("Conversation not found");
 
@@ -195,7 +242,11 @@ export async function listAgentConversations(
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     include: {
       visitor: true,
-      messages: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 },
+      messages: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        include: MESSAGE_INCLUDE,
+      },
       _count: { select: { messages: true } },
     },
   });

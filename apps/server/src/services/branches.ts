@@ -24,8 +24,12 @@ export async function listBranches(): Promise<Branch[]> {
  * Includes deactivated rows: an admin needs to see what they switched off in
  * order to switch it back on.
  */
-export async function listBranchesWithAgents(): Promise<BranchWithAgents[]> {
+export async function listBranchesWithAgents(where: {
+  companyId: string;
+  id?: string;
+}): Promise<BranchWithAgents[]> {
   const rows = await prisma.branch.findMany({
+    where,
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
     include: {
       agents: {

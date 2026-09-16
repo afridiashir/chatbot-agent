@@ -3,6 +3,7 @@ import {
   conversationIdParamSchema,
   createConversationBodySchema,
   createMessageBodySchema,
+  createUploadBodySchema,
   getConversationQuerySchema,
 } from "@repo/validation";
 import { resolveActor } from "../lib/actor.js";
@@ -21,6 +22,7 @@ import {
   createConversation,
   getConversation,
 } from "../services/conversations.js";
+import { createUpload } from "../services/media.js";
 
 export const conversationsRouter: Router = Router();
 
@@ -81,6 +83,25 @@ conversationsRouter.post(
     // A retry of an already-stored message must not reach the room twice.
     if (created) emitMessage(message);
     sendOk(res, message, created ? 201 : 200);
+  }),
+);
+
+/**
+ * POST /api/conversations/:conversationId/uploads — grants one media upload.
+ *
+ * The browser then POSTs the file straight to storage with the returned form,
+ * and sends the message with `attachment.uploadToken`.
+ */
+conversationsRouter.post(
+  "/:conversationId/uploads",
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+    const body = parseOrThrow(createUploadBodySchema, req.body, "upload");
+    sendOk(res, await createUpload(conversationId, body, resolveActor(req, body.visitorId)), 201);
   }),
 );
 

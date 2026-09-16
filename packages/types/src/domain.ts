@@ -3,6 +3,8 @@
  * import from `@repo/db` so that browser bundles never pull in Prisma.
  */
 
+import type { MessageAttachment } from "./media";
+
 export const ConversationStatus = {
   ACTIVE: "ACTIVE",
   CLOSED: "CLOSED",
@@ -36,8 +38,12 @@ export interface Branch {
 export interface Admin {
   id: string;
   companyId: string;
+  /** Null for a company admin; set for a branch admin, who sees only that branch. */
+  branchId: string | null;
+  branchName: string | null;
   name: string;
   email: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +53,11 @@ export interface Agent {
   branchId: string;
   name: string;
   email: string;
+  /**
+   * Profile photo as an API path (prefix the API origin), or null to show
+   * initials. Public, because website visitors see it; changes with the photo.
+   */
+  avatarUrl: string | null;
   isOnline: boolean;
   /** Soft delete: inactive agents cannot sign in and are never routed to. */
   isActive: boolean;
@@ -76,7 +87,10 @@ export interface Message {
   id: string;
   conversationId: string;
   senderType: SenderType;
+  /** The text, or the caption of a media message (then possibly empty). */
   content: string;
+  /** Image, video, audio file or voice note sent with the message. */
+  attachment: MessageAttachment | null;
   /** Idempotency key from the sender, when it queued the message. */
   clientId: string | null;
   createdAt: string;
@@ -94,7 +108,7 @@ export interface Conversation {
 
 /** Conversation enriched with the joined agent — what the widget/dashboard render. */
 export interface ConversationWithAgent extends Conversation {
-  agent: Pick<Agent, "id" | "name" | "branchId" | "isOnline">;
+  agent: Pick<Agent, "id" | "name" | "branchId" | "isOnline" | "avatarUrl">;
   visitor: VisitorSummary;
 }
 
@@ -146,6 +160,25 @@ export interface Lead {
   updatedAt: string;
 }
 
+/** A row of the leads table: the lead plus their most recent conversation. */
+export interface LeadTableRow extends Lead {
+  latestConversation: {
+    id: string;
+    status: ConversationStatus;
+    agentId: string;
+    agentName: string;
+    updatedAt: string;
+  } | null;
+}
+
+/** One page of the leads table, with the total across all pages. */
+export interface LeadTablePage {
+  rows: LeadTableRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 /** One approach from a lead — the unit of the history. */
 export interface Enquiry {
   id: string;
@@ -163,6 +196,28 @@ export interface LeadDetail extends Lead {
   enquiries: Enquiry[];
 }
 
+/** Grouped hits for the admin top-bar search. Each group is capped. */
+export interface AdminSearchResults {
+  agents: Array<{
+    id: string;
+    name: string;
+    email: string;
+    branchName: string;
+    isOnline: boolean;
+    isActive: boolean;
+  }>;
+  branches: Array<{ id: string; name: string; isActive: boolean; agentCount: number }>;
+  leads: Array<{ id: string; name: string; email: string; phone: string }>;
+  conversations: Array<{
+    id: string;
+    visitorName: string;
+    visitorEmail: string;
+    agentName: string;
+    status: ConversationStatus;
+    updatedAt: string;
+  }>;
+}
+
 /** Counts shown on the admin landing page. */
 export interface AdminStats {
   branches: { total: number; active: number };
@@ -170,4 +225,62 @@ export interface AdminStats {
   conversations: { active: number; closed: number };
   /** `missed` counts people whose enquiry never reached an agent. */
   leads: { total: number; missed: number };
+}
+
+/** One local calendar day of activity. `date` is `YYYY-MM-DD` in the viewer's zone. */
+export interface AnalyticsDay {
+  date: string;
+  conversations: number;
+  messages: number;
+  /** Enquiries that opened a chat. */
+  answered: number;
+  /** Enquiries that found nobody online. */
+  missed: number;
+}
+
+export interface AnalyticsHour {
+  hour: number;
+  conversations: number;
+  answered: number;
+  missed: number;
+}
+
+export interface AnalyticsBranch {
+  branchId: string;
+  name: string;
+  isActive: boolean;
+  conversations: number;
+  answered: number;
+  missed: number;
+}
+
+export interface AnalyticsAgent {
+  agentId: string;
+  name: string;
+  branchName: string;
+  isOnline: boolean;
+  /** Open right now, regardless of the selected range. */
+  activeNow: number;
+  /** Conversations assigned within the selected range. */
+  handled: number;
+}
+
+/** Everything the admin overview charts, for one date range. */
+export interface AdminAnalytics {
+  range: { days: number; timeZone: string; from: string; to: string };
+  totals: {
+    conversations: number;
+    messages: number;
+    answered: number;
+    missed: number;
+    /** Median seconds from a visitor's first message to the first agent reply. */
+    medianFirstResponseSeconds: number | null;
+  };
+  /** The same totals for the equally long period just before, for deltas. */
+  previous: { conversations: number; answered: number; missed: number };
+  daily: AnalyticsDay[];
+  /** Activity in each local hour of the day, 24 entries from hour 0. */
+  hourly: AnalyticsHour[];
+  branches: AnalyticsBranch[];
+  agents: AnalyticsAgent[];
 }

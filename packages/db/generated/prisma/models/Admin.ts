@@ -29,9 +29,11 @@ export type AggregateAdmin = {
 export type AdminMinAggregateOutputType = {
   id: string | null
   companyId: string | null
+  branchId: string | null
   name: string | null
   email: string | null
   passwordHash: string | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -39,9 +41,11 @@ export type AdminMinAggregateOutputType = {
 export type AdminMaxAggregateOutputType = {
   id: string | null
   companyId: string | null
+  branchId: string | null
   name: string | null
   email: string | null
   passwordHash: string | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -49,9 +53,11 @@ export type AdminMaxAggregateOutputType = {
 export type AdminCountAggregateOutputType = {
   id: number
   companyId: number
+  branchId: number
   name: number
   email: number
   passwordHash: number
+  isActive: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -61,9 +67,11 @@ export type AdminCountAggregateOutputType = {
 export type AdminMinAggregateInputType = {
   id?: true
   companyId?: true
+  branchId?: true
   name?: true
   email?: true
   passwordHash?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -71,9 +79,11 @@ export type AdminMinAggregateInputType = {
 export type AdminMaxAggregateInputType = {
   id?: true
   companyId?: true
+  branchId?: true
   name?: true
   email?: true
   passwordHash?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -81,9 +91,11 @@ export type AdminMaxAggregateInputType = {
 export type AdminCountAggregateInputType = {
   id?: true
   companyId?: true
+  branchId?: true
   name?: true
   email?: true
   passwordHash?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -164,9 +176,11 @@ export type AdminGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type AdminGroupByOutputType = {
   id: string
   companyId: string
+  branchId: string | null
   name: string
   email: string
   passwordHash: string
+  isActive: boolean
   createdAt: Date
   updatedAt: Date
   _count: AdminCountAggregateOutputType | null
@@ -195,23 +209,29 @@ export type AdminWhereInput = {
   NOT?: Prisma.AdminWhereInput | Prisma.AdminWhereInput[]
   id?: Prisma.StringFilter<"Admin"> | string
   companyId?: Prisma.StringFilter<"Admin"> | string
+  branchId?: Prisma.StringNullableFilter<"Admin"> | string | null
   name?: Prisma.StringFilter<"Admin"> | string
   email?: Prisma.StringFilter<"Admin"> | string
   passwordHash?: Prisma.StringFilter<"Admin"> | string
+  isActive?: Prisma.BoolFilter<"Admin"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
+  branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
 }
 
 export type AdminOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
+  branchId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
+  branch?: Prisma.BranchOrderByWithRelationInput
 }
 
 export type AdminWhereUniqueInput = Prisma.AtLeast<{
@@ -221,19 +241,24 @@ export type AdminWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.AdminWhereInput[]
   NOT?: Prisma.AdminWhereInput | Prisma.AdminWhereInput[]
   companyId?: Prisma.StringFilter<"Admin"> | string
+  branchId?: Prisma.StringNullableFilter<"Admin"> | string | null
   name?: Prisma.StringFilter<"Admin"> | string
   passwordHash?: Prisma.StringFilter<"Admin"> | string
+  isActive?: Prisma.BoolFilter<"Admin"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
+  branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
 }, "id" | "email">
 
 export type AdminOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
+  branchId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.AdminCountOrderByAggregateInput
@@ -247,9 +272,11 @@ export type AdminScalarWhereWithAggregatesInput = {
   NOT?: Prisma.AdminScalarWhereWithAggregatesInput | Prisma.AdminScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Admin"> | string
   companyId?: Prisma.StringWithAggregatesFilter<"Admin"> | string
+  branchId?: Prisma.StringNullableWithAggregatesFilter<"Admin"> | string | null
   name?: Prisma.StringWithAggregatesFilter<"Admin"> | string
   email?: Prisma.StringWithAggregatesFilter<"Admin"> | string
   passwordHash?: Prisma.StringWithAggregatesFilter<"Admin"> | string
+  isActive?: Prisma.BoolWithAggregatesFilter<"Admin"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Admin"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Admin"> | Date | string
 }
@@ -259,17 +286,21 @@ export type AdminCreateInput = {
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAdminsInput
+  branch?: Prisma.BranchCreateNestedOneWithoutAdminsInput
 }
 
 export type AdminUncheckedCreateInput = {
   id?: string
   companyId: string
+  branchId?: string | null
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -279,17 +310,21 @@ export type AdminUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAdminsNestedInput
+  branch?: Prisma.BranchUpdateOneWithoutAdminsNestedInput
 }
 
 export type AdminUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -297,9 +332,11 @@ export type AdminUncheckedUpdateInput = {
 export type AdminCreateManyInput = {
   id?: string
   companyId: string
+  branchId?: string | null
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -309,6 +346,7 @@ export type AdminUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -316,9 +354,11 @@ export type AdminUpdateManyMutationInput = {
 export type AdminUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -336,9 +376,11 @@ export type AdminOrderByRelationAggregateInput = {
 export type AdminCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
+  branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -346,9 +388,11 @@ export type AdminCountOrderByAggregateInput = {
 export type AdminMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
+  branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -356,9 +400,11 @@ export type AdminMaxOrderByAggregateInput = {
 export type AdminMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
+  branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -405,20 +451,74 @@ export type AdminUncheckedUpdateManyWithoutCompanyNestedInput = {
   deleteMany?: Prisma.AdminScalarWhereInput | Prisma.AdminScalarWhereInput[]
 }
 
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
+}
+
+export type NullableStringFieldUpdateOperationsInput = {
+  set?: string | null
+}
+
+export type AdminCreateNestedManyWithoutBranchInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput> | Prisma.AdminCreateWithoutBranchInput[] | Prisma.AdminUncheckedCreateWithoutBranchInput[]
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutBranchInput | Prisma.AdminCreateOrConnectWithoutBranchInput[]
+  createMany?: Prisma.AdminCreateManyBranchInputEnvelope
+  connect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+}
+
+export type AdminUncheckedCreateNestedManyWithoutBranchInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput> | Prisma.AdminCreateWithoutBranchInput[] | Prisma.AdminUncheckedCreateWithoutBranchInput[]
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutBranchInput | Prisma.AdminCreateOrConnectWithoutBranchInput[]
+  createMany?: Prisma.AdminCreateManyBranchInputEnvelope
+  connect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+}
+
+export type AdminUpdateManyWithoutBranchNestedInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput> | Prisma.AdminCreateWithoutBranchInput[] | Prisma.AdminUncheckedCreateWithoutBranchInput[]
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutBranchInput | Prisma.AdminCreateOrConnectWithoutBranchInput[]
+  upsert?: Prisma.AdminUpsertWithWhereUniqueWithoutBranchInput | Prisma.AdminUpsertWithWhereUniqueWithoutBranchInput[]
+  createMany?: Prisma.AdminCreateManyBranchInputEnvelope
+  set?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  disconnect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  delete?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  connect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  update?: Prisma.AdminUpdateWithWhereUniqueWithoutBranchInput | Prisma.AdminUpdateWithWhereUniqueWithoutBranchInput[]
+  updateMany?: Prisma.AdminUpdateManyWithWhereWithoutBranchInput | Prisma.AdminUpdateManyWithWhereWithoutBranchInput[]
+  deleteMany?: Prisma.AdminScalarWhereInput | Prisma.AdminScalarWhereInput[]
+}
+
+export type AdminUncheckedUpdateManyWithoutBranchNestedInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput> | Prisma.AdminCreateWithoutBranchInput[] | Prisma.AdminUncheckedCreateWithoutBranchInput[]
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutBranchInput | Prisma.AdminCreateOrConnectWithoutBranchInput[]
+  upsert?: Prisma.AdminUpsertWithWhereUniqueWithoutBranchInput | Prisma.AdminUpsertWithWhereUniqueWithoutBranchInput[]
+  createMany?: Prisma.AdminCreateManyBranchInputEnvelope
+  set?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  disconnect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  delete?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  connect?: Prisma.AdminWhereUniqueInput | Prisma.AdminWhereUniqueInput[]
+  update?: Prisma.AdminUpdateWithWhereUniqueWithoutBranchInput | Prisma.AdminUpdateWithWhereUniqueWithoutBranchInput[]
+  updateMany?: Prisma.AdminUpdateManyWithWhereWithoutBranchInput | Prisma.AdminUpdateManyWithWhereWithoutBranchInput[]
+  deleteMany?: Prisma.AdminScalarWhereInput | Prisma.AdminScalarWhereInput[]
+}
+
 export type AdminCreateWithoutCompanyInput = {
   id?: string
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  branch?: Prisma.BranchCreateNestedOneWithoutAdminsInput
 }
 
 export type AdminUncheckedCreateWithoutCompanyInput = {
   id?: string
+  branchId?: string | null
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -455,18 +555,70 @@ export type AdminScalarWhereInput = {
   NOT?: Prisma.AdminScalarWhereInput | Prisma.AdminScalarWhereInput[]
   id?: Prisma.StringFilter<"Admin"> | string
   companyId?: Prisma.StringFilter<"Admin"> | string
+  branchId?: Prisma.StringNullableFilter<"Admin"> | string | null
   name?: Prisma.StringFilter<"Admin"> | string
   email?: Prisma.StringFilter<"Admin"> | string
   passwordHash?: Prisma.StringFilter<"Admin"> | string
+  isActive?: Prisma.BoolFilter<"Admin"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
 }
 
-export type AdminCreateManyCompanyInput = {
+export type AdminCreateWithoutBranchInput = {
   id?: string
   name: string
   email: string
   passwordHash: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAdminsInput
+}
+
+export type AdminUncheckedCreateWithoutBranchInput = {
+  id?: string
+  companyId: string
+  name: string
+  email: string
+  passwordHash: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type AdminCreateOrConnectWithoutBranchInput = {
+  where: Prisma.AdminWhereUniqueInput
+  create: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput>
+}
+
+export type AdminCreateManyBranchInputEnvelope = {
+  data: Prisma.AdminCreateManyBranchInput | Prisma.AdminCreateManyBranchInput[]
+  skipDuplicates?: boolean
+}
+
+export type AdminUpsertWithWhereUniqueWithoutBranchInput = {
+  where: Prisma.AdminWhereUniqueInput
+  update: Prisma.XOR<Prisma.AdminUpdateWithoutBranchInput, Prisma.AdminUncheckedUpdateWithoutBranchInput>
+  create: Prisma.XOR<Prisma.AdminCreateWithoutBranchInput, Prisma.AdminUncheckedCreateWithoutBranchInput>
+}
+
+export type AdminUpdateWithWhereUniqueWithoutBranchInput = {
+  where: Prisma.AdminWhereUniqueInput
+  data: Prisma.XOR<Prisma.AdminUpdateWithoutBranchInput, Prisma.AdminUncheckedUpdateWithoutBranchInput>
+}
+
+export type AdminUpdateManyWithWhereWithoutBranchInput = {
+  where: Prisma.AdminScalarWhereInput
+  data: Prisma.XOR<Prisma.AdminUpdateManyMutationInput, Prisma.AdminUncheckedUpdateManyWithoutBranchInput>
+}
+
+export type AdminCreateManyCompanyInput = {
+  id?: string
+  branchId?: string | null
+  name: string
+  email: string
+  passwordHash: string
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -476,24 +628,74 @@ export type AdminUpdateWithoutCompanyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  branch?: Prisma.BranchUpdateOneWithoutAdminsNestedInput
 }
 
 export type AdminUncheckedUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type AdminUncheckedUpdateManyWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type AdminCreateManyBranchInput = {
+  id?: string
+  companyId: string
+  name: string
+  email: string
+  passwordHash: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type AdminUpdateWithoutBranchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAdminsNestedInput
+}
+
+export type AdminUncheckedUpdateWithoutBranchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type AdminUncheckedUpdateManyWithoutBranchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -503,68 +705,97 @@ export type AdminUncheckedUpdateManyWithoutCompanyInput = {
 export type AdminSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   companyId?: boolean
+  branchId?: boolean
   name?: boolean
   email?: boolean
   passwordHash?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }, ExtArgs["result"]["admin"]>
 
 export type AdminSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   companyId?: boolean
+  branchId?: boolean
   name?: boolean
   email?: boolean
   passwordHash?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }, ExtArgs["result"]["admin"]>
 
 export type AdminSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   companyId?: boolean
+  branchId?: boolean
   name?: boolean
   email?: boolean
   passwordHash?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }, ExtArgs["result"]["admin"]>
 
 export type AdminSelectScalar = {
   id?: boolean
   companyId?: boolean
+  branchId?: boolean
   name?: boolean
   email?: boolean
   passwordHash?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AdminOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "email" | "passwordHash" | "createdAt" | "updatedAt", ExtArgs["result"]["admin"]>
+export type AdminOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "branchId" | "name" | "email" | "passwordHash" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["admin"]>
 export type AdminInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }
 export type AdminIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }
 export type AdminIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
+  branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
 }
 
 export type $AdminPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Admin"
   objects: {
     company: Prisma.$CompanyPayload<ExtArgs>
+    /**
+     * Cascade, not SetNull: nulling the branch would silently promote a branch
+     * admin to company admin. Branches are only ever soft-deleted anyway.
+     */
+    branch: Prisma.$BranchPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     companyId: string
+    /**
+     * Null for a company admin, who sees every branch. Set for a branch admin,
+     * whose every read and write is confined to that one branch.
+     */
+    branchId: string | null
     name: string
     email: string
     passwordHash: string
+    /**
+     * Soft delete. An inactive admin cannot sign in, and any session they still
+     * hold stops working on its next request.
+     */
+    isActive: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["admin"]>
@@ -962,6 +1193,7 @@ readonly fields: AdminFieldRefs;
 export interface Prisma__AdminClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  branch<T extends Prisma.Admin$branchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Admin$branchArgs<ExtArgs>>): Prisma.Prisma__BranchClient<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -993,9 +1225,11 @@ export interface Prisma__AdminClient<T, Null = never, ExtArgs extends runtime.Ty
 export interface AdminFieldRefs {
   readonly id: Prisma.FieldRef<"Admin", 'String'>
   readonly companyId: Prisma.FieldRef<"Admin", 'String'>
+  readonly branchId: Prisma.FieldRef<"Admin", 'String'>
   readonly name: Prisma.FieldRef<"Admin", 'String'>
   readonly email: Prisma.FieldRef<"Admin", 'String'>
   readonly passwordHash: Prisma.FieldRef<"Admin", 'String'>
+  readonly isActive: Prisma.FieldRef<"Admin", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Admin", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Admin", 'DateTime'>
 }
@@ -1396,6 +1630,25 @@ export type AdminDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Limit how many Admins to delete.
    */
   limit?: number
+}
+
+/**
+ * Admin.branch
+ */
+export type Admin$branchArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Branch
+   */
+  select?: Prisma.BranchSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Branch
+   */
+  omit?: Prisma.BranchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BranchInclude<ExtArgs> | null
+  where?: Prisma.BranchWhereInput
 }
 
 /**

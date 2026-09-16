@@ -11,7 +11,9 @@ import type {
 } from "@repo/types";
 import type { WidgetConfig } from "../config.js";
 import type { VisitorDetails } from "../components/PreChatForm.js";
+import type { VisitorMediaSend } from "../components/ChatPanel.js";
 import { ApiError, apiFetch } from "../lib/api.js";
+import { uploadVisitorAttachment } from "../lib/media.js";
 import { useTypingIndicator, useTypingSignal } from "./useTyping.js";
 import {
   clearStoredConversationId,
@@ -41,6 +43,8 @@ export interface ChatController {
   agentTyping: boolean;
   startChat: (branchId: string, visitor: VisitorDetails) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  /** Uploads a photo, video, audio file or voice note, then sends it. */
+  sendMedia: (media: VisitorMediaSend) => Promise<void>;
   /** Called on every keystroke; throttled internally. */
   notifyTyping: () => void;
   startOver: () => void;
@@ -238,6 +242,42 @@ export function useChat(config: WidgetConfig): ChatController {
     [conversationId, stopTyping],
   );
 
+  const sendMedia = useCallback(
+    async (media: VisitorMediaSend) => {
+      const socket = socketRef.current;
+      if (!socket?.connected || !conversationId) throw new Error("Not connected");
+      setError(null);
+
+      const uploadToken = await uploadVisitorAttachment({
+        apiUrl: config.apiUrl,
+        conversationId,
+        visitorId,
+        kind: media.kind,
+        file: media.file,
+        fileName: media.fileName,
+        onProgress: media.onProgress,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        socket.emit(
+          "message:send",
+          {
+            conversationId,
+            content: media.caption,
+            attachment: {
+              uploadToken,
+              durationMs: media.durationMs,
+              waveform: media.waveform,
+            },
+          },
+          (result) => (result.ok ? resolve() : reject(new Error(result.message))),
+        );
+      });
+      stopTyping();
+    },
+    [config.apiUrl, conversationId, visitorId, stopTyping],
+  );
+
   const startOver = useCallback(() => {
     clearStoredConversationId();
     setConversation(null);
@@ -257,6 +297,7 @@ export function useChat(config: WidgetConfig): ChatController {
     agentTyping,
     startChat,
     sendMessage,
+    sendMedia,
     notifyTyping,
     startOver,
   };

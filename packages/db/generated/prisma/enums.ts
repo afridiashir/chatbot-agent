@@ -23,3 +23,13 @@ export const SenderType = {
 } as const
 
 export type SenderType = (typeof SenderType)[keyof typeof SenderType]
+
+
+export const AttachmentKind = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  VOICE: 'VOICE'
+} as const
+
+export type AttachmentKind = (typeof AttachmentKind)[keyof typeof AttachmentKind]

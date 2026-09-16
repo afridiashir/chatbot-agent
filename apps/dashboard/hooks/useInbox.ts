@@ -10,15 +10,12 @@ import type {
   Message,
   ServerToClientEvents,
 } from "@repo/types";
+import type { MediaSend } from "@/components/ConversationView";
 import { api } from "@/lib/api";
+import { uploadAttachment } from "@/lib/media";
 import { API_URL } from "@/lib/config";
 import { useTypingSignal } from "@/hooks/useTyping";
-import {
-  loadOutbox,
-  newClientId,
-  saveOutbox,
-  type QueuedMessage,
-} from "@/lib/outbox";
+import { loadOutbox, newClientId, saveOutbox, type QueuedMessage } from "@/lib/outbox";
 import { TYPING } from "@repo/types";
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -32,6 +29,8 @@ export interface Inbox {
   error: string | null;
   select: (conversationId: string) => void;
   send: (content: string) => Promise<void>;
+  /** Uploads a file or voice note, then sends it. Needs a live connection. */
+  sendMedia: (media: MediaSend) => Promise<void>;
   close: (conversationId: string) => Promise<void>;
   setOnline: (isOnline: boolean) => Promise<Agent>;
   /** Conversation ids where the visitor is currently typing. */
@@ -120,11 +119,12 @@ export function useInbox(agentId: string, token: string): Inbox {
   }, []);
   const { onActivity: notifyTyping, stop: stopTyping } = useTypingSignal(emitTyping);
 
+  // Open and closed together: closed chats stay readable in the inbox's
+  // "Closed" tab, the way a chat app keeps old threads.
   const loadConversations = useCallback(async () => {
-    const rows = await api<ConversationSummary[]>(
-      `/api/agents/${agentId}/conversations?status=ACTIVE`,
-      { token },
-    );
+    const rows = await api<ConversationSummary[]>(`/api/agents/${agentId}/conversations`, {
+      token,
+    });
     setConversations(rows);
     return rows;
   }, [agentId, token]);
@@ -174,7 +174,8 @@ export function useInbox(agentId: string, token: string): Inbox {
       // outage was never broadcast to this socket.
       void loadConversations()
         .then(async (rows) => {
-          joinAll(rows.map((row) => row.id));
+          // Only open chats can still change, so only their rooms are worth joining.
+          joinAll(rows.filter((row) => row.status === "ACTIVE").map((row) => row.id));
 
           const openId = selectedIdRef.current;
           if (openId) {
@@ -244,7 +245,14 @@ export function useInbox(agentId: string, token: string): Inbox {
 
     socket.on("conversation:closed", (conversation) => {
       setVisitorTyping(conversation.id, false);
-      setConversations((current) => current.filter((row) => row.id !== conversation.id));
+      // Kept, not removed: it moves from the Open tab to Closed.
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === conversation.id
+            ? { ...row, status: conversation.status, closedAt: conversation.closedAt }
+            : row,
+        ),
+      );
       setDetail((current) =>
         current && current.id === conversation.id
           ? { ...current, status: conversation.status, closedAt: conversation.closedAt }
@@ -319,6 +327,46 @@ export function useInbox(agentId: string, token: string): Inbox {
     [stopTyping, updateOutbox],
   );
 
+  /**
+   * Media is not queued offline the way text is: the upload itself needs the
+   * network, so it runs now and failures surface in the composer.
+   */
+  const sendMedia = useCallback(
+    async (media: MediaSend) => {
+      const conversationId = selectedIdRef.current;
+      const socket = socketRef.current;
+      if (!conversationId) throw new Error("No conversation is open");
+      if (!socket?.connected) throw new Error("You're offline. Media sends once you reconnect.");
+
+      const uploadToken = await uploadAttachment({
+        conversationId,
+        token,
+        kind: media.kind,
+        file: media.file,
+        fileName: media.fileName,
+        onProgress: media.onProgress,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        socket.emit(
+          "message:send",
+          {
+            conversationId,
+            content: media.caption,
+            attachment: {
+              uploadToken,
+              durationMs: media.durationMs,
+              waveform: media.waveform,
+            },
+          },
+          (result) => (result.ok ? resolve() : reject(new Error(result.message))),
+        );
+      });
+      stopTyping();
+    },
+    [token, stopTyping],
+  );
+
   const close = useCallback(
     async (conversationId: string) => {
       await api(`/api/conversations/${conversationId}/close`, { method: "POST", token });
@@ -346,6 +394,7 @@ export function useInbox(agentId: string, token: string): Inbox {
     error,
     select,
     send,
+    sendMedia,
     close,
     setOnline,
     typingIn,

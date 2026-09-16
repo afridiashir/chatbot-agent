@@ -5,6 +5,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly code: string,
+    /** Field-level messages from a validation failure, keyed by field. */
+    readonly details?: Record<string, string[]>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -34,7 +36,7 @@ export async function api<T>(
 
   const body = (await response.json().catch(() => null)) as ApiResponse<T> | null;
   if (!body) throw new ApiError("The API returned an unreadable response", "BAD_RESPONSE");
-  if (!body.ok) throw new ApiError(body.error.message, body.error.code);
+  if (!body.ok) throw new ApiError(body.error.message, body.error.code, body.error.details);
 
   return body.data;
 }

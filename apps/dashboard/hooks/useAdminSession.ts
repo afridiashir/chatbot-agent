@@ -11,6 +11,8 @@ export interface AdminSession {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Replaces the cached account after the admin edits their own profile. */
+  setAdmin: (admin: Admin) => void;
 }
 
 /** Mirrors useSession, but against the separate admin account and endpoints. */
@@ -61,7 +63,7 @@ export function useAdminSession(): AdminSession {
     setAdmin(null);
   }, []);
 
-  return { admin, token, loading, login, logout };
+  return { admin, token, loading, login, logout, setAdmin };
 }
 
 export { ApiError };

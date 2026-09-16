@@ -1,5 +1,7 @@
+import { mediaPath } from "./media-link.js";
 import type {
   AdminRow,
+  AttachmentRow,
   AgentRow,
   BranchRow,
   ConversationRow,
@@ -64,7 +66,10 @@ export interface LeadStats {
  * of truth, and passing it explicitly also stops `rows.map(toLead)` from
  * silently handing the array index to a second parameter.
  */
-export function toLead(row: LeadRow & { branch?: { name: string } | null }, stats: LeadStats): Lead {
+export function toLead(
+  row: LeadRow & { branch?: { name: string } | null },
+  stats: LeadStats,
+): Lead {
   return {
     id: row.id,
     companyId: row.companyId,
@@ -92,15 +97,27 @@ export function statsFromEnquiries(
   };
 }
 
-export function toAdmin(row: AdminRow): Admin {
+export function toAdmin(row: AdminRow & { branch?: { name: string } | null }): Admin {
   return {
     id: row.id,
     companyId: row.companyId,
+    branchId: row.branchId,
+    branchName: row.branch?.name ?? null,
     name: row.name,
     email: row.email,
+    isActive: row.isActive,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/**
+ * Public photo path. The version is the random part of the object key, so a
+ * new photo is a new URL and browsers can cache each one indefinitely.
+ */
+export function avatarPath(row: Pick<AgentRow, "id" | "avatarKey">): string | null {
+  const version = row.avatarKey?.match(/\/([^/]+)\.[a-z]+$/)?.[1];
+  return version ? `/api/avatars/${row.id}/${version}` : null;
 }
 
 export function toAgent(row: AgentRow): Agent {
@@ -109,6 +126,7 @@ export function toAgent(row: AgentRow): Agent {
     branchId: row.branchId,
     name: row.name,
     email: row.email,
+    avatarUrl: avatarPath(row),
     isOnline: row.isOnline,
     isActive: row.isActive,
     createdAt: row.createdAt.toISOString(),
@@ -120,12 +138,28 @@ export function toAgentWithLoad(row: AgentRow, activeConversationCount: number):
   return { ...toAgent(row), activeConversationCount };
 }
 
-export function toMessage(row: MessageRow): Message {
+/** Every message query includes its attachment, so the payload is complete. */
+export const MESSAGE_INCLUDE = { attachment: true } as const;
+
+export function toMessage(row: MessageRow & { attachment?: AttachmentRow | null }): Message {
+  const attachment = row.attachment;
   return {
     id: row.id,
     conversationId: row.conversationId,
     senderType: row.senderType,
     content: row.content,
+    attachment: attachment
+      ? {
+          id: attachment.id,
+          kind: attachment.kind,
+          mimeType: attachment.mimeType,
+          fileName: attachment.fileName,
+          size: attachment.size,
+          durationMs: attachment.durationMs,
+          waveform: attachment.waveform,
+          url: mediaPath(attachment.id),
+        }
+      : null,
     clientId: row.clientId,
     createdAt: row.createdAt.toISOString(),
   };
@@ -157,6 +191,7 @@ export function toConversationWithAgent(
       name: row.agent.name,
       branchId: row.agent.branchId,
       isOnline: row.agent.isOnline,
+      avatarUrl: avatarPath(row.agent),
     },
     visitor: toVisitorSummary(row.visitor),
   };

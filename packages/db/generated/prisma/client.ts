@@ -102,3 +102,9 @@ export type Conversation = Prisma.ConversationModel
  * 
  */
 export type Message = Prisma.MessageModel
+/**
+ * Model Attachment
+ * A file in object storage, belonging to exactly one message. The bytes live in
+ * MinIO under `key`; nothing here is served directly, clients get signed URLs.
+ */
+export type Attachment = Prisma.AttachmentModel

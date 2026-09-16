@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { API_URL } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,24 +57,41 @@ interface AvatarProps {
   size?: keyof typeof SIZES;
   /** Renders a presence dot when set; omit entirely for people with no status. */
   online?: boolean;
+  /** Profile photo path from the API (`avatarUrl`); initials are the fallback. */
+  photo?: string | null;
   className?: string;
 }
 
-export function Avatar({ name, seed, size = "md", online, className }: AvatarProps) {
+export function Avatar({ name, seed, size = "md", online, photo, className }: AvatarProps) {
   const color = PALETTE[hash(seed ?? name) % PALETTE.length];
+  // A photo that fails to load (removed, or storage unreachable) falls back to
+  // initials rather than a broken image.
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const showPhoto = photo && failedPhoto !== photo;
 
   return (
     <span className={cn("relative inline-flex shrink-0", className)}>
-      <span
-        aria-hidden="true"
-        style={{ backgroundColor: color }}
-        className={cn(
-          "flex items-center justify-center rounded-full font-semibold tracking-wide text-white select-none",
-          SIZES[size],
-        )}
-      >
-        {initials(name)}
-      </span>
+      {showPhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element -- redirects to signed storage URLs
+        <img
+          src={`${API_URL}${photo}`}
+          alt=""
+          aria-hidden="true"
+          onError={() => setFailedPhoto(photo)}
+          className={cn("rounded-full bg-muted object-cover", SIZES[size])}
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          style={{ backgroundColor: color }}
+          className={cn(
+            "flex items-center justify-center rounded-full font-semibold tracking-wide text-white select-none",
+            SIZES[size],
+          )}
+        >
+          {initials(name)}
+        </span>
+      )}
 
       {online !== undefined && (
         <span
@@ -78,7 +99,7 @@ export function Avatar({ name, seed, size = "md", online, className }: AvatarPro
           className={cn(
             "absolute right-0 bottom-0 rounded-full ring-2 ring-[var(--chat-panel)]",
             size === "sm" ? "h-2 w-2" : "h-2.5 w-2.5",
-            online ? "bg-emerald-500" : "bg-neutral-400",
+            online ? "bg-online" : "bg-muted-foreground/50",
           )}
         />
       )}

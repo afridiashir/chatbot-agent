@@ -5,6 +5,7 @@ export * from "./password.js";
 // reaching into the generated output directory.
 export type {
   Admin as AdminRow,
+  Attachment as AttachmentRow,
   Agent as AgentRow,
   Branch as BranchRow,
   Company as CompanyRow,

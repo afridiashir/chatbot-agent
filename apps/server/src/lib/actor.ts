@@ -9,7 +9,7 @@ import { unauthorized } from "./http.js";
  */
 export type Actor =
   | { type: "AGENT"; agentId: string; branchId: string }
-  | { type: "ADMIN"; adminId: string; companyId: string }
+  | { type: "ADMIN"; adminId: string; companyId: string; branchId: string | null }
   | { type: "VISITOR"; visitorId: string };
 
 const BEARER_PREFIX = "Bearer ";
@@ -29,7 +29,12 @@ export function resolveActor(req: Request, visitorId?: string): Actor {
     const payload = verifyToken(token);
     return payload.role === "AGENT"
       ? { type: "AGENT", agentId: payload.agentId, branchId: payload.branchId }
-      : { type: "ADMIN", adminId: payload.adminId, companyId: payload.companyId };
+      : {
+          type: "ADMIN",
+          adminId: payload.adminId,
+          companyId: payload.companyId,
+          branchId: payload.branchId,
+        };
   }
 
   if (visitorId) return { type: "VISITOR", visitorId };

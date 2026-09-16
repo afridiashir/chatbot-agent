@@ -73,12 +73,16 @@ export function Widget({ config }: { config: WidgetConfig }) {
 
           {chat.phase === "chatting" && chat.conversation && (
             <ChatPanel
+              apiUrl={config.apiUrl}
               agentName={chat.conversation.agent.name}
+              agentPhoto={chat.conversation.agent.avatarUrl ?? null}
+              agentOnline={chat.conversation.agent.isOnline}
               messages={chat.messages}
               connected={chat.connected}
               isClosed={chat.isClosed}
               agentTyping={chat.agentTyping}
               onSend={chat.sendMessage}
+              onSendMedia={chat.sendMedia}
               onTyping={chat.notifyTyping}
               onStartOver={chat.startOver}
             />

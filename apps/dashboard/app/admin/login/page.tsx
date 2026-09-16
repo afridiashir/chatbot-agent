@@ -35,8 +35,8 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <Card>
+    <main className="brand-backdrop flex min-h-screen flex-col px-6 pt-28 pb-10">
+      <Card className="mx-auto w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-base">Administrator sign in</CardTitle>
           <p className="text-xs text-muted-foreground">

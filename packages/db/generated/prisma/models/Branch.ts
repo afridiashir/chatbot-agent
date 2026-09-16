@@ -192,6 +192,7 @@ export type BranchWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   agents?: Prisma.AgentListRelationFilter
+  admins?: Prisma.AdminListRelationFilter
   leads?: Prisma.LeadListRelationFilter
   enquiries?: Prisma.EnquiryListRelationFilter
 }
@@ -205,6 +206,7 @@ export type BranchOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
   agents?: Prisma.AgentOrderByRelationAggregateInput
+  admins?: Prisma.AdminOrderByRelationAggregateInput
   leads?: Prisma.LeadOrderByRelationAggregateInput
   enquiries?: Prisma.EnquiryOrderByRelationAggregateInput
 }
@@ -222,6 +224,7 @@ export type BranchWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   agents?: Prisma.AgentListRelationFilter
+  admins?: Prisma.AdminListRelationFilter
   leads?: Prisma.LeadListRelationFilter
   enquiries?: Prisma.EnquiryListRelationFilter
 }, "id" | "companyId_name">
@@ -258,6 +261,7 @@ export type BranchCreateInput = {
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutBranchesInput
   agents?: Prisma.AgentCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryCreateNestedManyWithoutBranchInput
 }
@@ -270,6 +274,7 @@ export type BranchUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   agents?: Prisma.AgentUncheckedCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutBranchInput
 }
@@ -282,6 +287,7 @@ export type BranchUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutBranchesNestedInput
   agents?: Prisma.AgentUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUpdateManyWithoutBranchNestedInput
 }
@@ -294,6 +300,7 @@ export type BranchUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   agents?: Prisma.AgentUncheckedUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutBranchNestedInput
 }
@@ -334,6 +341,11 @@ export type BranchOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type BranchNullableScalarRelationFilter = {
+  is?: Prisma.BranchWhereInput | null
+  isNot?: Prisma.BranchWhereInput | null
+}
+
 export type BranchCompanyIdNameCompoundUniqueInput = {
   companyId: string
   name: string
@@ -369,11 +381,6 @@ export type BranchMinOrderByAggregateInput = {
 export type BranchScalarRelationFilter = {
   is?: Prisma.BranchWhereInput
   isNot?: Prisma.BranchWhereInput
-}
-
-export type BranchNullableScalarRelationFilter = {
-  is?: Prisma.BranchWhereInput | null
-  isNot?: Prisma.BranchWhereInput | null
 }
 
 export type BranchCreateNestedManyWithoutCompanyInput = {
@@ -418,8 +425,20 @@ export type BranchUncheckedUpdateManyWithoutCompanyNestedInput = {
   deleteMany?: Prisma.BranchScalarWhereInput | Prisma.BranchScalarWhereInput[]
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
+export type BranchCreateNestedOneWithoutAdminsInput = {
+  create?: Prisma.XOR<Prisma.BranchCreateWithoutAdminsInput, Prisma.BranchUncheckedCreateWithoutAdminsInput>
+  connectOrCreate?: Prisma.BranchCreateOrConnectWithoutAdminsInput
+  connect?: Prisma.BranchWhereUniqueInput
+}
+
+export type BranchUpdateOneWithoutAdminsNestedInput = {
+  create?: Prisma.XOR<Prisma.BranchCreateWithoutAdminsInput, Prisma.BranchUncheckedCreateWithoutAdminsInput>
+  connectOrCreate?: Prisma.BranchCreateOrConnectWithoutAdminsInput
+  upsert?: Prisma.BranchUpsertWithoutAdminsInput
+  disconnect?: Prisma.BranchWhereInput | boolean
+  delete?: Prisma.BranchWhereInput | boolean
+  connect?: Prisma.BranchWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BranchUpdateToOneWithWhereWithoutAdminsInput, Prisma.BranchUpdateWithoutAdminsInput>, Prisma.BranchUncheckedUpdateWithoutAdminsInput>
 }
 
 export type BranchCreateNestedOneWithoutAgentsInput = {
@@ -475,6 +494,7 @@ export type BranchCreateWithoutCompanyInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   agents?: Prisma.AgentCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryCreateNestedManyWithoutBranchInput
 }
@@ -486,6 +506,7 @@ export type BranchUncheckedCreateWithoutCompanyInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   agents?: Prisma.AgentUncheckedCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutBranchInput
 }
@@ -528,6 +549,70 @@ export type BranchScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
 }
 
+export type BranchCreateWithoutAdminsInput = {
+  id?: string
+  name: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutBranchesInput
+  agents?: Prisma.AgentCreateNestedManyWithoutBranchInput
+  leads?: Prisma.LeadCreateNestedManyWithoutBranchInput
+  enquiries?: Prisma.EnquiryCreateNestedManyWithoutBranchInput
+}
+
+export type BranchUncheckedCreateWithoutAdminsInput = {
+  id?: string
+  companyId: string
+  name: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  agents?: Prisma.AgentUncheckedCreateNestedManyWithoutBranchInput
+  leads?: Prisma.LeadUncheckedCreateNestedManyWithoutBranchInput
+  enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutBranchInput
+}
+
+export type BranchCreateOrConnectWithoutAdminsInput = {
+  where: Prisma.BranchWhereUniqueInput
+  create: Prisma.XOR<Prisma.BranchCreateWithoutAdminsInput, Prisma.BranchUncheckedCreateWithoutAdminsInput>
+}
+
+export type BranchUpsertWithoutAdminsInput = {
+  update: Prisma.XOR<Prisma.BranchUpdateWithoutAdminsInput, Prisma.BranchUncheckedUpdateWithoutAdminsInput>
+  create: Prisma.XOR<Prisma.BranchCreateWithoutAdminsInput, Prisma.BranchUncheckedCreateWithoutAdminsInput>
+  where?: Prisma.BranchWhereInput
+}
+
+export type BranchUpdateToOneWithWhereWithoutAdminsInput = {
+  where?: Prisma.BranchWhereInput
+  data: Prisma.XOR<Prisma.BranchUpdateWithoutAdminsInput, Prisma.BranchUncheckedUpdateWithoutAdminsInput>
+}
+
+export type BranchUpdateWithoutAdminsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutBranchesNestedInput
+  agents?: Prisma.AgentUpdateManyWithoutBranchNestedInput
+  leads?: Prisma.LeadUpdateManyWithoutBranchNestedInput
+  enquiries?: Prisma.EnquiryUpdateManyWithoutBranchNestedInput
+}
+
+export type BranchUncheckedUpdateWithoutAdminsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  agents?: Prisma.AgentUncheckedUpdateManyWithoutBranchNestedInput
+  leads?: Prisma.LeadUncheckedUpdateManyWithoutBranchNestedInput
+  enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutBranchNestedInput
+}
+
 export type BranchCreateWithoutAgentsInput = {
   id?: string
   name: string
@@ -535,6 +620,7 @@ export type BranchCreateWithoutAgentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutBranchesInput
+  admins?: Prisma.AdminCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryCreateNestedManyWithoutBranchInput
 }
@@ -546,6 +632,7 @@ export type BranchUncheckedCreateWithoutAgentsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutBranchInput
 }
@@ -573,6 +660,7 @@ export type BranchUpdateWithoutAgentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutBranchesNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUpdateManyWithoutBranchNestedInput
 }
@@ -584,6 +672,7 @@ export type BranchUncheckedUpdateWithoutAgentsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutBranchNestedInput
 }
@@ -596,6 +685,7 @@ export type BranchCreateWithoutLeadsInput = {
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutBranchesInput
   agents?: Prisma.AgentCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryCreateNestedManyWithoutBranchInput
 }
 
@@ -607,6 +697,7 @@ export type BranchUncheckedCreateWithoutLeadsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   agents?: Prisma.AgentUncheckedCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutBranchInput
   enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutBranchInput
 }
 
@@ -634,6 +725,7 @@ export type BranchUpdateWithoutLeadsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutBranchesNestedInput
   agents?: Prisma.AgentUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUpdateManyWithoutBranchNestedInput
 }
 
@@ -645,6 +737,7 @@ export type BranchUncheckedUpdateWithoutLeadsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   agents?: Prisma.AgentUncheckedUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutBranchNestedInput
 }
 
@@ -656,6 +749,7 @@ export type BranchCreateWithoutEnquiriesInput = {
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutBranchesInput
   agents?: Prisma.AgentCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadCreateNestedManyWithoutBranchInput
 }
 
@@ -667,6 +761,7 @@ export type BranchUncheckedCreateWithoutEnquiriesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   agents?: Prisma.AgentUncheckedCreateNestedManyWithoutBranchInput
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutBranchInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutBranchInput
 }
 
@@ -694,6 +789,7 @@ export type BranchUpdateWithoutEnquiriesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutBranchesNestedInput
   agents?: Prisma.AgentUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUpdateManyWithoutBranchNestedInput
 }
 
@@ -705,6 +801,7 @@ export type BranchUncheckedUpdateWithoutEnquiriesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   agents?: Prisma.AgentUncheckedUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutBranchNestedInput
 }
 
@@ -723,6 +820,7 @@ export type BranchUpdateWithoutCompanyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   agents?: Prisma.AgentUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUpdateManyWithoutBranchNestedInput
 }
@@ -734,6 +832,7 @@ export type BranchUncheckedUpdateWithoutCompanyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   agents?: Prisma.AgentUncheckedUpdateManyWithoutBranchNestedInput
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutBranchNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutBranchNestedInput
   enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutBranchNestedInput
 }
@@ -753,12 +852,14 @@ export type BranchUncheckedUpdateManyWithoutCompanyInput = {
 
 export type BranchCountOutputType = {
   agents: number
+  admins: number
   leads: number
   enquiries: number
 }
 
 export type BranchCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   agents?: boolean | BranchCountOutputTypeCountAgentsArgs
+  admins?: boolean | BranchCountOutputTypeCountAdminsArgs
   leads?: boolean | BranchCountOutputTypeCountLeadsArgs
   enquiries?: boolean | BranchCountOutputTypeCountEnquiriesArgs
 }
@@ -778,6 +879,13 @@ export type BranchCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exten
  */
 export type BranchCountOutputTypeCountAgentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.AgentWhereInput
+}
+
+/**
+ * BranchCountOutputType without action
+ */
+export type BranchCountOutputTypeCountAdminsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AdminWhereInput
 }
 
 /**
@@ -804,6 +912,7 @@ export type BranchSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   agents?: boolean | Prisma.Branch$agentsArgs<ExtArgs>
+  admins?: boolean | Prisma.Branch$adminsArgs<ExtArgs>
   leads?: boolean | Prisma.Branch$leadsArgs<ExtArgs>
   enquiries?: boolean | Prisma.Branch$enquiriesArgs<ExtArgs>
   _count?: boolean | Prisma.BranchCountOutputTypeDefaultArgs<ExtArgs>
@@ -842,6 +951,7 @@ export type BranchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type BranchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   agents?: boolean | Prisma.Branch$agentsArgs<ExtArgs>
+  admins?: boolean | Prisma.Branch$adminsArgs<ExtArgs>
   leads?: boolean | Prisma.Branch$leadsArgs<ExtArgs>
   enquiries?: boolean | Prisma.Branch$enquiriesArgs<ExtArgs>
   _count?: boolean | Prisma.BranchCountOutputTypeDefaultArgs<ExtArgs>
@@ -858,6 +968,7 @@ export type $BranchPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   objects: {
     company: Prisma.$CompanyPayload<ExtArgs>
     agents: Prisma.$AgentPayload<ExtArgs>[]
+    admins: Prisma.$AdminPayload<ExtArgs>[]
     leads: Prisma.$LeadPayload<ExtArgs>[]
     enquiries: Prisma.$EnquiryPayload<ExtArgs>[]
   }
@@ -1268,6 +1379,7 @@ export interface Prisma__BranchClient<T, Null = never, ExtArgs extends runtime.T
   readonly [Symbol.toStringTag]: "PrismaPromise"
   company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   agents<T extends Prisma.Branch$agentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Branch$agentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  admins<T extends Prisma.Branch$adminsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Branch$adminsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdminPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   leads<T extends Prisma.Branch$leadsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Branch$leadsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LeadPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   enquiries<T extends Prisma.Branch$enquiriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Branch$enquiriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EnquiryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
@@ -1727,6 +1839,30 @@ export type Branch$agentsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   distinct?: Prisma.AgentScalarFieldEnum | Prisma.AgentScalarFieldEnum[]
+}
+
+/**
+ * Branch.admins
+ */
+export type Branch$adminsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Admin
+   */
+  select?: Prisma.AdminSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Admin
+   */
+  omit?: Prisma.AdminOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AdminInclude<ExtArgs> | null
+  where?: Prisma.AdminWhereInput
+  orderBy?: Prisma.AdminOrderByWithRelationInput | Prisma.AdminOrderByWithRelationInput[]
+  cursor?: Prisma.AdminWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AdminScalarFieldEnum | Prisma.AdminScalarFieldEnum[]
 }
 
 /**

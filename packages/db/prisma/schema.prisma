@@ -43,15 +43,25 @@ model Company {
 model Admin {
   id           String   @id @default(cuid())
   companyId    String
+  /// Null for a company admin, who sees every branch. Set for a branch admin,
+  /// whose every read and write is confined to that one branch.
+  branchId     String?
   name         String
   email        String   @unique
   passwordHash String
+  /// Soft delete. An inactive admin cannot sign in, and any session they still
+  /// hold stops working on its next request.
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Cascade, not SetNull: nulling the branch would silently promote a branch
+  /// admin to company admin. Branches are only ever soft-deleted anyway.
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+  @@index([branchId])
 }
 
 model Branch {
@@ -66,6 +76,7 @@ model Branch {
 
   company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   agents    Agent[]
+  admins    Admin[]
   leads     Lead[]
   enquiries Enquiry[]
 
@@ -79,6 +90,8 @@ model Agent {
   name         String
   email        String   @unique
   passwordHash String
+  /// Profile photo in the media bucket. Null shows generated initials instead.
+  avatarKey    String?
   isOnline     Boolean  @default(false)
   /// Soft delete. An inactive agent cannot sign in and is never routed to.
   isActive     Boolean  @default(true)
@@ -195,6 +208,38 @@ model Message {
   createdAt      DateTime   @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// Media sent with the message. `content` is then an optional caption.
+  attachment   Attachment?
 
   @@index([conversationId, createdAt])
+}
+
+enum AttachmentKind {
+  IMAGE
+  VIDEO
+  AUDIO
+  /// Recorded in the chat, played back as a voice-note bubble.
+  VOICE
+}
+
+/// A file in object storage, belonging to exactly one message. The bytes live in
+/// MinIO under `key`; nothing here is served directly, clients get signed URLs.
+model Attachment {
+  id         String         @id @default(cuid())
+  messageId  String         @unique
+  /// Object key in the media bucket. Unique, so one upload backs one message.
+  key        String         @unique
+  kind       AttachmentKind
+  mimeType   String
+  fileName   String
+  /// Bytes, as verified against storage when the message was sent.
+  size       Int
+  /// Voice notes and audio, when the client knew the length.
+  durationMs Int?
+  /// Loudness bars (0-100) captured while recording, drawn as the voice-note
+  /// waveform. Empty for uploaded files.
+  waveform   Int[]          @default([])
+  createdAt  DateTime       @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }

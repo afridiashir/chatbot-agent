@@ -1,4 +1,4 @@
-const BRANCHES = ["Karachi", "Lahore", "Islamabad", "Peshawar"];
+const BRANCHES = ["Karachi"];
 
 export default function HomePage() {
   return (

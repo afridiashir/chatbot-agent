@@ -34,7 +34,11 @@ const BASE_TIME = new Date(Date.now() - 30 * 60 * 60 * 1000);
 let tick = 0;
 const nextTimestamp = (): Date => new Date(BASE_TIME.getTime() + ++tick * 9 * 60_000);
 
-async function seedConversation(agentId: string, conversation: SeedConversation): Promise<void> {
+async function seedConversation(
+  agentId: string,
+  branchId: string,
+  conversation: SeedConversation,
+): Promise<void> {
   const createdAt = nextTimestamp();
   const isClosed = conversation.status === "CLOSED";
 
@@ -48,7 +52,7 @@ async function seedConversation(agentId: string, conversation: SeedConversation)
   // match the final message instead of letting @updatedAt stamp it with now.
   const lastActivity = messages.at(-1)?.createdAt ?? createdAt;
 
-  await prisma.conversation.create({
+  const created = await prisma.conversation.create({
     data: {
       agentId,
       visitorId: conversation.visitorId,
@@ -58,6 +62,29 @@ async function seedConversation(agentId: string, conversation: SeedConversation)
       closedAt: isClosed ? nextTimestamp() : null,
       messages: { create: messages },
     },
+  });
+
+  // Every conversation is a lead. Routing records one on each pre-chat form
+  // submission; seeded chats skip routing, so record the same rows here.
+  const visitor = VISITORS.find((v) => v.id === conversation.visitorId);
+  if (!visitor)
+    throw new Error(`Seed conversation references unknown visitor ${conversation.visitorId}`);
+  const email = visitor.email.toLowerCase();
+  const lead = await prisma.lead.upsert({
+    where: { companyId_email: { companyId: COMPANY.id, email } },
+    create: {
+      companyId: COMPANY.id,
+      email,
+      name: visitor.name,
+      phone: visitor.phone,
+      branchId,
+      createdAt,
+    },
+    update: { name: visitor.name, phone: visitor.phone, branchId },
+    select: { id: true },
+  });
+  await prisma.enquiry.create({
+    data: { leadId: lead.id, branchId, conversationId: created.id, answered: true, createdAt },
   });
 }
 
@@ -73,7 +100,13 @@ async function main(): Promise<void> {
   // Visitors are demo traffic; conversations cascade from them.
   await prisma.visitor.deleteMany({});
 
-  // Leads and their enquiry history are deliberately NOT cleared. They are a
+  // The demo visitors' own leads are rebuilt with their conversations, so a
+  // reseed does not stack a fresh enquiry onto the same fake person each time.
+  await prisma.lead.deleteMany({
+    where: { companyId: COMPANY.id, email: { in: VISITORS.map((v) => v.email.toLowerCase()) } },
+  });
+
+  // Every other lead and its enquiry history is deliberately NOT cleared. They are a
   // record of real people who got in touch, accumulated over time, and wiping
   // them on every reseed would defeat the point of keeping the history at all.
   // Use `pnpm db:reset` for a genuinely empty database.
@@ -147,10 +180,33 @@ async function main(): Promise<void> {
       agentCount += 1;
 
       for (const conversation of agent.conversations) {
-        await seedConversation(agent.id, conversation);
+        await seedConversation(agent.id, branch.id, conversation);
         conversationCount += 1;
       }
     }
+  }
+
+  // One branch admin per seeded branch, sharing the admin password, so the
+  // branch-scoped view can be tried straight after seeding.
+  for (const branch of BRANCHES) {
+    const email = `${branch.id.replace(/^branch_/, "")}.admin@acme.example`;
+    await prisma.admin.upsert({
+      where: { email },
+      create: {
+        id: `admin_${branch.id}`,
+        companyId: COMPANY.id,
+        branchId: branch.id,
+        name: `${branch.name} Branch Admin`,
+        email,
+        passwordHash: adminPasswordHash,
+      },
+      update: {
+        companyId: COMPANY.id,
+        branchId: branch.id,
+        isActive: true,
+        passwordHash: adminPasswordHash,
+      },
+    });
   }
 
   console.log(
