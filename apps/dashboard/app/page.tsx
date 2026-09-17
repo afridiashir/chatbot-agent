@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, CloudOff, Link2, Search } from "lucide-react";
+import { Bell, BellOff, Camera, CloudOff, Link2, Search } from "lucide-react";
 import { ChatLinkDialog } from "@/components/ChatLinkDialog";
+import { isMuted, playChime, setMuted, unlockSound } from "@/lib/sound";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { describeAttachment, type Agent } from "@repo/types";
@@ -48,6 +49,30 @@ function Dashboard({
   const [query, setQuery] = useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [muted, setMutedState] = useState(false);
+
+  // Read after mount: localStorage does not exist while rendering on the server.
+  useEffect(() => setMutedState(isMuted()), []);
+
+  // Browsers keep audio silent until the person interacts with the page, so the
+  // first click or key press after sign-in is what enables the chimes.
+  useEffect(() => {
+    const unlock = () => unlockSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  function toggleMuted() {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next);
+    // Unmuting plays the tone once, so the agent hears what to listen for.
+    if (!next) playChime("message");
+  }
   const [tab, setTab] = useState<"ACTIVE" | "CLOSED">("ACTIVE");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
@@ -120,6 +145,21 @@ function Dashboard({
               {!inbox.connected && <span className="text-warning"> · reconnecting...</span>}
             </p>
           </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMuted}
+            aria-pressed={muted}
+            aria-label={muted ? "Turn notification sound on" : "Turn notification sound off"}
+            title={muted ? "Sound off" : "Sound on"}
+          >
+            {muted ? (
+              <BellOff className="size-4 text-chat-meta" aria-hidden />
+            ) : (
+              <Bell className="size-4" aria-hidden />
+            )}
+          </Button>
 
           <Button
             variant={agent.isOnline ? "outline" : "default"}

@@ -18,6 +18,7 @@ import { uploadAttachment } from "@/lib/media";
 import { API_URL } from "@/lib/config";
 import { useTypingSignal } from "@/hooks/useTyping";
 import { loadOutbox, newClientId, saveOutbox, type QueuedMessage } from "@/lib/outbox";
+import { playChime } from "@/lib/sound";
 import { TYPING, applyReceipt } from "@repo/types";
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -210,6 +211,8 @@ export function useInbox(
 
     socket.on("conversation:assigned", (conversation) => {
       socket.emit("conversation:join", { conversationId: conversation.id });
+      // A visitor is waiting: worth hearing even with the inbox in view.
+      playChime("newChat");
       setConversations((current) =>
         current.some((row) => row.id === conversation.id)
           ? current
@@ -226,6 +229,16 @@ export function useInbox(
     socket.on("message:new", (message: Message) => {
       // Their message arriving means they have stopped typing.
       if (message.senderType === "VISITOR") setVisitorTyping(message.conversationId, false);
+
+      // Only the visitor's messages chime, and only when the agent is not
+      // already reading that conversation on screen: an answer they are
+      // watching arrive does not need announcing.
+      if (
+        message.senderType === "VISITOR" &&
+        (document.hidden || message.conversationId !== selectedIdRef.current)
+      ) {
+        playChime("message");
+      }
 
       // Our own message coming back through the room retires its pending copy.
       if (message.clientId) {
