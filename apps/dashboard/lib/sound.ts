@@ -3,28 +3,51 @@
 const MUTED_KEY = "mbca.sound.muted";
 
 /**
- * Notification chimes for the agent inbox, synthesised with the Web Audio API
- * rather than shipped as files: two short tones cost nothing to download and
- * cannot 404 behind a CDN.
+ * Notification sounds for the agent inbox.
+ *
+ * Two sources, in order: an audio file dropped into `public/sounds` (see
+ * FILES below), or, when there is none, a tone synthesised with the Web Audio
+ * API. The synthesised one is a short percussive bell — a struck-metal attack
+ * with a fast decay, the shape most messaging apps use — because chat tones
+ * such as WhatsApp's own are copyrighted and cannot be shipped here.
  */
 export type Chime = "message" | "newChat";
 
-/** Frequencies in Hz and their start offsets in seconds. */
-const TONES: Record<Chime, Array<{ hz: number; at: number; ms: number }>> = {
-  // Two soft notes, like a phone's message tone.
+/** Drop a file at either path and it is used in place of the synth tone. */
+const FILES: Record<Chime, string> = {
+  message: "/sounds/message.mp3",
+  newChat: "/sounds/new-chat.mp3",
+};
+
+/**
+ * Partials of one struck bell: frequency relative to the root, how loud, and
+ * how fast it dies away. The inharmonic ratios are what stop it sounding like
+ * a plain beep.
+ */
+const PARTIALS = [
+  { ratio: 1, gain: 1, decay: 1 },
+  { ratio: 2.76, gain: 0.34, decay: 0.55 },
+  { ratio: 5.4, gain: 0.16, decay: 0.3 },
+];
+
+/** Root notes and their offsets: two quick rising notes, then a longer one. */
+const NOTES: Record<Chime, Array<{ hz: number; at: number; decay: number; gain: number }>> = {
+  // Short and bright: a message landing.
   message: [
-    { hz: 880, at: 0, ms: 90 },
-    { hz: 1175, at: 0.09, ms: 140 },
+    { hz: 1318.5, at: 0, decay: 0.28, gain: 0.5 },
+    { hz: 1760, at: 0.075, decay: 0.42, gain: 0.55 },
   ],
-  // A brighter rising three-note figure: a new chat deserves attention.
+  // One note more, and it rings longer: someone new is waiting.
   newChat: [
-    { hz: 784, at: 0, ms: 110 },
-    { hz: 1046, at: 0.11, ms: 110 },
-    { hz: 1319, at: 0.22, ms: 220 },
+    { hz: 1046.5, at: 0, decay: 0.26, gain: 0.5 },
+    { hz: 1318.5, at: 0.085, decay: 0.3, gain: 0.5 },
+    { hz: 1760, at: 0.17, decay: 0.75, gain: 0.6 },
   ],
 };
 
 let context: AudioContext | null = null;
+/** null until tried; false once a file is known to be missing. */
+const files = new Map<Chime, HTMLAudioElement | false>();
 
 function audioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -57,17 +80,66 @@ export function setMuted(muted: boolean): void {
 }
 
 /**
- * Browsers only allow audio once the person has interacted with the page, so
- * the context is resumed on the first click or key press after sign-in.
+ * Browsers keep audio silent until the person interacts with the page, so the
+ * first click or key press after sign-in is what enables the sounds.
  */
 export function unlockSound(): void {
   const ctx = audioContext();
   if (ctx?.state === "suspended") void ctx.resume();
 }
 
-/** Plays a chime, unless muted or the browser refuses to make sound. */
+/** One struck bell at `hz`, starting `at` seconds from now. */
+function strike(
+  ctx: AudioContext,
+  note: { hz: number; at: number; decay: number; gain: number },
+  now: number,
+): void {
+  const start = now + note.at;
+
+  for (const partial of PARTIALS) {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = note.hz * partial.ratio;
+
+    const peak = 0.3 * note.gain * partial.gain;
+    const end = start + note.decay * partial.decay;
+    // Near-instant attack, then an exponential tail: a struck bar, not a beep.
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(peak, start + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(end + 0.02);
+  }
+}
+
+/** Uses a file from `public/sounds` if there is one; returns false otherwise. */
+function playFile(chime: Chime): boolean {
+  const cached = files.get(chime);
+  if (cached === false) return false;
+
+  if (cached) {
+    cached.currentTime = 0;
+    void cached.play().catch(() => {});
+    return true;
+  }
+
+  const audio = new Audio(FILES[chime]);
+  audio.volume = 0.6;
+  // A missing file is the normal case, so it is remembered rather than retried.
+  audio.addEventListener("error", () => files.set(chime, false), { once: true });
+  files.set(chime, audio);
+  void audio.play().catch(() => {});
+  return true;
+}
+
+/** Plays a notification sound, unless muted or the browser refuses. */
 export function playChime(chime: Chime): void {
   if (isMuted()) return;
+  if (playFile(chime)) return;
+
   const ctx = audioContext();
   if (!ctx) return;
   if (ctx.state === "suspended") {
@@ -77,21 +149,5 @@ export function playChime(chime: Chime): void {
   }
 
   const now = ctx.currentTime;
-  for (const tone of TONES[chime]) {
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = tone.hz;
-
-    const start = now + tone.at;
-    const end = start + tone.ms / 1000;
-    // A short fade in and out, so the note does not click.
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, end);
-
-    oscillator.connect(gain).connect(ctx.destination);
-    oscillator.start(start);
-    oscillator.stop(end + 0.02);
-  }
+  for (const note of NOTES[chime]) strike(ctx, note, now);
 }
