@@ -6,6 +6,8 @@
 #                                "deploy" user and /opt/chat/.env
 #   deploy/deploy.sh deploy      ship the last commit, build and (re)start
 #   deploy/deploy.sh bootstrap   once: create the company and first admin
+#   deploy/deploy.sh reset-password [email]
+#                                set a new admin password (lists admins first)
 #   deploy/deploy.sh status      containers and health
 #   deploy/deploy.sh logs [svc]  follow logs (api, dashboard, caddy, ...)
 #   deploy/deploy.sh backup      dump the database to /opt/chat/backups
@@ -83,6 +85,16 @@ case "${1:-}" in
       migrate node_modules/.bin/tsx prisma/bootstrap.ts"
     ;;
 
+  reset-password)
+    email="${2:-}"
+    if [ -z "$email" ]; then
+      ssh "$SERVER" "$COMPOSE run --rm --no-deps -w /app/packages/db         migrate node_modules/.bin/tsx prisma/reset-admin-password.ts"
+      read -r -p "Email of the admin to reset: " email
+    fi
+    [ -n "$email" ] || { echo "No email given."; exit 1; }
+    ssh -t "$SERVER" "$COMPOSE run --rm --no-deps -w /app/packages/db       -e ADMIN_EMAIL=$(printf %q "$email")       migrate node_modules/.bin/tsx prisma/reset-admin-password.ts"
+    ;;
+
   status)
     ssh "$SERVER" "$COMPOSE ps; echo; cat $SRC_DIR/REVISION 2>/dev/null"
     ;;
@@ -99,7 +111,7 @@ case "${1:-}" in
     ;;
 
   *)
-    sed -n '2,20p' "$0"
+    sed -n '2,22p' "$0"
     exit 1
     ;;
 esac

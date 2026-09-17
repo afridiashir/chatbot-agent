@@ -100,6 +100,7 @@ the API. Edit the file with `ssh -t deploy@169.58.95.150 nano /opt/chat/.env`.
 | `deploy/deploy.sh status`        | Containers, health, deployed commit    |
 | `deploy/deploy.sh logs api`      | Follow one service's logs              |
 | `deploy/deploy.sh backup`        | Database dump to `/opt/chat/backups`   |
+| `deploy/deploy.sh reset-password` | New password for an admin (lists them first) |
 
 Use another server with `DEPLOY_HOST=1.2.3.4 deploy/deploy.sh deploy`.
 
