@@ -81,6 +81,13 @@ export type Conversation = Prisma.ConversationModel
  */
 export type Reaction = Prisma.ReactionModel
 /**
+ * Model PushSubscription
+ * One browser that agreed to be notified, as the push service addressed it.
+ * `visitorId` is set for the hosted chat page and `agentId` for the
+ * dashboard; exactly one of them is filled in.
+ */
+export type PushSubscription = Prisma.PushSubscriptionModel
+/**
  * Model Message
  * 
  */

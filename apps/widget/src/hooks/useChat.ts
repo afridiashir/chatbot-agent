@@ -51,6 +51,8 @@ export interface ChatController {
   sendMessage: (content: string, replyToId?: string) => Promise<void>;
   /** Adds, replaces or removes this visitor's reaction; null takes it back. */
   react: (messageId: string, emoji: string | null) => void;
+  /** This browser's visitor id, which a push subscription is filed under. */
+  visitorId: string;
   /** Uploads a photo, video, audio file or voice note, then sends it. */
   sendMedia: (media: VisitorMediaSend) => Promise<void>;
   /** Called on every keystroke; throttled internally. */
@@ -419,6 +421,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     sendMessage,
     sendMedia,
     react,
+    visitorId,
     notifyTyping,
     startOver,
   };

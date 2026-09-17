@@ -14,6 +14,7 @@ const WIDGET_ROUTES = [
   /^\/api\/conversations(\/|$)/,
   /^\/api\/media(\/|$)/,
   /^\/api\/avatars(\/|$)/,
+  /^\/api\/push(\/|$)/,
   /^\/api\/agents\/[^/]+\/public$/,
 ];
 

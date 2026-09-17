@@ -102,6 +102,8 @@ model Agent {
   conversations Conversation[]
 
   // Routing locks and then scans the routable agents of one branch.
+  pushSubscriptions PushSubscription[]
+
   @@index([branchId, isOnline, isActive])
 }
 
@@ -172,6 +174,8 @@ model Visitor {
 
   conversations Conversation[]
 
+  pushSubscriptions PushSubscription[]
+
   @@index([email])
 }
 
@@ -208,6 +212,27 @@ model Reaction {
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, senderType])
+}
+
+/// One browser that agreed to be notified, as the push service addressed it.
+/// `visitorId` is set for the hosted chat page and `agentId` for the
+/// dashboard; exactly one of them is filled in.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  visitorId  String?
+  agentId    String?
+  createdAt  DateTime @default(now())
+  /// Touched on every resubscribe, so dead browsers can be swept up later.
+  lastSeenAt DateTime @default(now())
+
+  visitor Visitor? @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  agent   Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([visitorId])
+  @@index([agentId])
 }
 
 model Message {

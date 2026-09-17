@@ -1,5 +1,7 @@
 import { rooms } from "@repo/types";
+import { prisma } from "@repo/db";
 import { markReceipt } from "../services/receipts.js";
+import { pushToVisitor } from "../services/push.js";
 import type {
   Agent,
   AgentStatusPayload,
@@ -49,9 +51,33 @@ export async function recipientConnected(message: Message): Promise<boolean> {
  * Broadcasts a newly stored message, then, if the other side is connected to
  * the chat, marks it delivered straight away.
  */
+/**
+ * The visitor has left the chat page, so the agent's answer goes out as a Web
+ * Push notification instead. Best effort: a failure here must never hold up
+ * the message that was already delivered to everyone connected.
+ */
+async function notifyAbsentVisitor(message: Message): Promise<void> {
+  try {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: message.conversationId },
+      select: { visitorId: true, agent: { select: { name: true } } },
+    });
+    if (!conversation) return;
+    await pushToVisitor(conversation.visitorId, conversation.agent.name, message);
+  } catch (error) {
+    console.error("[push] visitor notification", error);
+  }
+}
+
 export async function announceMessage(message: Message): Promise<void> {
   emitMessage(message);
-  if (!(await recipientConnected(message))) return;
+
+  if (!(await recipientConnected(message))) {
+    // Nobody is holding the chat open on the other side, so it goes out as a
+    // notification instead. Visitors only for now; agents are next.
+    if (message.senderType === "AGENT") void notifyAbsentVisitor(message);
+    return;
+  }
   const reader = message.senderType === "AGENT" ? "VISITOR" : "AGENT";
   const receipt = await markReceipt(message.conversationId, reader, "DELIVERED");
   if (receipt) emitReceipt(receipt);

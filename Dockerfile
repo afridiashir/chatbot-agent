@@ -83,3 +83,4 @@ FROM caddy:2-alpine AS caddy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=widget-build /app/apps/widget/dist/widget.js /srv/widget/widget.js
 COPY deploy/chat.html /srv/widget/chat.html
+COPY deploy/sw.js /srv/widget/sw.js

@@ -13,6 +13,7 @@ import { useSwipeReply } from "../hooks/useSwipeReply.js";
 import { useLongPress } from "../hooks/useLongPress.js";
 import { ReactionBar } from "./ReactionBar.js";
 import { quoteText, toQuote } from "../lib/quote.js";
+import { enablePush, pushAsked, pushSupported, rememberAsked } from "../lib/push.js";
 import { formatClock, formatDayLabel, isNewDay } from "../lib/format.js";
 import { isJumboEmoji } from "../lib/emoji.js";
 import { checkVisitorFile } from "../lib/media.js";
@@ -46,6 +47,10 @@ interface ChatPanelProps {
   agentTyping: boolean;
   error: string | null;
   onSend: (content: string, replyToId?: string) => Promise<void>;
+  /** True on the hosted chat page, where notifications are possible. */
+  canPush: boolean;
+  /** This browser's visitor id, which a push subscription is filed under. */
+  visitorId: string;
   /** Adds, replaces or removes this visitor's reaction; null takes it back. */
   onReact: (messageId: string, emoji: string | null) => void;
   /** Uploads and sends a file or voice note; rejects with a readable error. */
@@ -368,6 +373,8 @@ export function ChatPanel({
   isClosed,
   agentTyping,
   error: chatError,
+  canPush,
+  visitorId,
   onSend,
   onReact,
   onSendMedia,
@@ -391,6 +398,8 @@ export function ChatPanel({
   const [reactingId, setReactingId] = useState<string | null>(null);
   /** Set while the emoji panel is picking a reaction rather than typing. */
   const [reactionTarget, setReactionTarget] = useState<string | null>(null);
+  /** The offer to notify them of replies, once they have said something. */
+  const [offerPush, setOfferPush] = useState(false);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
   const closeViewer = useCallback(() => setViewing(null), []);
   const endRef = useRef<HTMLDivElement>(null);
@@ -425,6 +434,17 @@ export function ChatPanel({
   useEffect(() => {
     if (replyTo) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [replyTo]);
+
+  // Asked only after they have written something, and only on our own hosted
+  // page, where a service worker may be registered. A stranger who has not
+  // spoken yet is not asked for permission to notify them.
+  const said = messages.some((message) => message.senderType === "VISITOR");
+  useEffect(() => {
+    if (!canPush || !said || pushAsked()) return;
+    if (Notification.permission !== "default") return;
+    const timer = setTimeout(() => setOfferPush(true), 1500);
+    return () => clearTimeout(timer);
+  }, [canPush, said]);
 
   const busy = sending || progress !== null;
   const hasText = draft.trim().length > 0;
@@ -704,6 +724,34 @@ export function ChatPanel({
       ) : (
         // Clears the iPhone home indicator when full screen.
         <div className="bg-wa-panel pb-[env(safe-area-inset-bottom)]">
+          {offerPush && (
+            <div className="flex items-center gap-2 border-b border-wa-divider bg-white px-3 py-2">
+              <p className="min-w-0 flex-1 text-xs text-wa-text">
+                Get a notification when we reply?
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  rememberAsked();
+                  setOfferPush(false);
+                  void enablePush(apiUrl, visitorId);
+                }}
+                className="rounded-full bg-wa-green px-3 py-1 text-xs font-medium text-white transition hover:brightness-95"
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  rememberAsked();
+                  setOfferPush(false);
+                }}
+                className="rounded-full px-2 py-1 text-xs text-wa-meta transition hover:bg-black/5"
+              >
+                No thanks
+              </button>
+            </div>
+          )}
           {replyTo && (
             <div className="flex items-center gap-2 border-b border-wa-divider bg-white px-3 py-2">
               <div className="wa-quote min-w-0 flex-1 px-2 py-1">

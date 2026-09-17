@@ -108,6 +108,26 @@ ssh deploy@169.58.95.150 "docker compose --project-directory /opt/chat/src   --e
 Shareable chat links (`https://api.yourdomain.com/chat?agent=…`) are served from
 the API's own domain and need no entry at all.
 
+## 7. Notifications for visitors (optional)
+
+A visitor who closes the hosted chat page can still be told when an agent
+answers, through Web Push. Generate the key pair once:
+
+```bash
+deploy/deploy.sh push-keys
+```
+
+Put the two printed lines into `/opt/chat/.env`, add
+`VAPID_SUBJECT=mailto:you@yourdomain.com`, then `deploy/deploy.sh deploy`.
+Without keys the feature stays off and nothing else changes.
+
+The chat page then offers "Get a notification when we reply?" once the visitor
+has sent something. This works on `https://API_DOMAIN/chat` links, not on the
+widget embedded in a client's website: a browser only accepts a service worker
+served by the site's own domain, and that domain is the client's, not yours.
+On iPhone the visitor must add the page to their Home Screen first; Android and
+desktop Chrome work as they are.
+
 ## Day to day
 
 | Command                          | Does                                   |
@@ -117,6 +137,7 @@ the API's own domain and need no entry at all.
 | `deploy/deploy.sh logs api`      | Follow one service's logs              |
 | `deploy/deploy.sh backup`        | Database dump to `/opt/chat/backups`   |
 | `deploy/deploy.sh reset-password` | New password for an admin (lists them first) |
+| `deploy/deploy.sh push-keys`     | Generate the Web Push (VAPID) key pair |
 
 Use another server with `DEPLOY_HOST=1.2.3.4 deploy/deploy.sh deploy`.
 

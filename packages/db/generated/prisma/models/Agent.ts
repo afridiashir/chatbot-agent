@@ -224,6 +224,7 @@ export type AgentWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   branch?: Prisma.XOR<Prisma.BranchScalarRelationFilter, Prisma.BranchWhereInput>
   conversations?: Prisma.ConversationListRelationFilter
+  pushSubscriptions?: Prisma.PushSubscriptionListRelationFilter
 }
 
 export type AgentOrderByWithRelationInput = {
@@ -239,6 +240,7 @@ export type AgentOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   branch?: Prisma.BranchOrderByWithRelationInput
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
+  pushSubscriptions?: Prisma.PushSubscriptionOrderByRelationAggregateInput
 }
 
 export type AgentWhereUniqueInput = Prisma.AtLeast<{
@@ -257,6 +259,7 @@ export type AgentWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   branch?: Prisma.XOR<Prisma.BranchScalarRelationFilter, Prisma.BranchWhereInput>
   conversations?: Prisma.ConversationListRelationFilter
+  pushSubscriptions?: Prisma.PushSubscriptionListRelationFilter
 }, "id" | "email">
 
 export type AgentOrderByWithAggregationInput = {
@@ -303,6 +306,7 @@ export type AgentCreateInput = {
   updatedAt?: Date | string
   branch: Prisma.BranchCreateNestedOneWithoutAgentsInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutAgentInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateInput = {
@@ -317,6 +321,7 @@ export type AgentUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutAgentInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUpdateInput = {
@@ -331,6 +336,7 @@ export type AgentUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branch?: Prisma.BranchUpdateOneRequiredWithoutAgentsNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutAgentNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateInput = {
@@ -345,6 +351,7 @@ export type AgentUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutAgentNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateManyInput = {
@@ -439,6 +446,11 @@ export type AgentScalarRelationFilter = {
   isNot?: Prisma.AgentWhereInput
 }
 
+export type AgentNullableScalarRelationFilter = {
+  is?: Prisma.AgentWhereInput | null
+  isNot?: Prisma.AgentWhereInput | null
+}
+
 export type AgentCreateNestedManyWithoutBranchInput = {
   create?: Prisma.XOR<Prisma.AgentCreateWithoutBranchInput, Prisma.AgentUncheckedCreateWithoutBranchInput> | Prisma.AgentCreateWithoutBranchInput[] | Prisma.AgentUncheckedCreateWithoutBranchInput[]
   connectOrCreate?: Prisma.AgentCreateOrConnectWithoutBranchInput | Prisma.AgentCreateOrConnectWithoutBranchInput[]
@@ -495,6 +507,22 @@ export type AgentUpdateOneRequiredWithoutConversationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutConversationsInput, Prisma.AgentUpdateWithoutConversationsInput>, Prisma.AgentUncheckedUpdateWithoutConversationsInput>
 }
 
+export type AgentCreateNestedOneWithoutPushSubscriptionsInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedCreateWithoutPushSubscriptionsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutPushSubscriptionsInput
+  connect?: Prisma.AgentWhereUniqueInput
+}
+
+export type AgentUpdateOneWithoutPushSubscriptionsNestedInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedCreateWithoutPushSubscriptionsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutPushSubscriptionsInput
+  upsert?: Prisma.AgentUpsertWithoutPushSubscriptionsInput
+  disconnect?: Prisma.AgentWhereInput | boolean
+  delete?: Prisma.AgentWhereInput | boolean
+  connect?: Prisma.AgentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutPushSubscriptionsInput, Prisma.AgentUpdateWithoutPushSubscriptionsInput>, Prisma.AgentUncheckedUpdateWithoutPushSubscriptionsInput>
+}
+
 export type AgentCreateWithoutBranchInput = {
   id?: string
   name: string
@@ -506,6 +534,7 @@ export type AgentCreateWithoutBranchInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutAgentInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutBranchInput = {
@@ -519,6 +548,7 @@ export type AgentUncheckedCreateWithoutBranchInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutAgentInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutBranchInput = {
@@ -574,6 +604,7 @@ export type AgentCreateWithoutConversationsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   branch: Prisma.BranchCreateNestedOneWithoutAgentsInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutConversationsInput = {
@@ -587,6 +618,7 @@ export type AgentUncheckedCreateWithoutConversationsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutConversationsInput = {
@@ -616,6 +648,7 @@ export type AgentUpdateWithoutConversationsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branch?: Prisma.BranchUpdateOneRequiredWithoutAgentsNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutConversationsInput = {
@@ -629,6 +662,79 @@ export type AgentUncheckedUpdateWithoutConversationsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentCreateWithoutPushSubscriptionsInput = {
+  id?: string
+  name: string
+  email: string
+  passwordHash: string
+  avatarKey?: string | null
+  isOnline?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  branch: Prisma.BranchCreateNestedOneWithoutAgentsInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutAgentInput
+}
+
+export type AgentUncheckedCreateWithoutPushSubscriptionsInput = {
+  id?: string
+  branchId: string
+  name: string
+  email: string
+  passwordHash: string
+  avatarKey?: string | null
+  isOnline?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutAgentInput
+}
+
+export type AgentCreateOrConnectWithoutPushSubscriptionsInput = {
+  where: Prisma.AgentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgentCreateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedCreateWithoutPushSubscriptionsInput>
+}
+
+export type AgentUpsertWithoutPushSubscriptionsInput = {
+  update: Prisma.XOR<Prisma.AgentUpdateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedUpdateWithoutPushSubscriptionsInput>
+  create: Prisma.XOR<Prisma.AgentCreateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedCreateWithoutPushSubscriptionsInput>
+  where?: Prisma.AgentWhereInput
+}
+
+export type AgentUpdateToOneWithWhereWithoutPushSubscriptionsInput = {
+  where?: Prisma.AgentWhereInput
+  data: Prisma.XOR<Prisma.AgentUpdateWithoutPushSubscriptionsInput, Prisma.AgentUncheckedUpdateWithoutPushSubscriptionsInput>
+}
+
+export type AgentUpdateWithoutPushSubscriptionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  branch?: Prisma.BranchUpdateOneRequiredWithoutAgentsNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentUncheckedUpdateWithoutPushSubscriptionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateManyBranchInput = {
@@ -654,6 +760,7 @@ export type AgentUpdateWithoutBranchInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutAgentNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutBranchInput = {
@@ -667,6 +774,7 @@ export type AgentUncheckedUpdateWithoutBranchInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutAgentNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateManyWithoutBranchInput = {
@@ -688,10 +796,12 @@ export type AgentUncheckedUpdateManyWithoutBranchInput = {
 
 export type AgentCountOutputType = {
   conversations: number
+  pushSubscriptions: number
 }
 
 export type AgentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversations?: boolean | AgentCountOutputTypeCountConversationsArgs
+  pushSubscriptions?: boolean | AgentCountOutputTypeCountPushSubscriptionsArgs
 }
 
 /**
@@ -711,6 +821,13 @@ export type AgentCountOutputTypeCountConversationsArgs<ExtArgs extends runtime.T
   where?: Prisma.ConversationWhereInput
 }
 
+/**
+ * AgentCountOutputType without action
+ */
+export type AgentCountOutputTypeCountPushSubscriptionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PushSubscriptionWhereInput
+}
+
 
 export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -725,6 +842,7 @@ export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   updatedAt?: boolean
   branch?: boolean | Prisma.BranchDefaultArgs<ExtArgs>
   conversations?: boolean | Prisma.Agent$conversationsArgs<ExtArgs>
+  pushSubscriptions?: boolean | Prisma.Agent$pushSubscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["agent"]>
 
@@ -773,6 +891,7 @@ export type AgentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
 export type AgentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   branch?: boolean | Prisma.BranchDefaultArgs<ExtArgs>
   conversations?: boolean | Prisma.Agent$conversationsArgs<ExtArgs>
+  pushSubscriptions?: boolean | Prisma.Agent$pushSubscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AgentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -787,6 +906,7 @@ export type $AgentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   objects: {
     branch: Prisma.$BranchPayload<ExtArgs>
     conversations: Prisma.$ConversationPayload<ExtArgs>[]
+    pushSubscriptions: Prisma.$PushSubscriptionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1201,6 +1321,7 @@ export interface Prisma__AgentClient<T, Null = never, ExtArgs extends runtime.Ty
   readonly [Symbol.toStringTag]: "PrismaPromise"
   branch<T extends Prisma.BranchDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BranchDefaultArgs<ExtArgs>>): Prisma.Prisma__BranchClient<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   conversations<T extends Prisma.Agent$conversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$conversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  pushSubscriptions<T extends Prisma.Agent$pushSubscriptionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$pushSubscriptionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PushSubscriptionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1662,6 +1783,30 @@ export type Agent$conversationsArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.ConversationScalarFieldEnum | Prisma.ConversationScalarFieldEnum[]
+}
+
+/**
+ * Agent.pushSubscriptions
+ */
+export type Agent$pushSubscriptionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PushSubscription
+   */
+  select?: Prisma.PushSubscriptionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PushSubscription
+   */
+  omit?: Prisma.PushSubscriptionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PushSubscriptionInclude<ExtArgs> | null
+  where?: Prisma.PushSubscriptionWhereInput
+  orderBy?: Prisma.PushSubscriptionOrderByWithRelationInput | Prisma.PushSubscriptionOrderByWithRelationInput[]
+  cursor?: Prisma.PushSubscriptionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PushSubscriptionScalarFieldEnum | Prisma.PushSubscriptionScalarFieldEnum[]
 }
 
 /**

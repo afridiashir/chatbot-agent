@@ -289,6 +289,24 @@ export const createMessageBodySchema = z
   })
   .refine(withContentOrAttachment, EMPTY_MESSAGE);
 
+/* ---------------------------------- push ----------------------------------- */
+
+/** What `PushManager.subscribe()` hands back, trimmed to what is stored. */
+export const pushSubscriptionBodySchema = z.object({
+  subscription: z.object({
+    endpoint: z.url("endpoint must be a URL").max(2048),
+    keys: z.object({
+      p256dh: z.string().min(1).max(255),
+      auth: z.string().min(1).max(255),
+    }),
+  }),
+  visitorId: visitorIdSchema,
+});
+
+export const unsubscribeBodySchema = z.object({
+  endpoint: z.url("endpoint must be a URL").max(2048),
+});
+
 /* --------------------------------- sockets --------------------------------- */
 
 export const socketAuthSchema = z.discriminatedUnion("role", [
@@ -336,6 +354,7 @@ export type CreateMessageBody = z.infer<typeof createMessageBodySchema>;
 export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
 export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
+export type PushSubscriptionBody = z.infer<typeof pushSubscriptionBodySchema>;
 export type CreateBranchBody = z.infer<typeof createBranchBodySchema>;
 export type UpdateBranchBody = z.infer<typeof updateBranchBodySchema>;
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;

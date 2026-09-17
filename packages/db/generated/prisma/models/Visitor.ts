@@ -191,6 +191,7 @@ export type VisitorWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
+  pushSubscriptions?: Prisma.PushSubscriptionListRelationFilter
 }
 
 export type VisitorOrderByWithRelationInput = {
@@ -201,6 +202,7 @@ export type VisitorOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
+  pushSubscriptions?: Prisma.PushSubscriptionOrderByRelationAggregateInput
 }
 
 export type VisitorWhereUniqueInput = Prisma.AtLeast<{
@@ -214,6 +216,7 @@ export type VisitorWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
+  pushSubscriptions?: Prisma.PushSubscriptionListRelationFilter
 }, "id">
 
 export type VisitorOrderByWithAggregationInput = {
@@ -248,6 +251,7 @@ export type VisitorCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutVisitorInput
 }
 
 export type VisitorUncheckedCreateInput = {
@@ -258,6 +262,7 @@ export type VisitorUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutVisitorInput
 }
 
 export type VisitorUpdateInput = {
@@ -268,6 +273,7 @@ export type VisitorUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutVisitorNestedInput
 }
 
 export type VisitorUncheckedUpdateInput = {
@@ -278,6 +284,7 @@ export type VisitorUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutVisitorNestedInput
 }
 
 export type VisitorCreateManyInput = {
@@ -339,6 +346,11 @@ export type VisitorScalarRelationFilter = {
   isNot?: Prisma.VisitorWhereInput
 }
 
+export type VisitorNullableScalarRelationFilter = {
+  is?: Prisma.VisitorWhereInput | null
+  isNot?: Prisma.VisitorWhereInput | null
+}
+
 export type VisitorCreateNestedOneWithoutConversationsInput = {
   create?: Prisma.XOR<Prisma.VisitorCreateWithoutConversationsInput, Prisma.VisitorUncheckedCreateWithoutConversationsInput>
   connectOrCreate?: Prisma.VisitorCreateOrConnectWithoutConversationsInput
@@ -353,6 +365,22 @@ export type VisitorUpdateOneRequiredWithoutConversationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.VisitorUpdateToOneWithWhereWithoutConversationsInput, Prisma.VisitorUpdateWithoutConversationsInput>, Prisma.VisitorUncheckedUpdateWithoutConversationsInput>
 }
 
+export type VisitorCreateNestedOneWithoutPushSubscriptionsInput = {
+  create?: Prisma.XOR<Prisma.VisitorCreateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedCreateWithoutPushSubscriptionsInput>
+  connectOrCreate?: Prisma.VisitorCreateOrConnectWithoutPushSubscriptionsInput
+  connect?: Prisma.VisitorWhereUniqueInput
+}
+
+export type VisitorUpdateOneWithoutPushSubscriptionsNestedInput = {
+  create?: Prisma.XOR<Prisma.VisitorCreateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedCreateWithoutPushSubscriptionsInput>
+  connectOrCreate?: Prisma.VisitorCreateOrConnectWithoutPushSubscriptionsInput
+  upsert?: Prisma.VisitorUpsertWithoutPushSubscriptionsInput
+  disconnect?: Prisma.VisitorWhereInput | boolean
+  delete?: Prisma.VisitorWhereInput | boolean
+  connect?: Prisma.VisitorWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.VisitorUpdateToOneWithWhereWithoutPushSubscriptionsInput, Prisma.VisitorUpdateWithoutPushSubscriptionsInput>, Prisma.VisitorUncheckedUpdateWithoutPushSubscriptionsInput>
+}
+
 export type VisitorCreateWithoutConversationsInput = {
   id: string
   name: string
@@ -360,6 +388,7 @@ export type VisitorCreateWithoutConversationsInput = {
   phone: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutVisitorInput
 }
 
 export type VisitorUncheckedCreateWithoutConversationsInput = {
@@ -369,6 +398,7 @@ export type VisitorUncheckedCreateWithoutConversationsInput = {
   phone: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutVisitorInput
 }
 
 export type VisitorCreateOrConnectWithoutConversationsInput = {
@@ -394,6 +424,7 @@ export type VisitorUpdateWithoutConversationsInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutVisitorNestedInput
 }
 
 export type VisitorUncheckedUpdateWithoutConversationsInput = {
@@ -403,6 +434,63 @@ export type VisitorUncheckedUpdateWithoutConversationsInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutVisitorNestedInput
+}
+
+export type VisitorCreateWithoutPushSubscriptionsInput = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
+}
+
+export type VisitorUncheckedCreateWithoutPushSubscriptionsInput = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
+}
+
+export type VisitorCreateOrConnectWithoutPushSubscriptionsInput = {
+  where: Prisma.VisitorWhereUniqueInput
+  create: Prisma.XOR<Prisma.VisitorCreateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedCreateWithoutPushSubscriptionsInput>
+}
+
+export type VisitorUpsertWithoutPushSubscriptionsInput = {
+  update: Prisma.XOR<Prisma.VisitorUpdateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedUpdateWithoutPushSubscriptionsInput>
+  create: Prisma.XOR<Prisma.VisitorCreateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedCreateWithoutPushSubscriptionsInput>
+  where?: Prisma.VisitorWhereInput
+}
+
+export type VisitorUpdateToOneWithWhereWithoutPushSubscriptionsInput = {
+  where?: Prisma.VisitorWhereInput
+  data: Prisma.XOR<Prisma.VisitorUpdateWithoutPushSubscriptionsInput, Prisma.VisitorUncheckedUpdateWithoutPushSubscriptionsInput>
+}
+
+export type VisitorUpdateWithoutPushSubscriptionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
+}
+
+export type VisitorUncheckedUpdateWithoutPushSubscriptionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
 }
 
 
@@ -412,10 +500,12 @@ export type VisitorUncheckedUpdateWithoutConversationsInput = {
 
 export type VisitorCountOutputType = {
   conversations: number
+  pushSubscriptions: number
 }
 
 export type VisitorCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversations?: boolean | VisitorCountOutputTypeCountConversationsArgs
+  pushSubscriptions?: boolean | VisitorCountOutputTypeCountPushSubscriptionsArgs
 }
 
 /**
@@ -435,6 +525,13 @@ export type VisitorCountOutputTypeCountConversationsArgs<ExtArgs extends runtime
   where?: Prisma.ConversationWhereInput
 }
 
+/**
+ * VisitorCountOutputType without action
+ */
+export type VisitorCountOutputTypeCountPushSubscriptionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PushSubscriptionWhereInput
+}
+
 
 export type VisitorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -444,6 +541,7 @@ export type VisitorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   updatedAt?: boolean
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
+  pushSubscriptions?: boolean | Prisma.Visitor$pushSubscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.VisitorCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["visitor"]>
 
@@ -477,6 +575,7 @@ export type VisitorSelectScalar = {
 export type VisitorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "phone" | "createdAt" | "updatedAt", ExtArgs["result"]["visitor"]>
 export type VisitorInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
+  pushSubscriptions?: boolean | Prisma.Visitor$pushSubscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.VisitorCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type VisitorIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -486,6 +585,7 @@ export type $VisitorPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   name: "Visitor"
   objects: {
     conversations: Prisma.$ConversationPayload<ExtArgs>[]
+    pushSubscriptions: Prisma.$PushSubscriptionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -889,6 +989,7 @@ readonly fields: VisitorFieldRefs;
 export interface Prisma__VisitorClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   conversations<T extends Prisma.Visitor$conversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Visitor$conversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  pushSubscriptions<T extends Prisma.Visitor$pushSubscriptionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Visitor$pushSubscriptionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PushSubscriptionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1338,6 +1439,30 @@ export type Visitor$conversationsArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.ConversationScalarFieldEnum | Prisma.ConversationScalarFieldEnum[]
+}
+
+/**
+ * Visitor.pushSubscriptions
+ */
+export type Visitor$pushSubscriptionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PushSubscription
+   */
+  select?: Prisma.PushSubscriptionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PushSubscription
+   */
+  omit?: Prisma.PushSubscriptionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PushSubscriptionInclude<ExtArgs> | null
+  where?: Prisma.PushSubscriptionWhereInput
+  orderBy?: Prisma.PushSubscriptionOrderByWithRelationInput | Prisma.PushSubscriptionOrderByWithRelationInput[]
+  cursor?: Prisma.PushSubscriptionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PushSubscriptionScalarFieldEnum | Prisma.PushSubscriptionScalarFieldEnum[]
 }
 
 /**

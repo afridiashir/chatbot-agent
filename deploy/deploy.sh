@@ -8,6 +8,7 @@
 #   deploy/deploy.sh bootstrap   once: create the company and first admin
 #   deploy/deploy.sh reset-password [email]
 #                                set a new admin password (lists admins first)
+#   deploy/deploy.sh push-keys   generate the Web Push (VAPID) key pair
 #   deploy/deploy.sh status      containers and health
 #   deploy/deploy.sh logs [svc]  follow logs (api, dashboard, caddy, ...)
 #   deploy/deploy.sh backup      dump the database to /opt/chat/backups
@@ -95,6 +96,15 @@ case "${1:-}" in
     ssh -t "$SERVER" "$COMPOSE run --rm --no-deps -w /app/packages/db       -e ADMIN_EMAIL=$(printf %q "$email")       migrate node_modules/.bin/tsx prisma/reset-admin-password.ts"
     ;;
 
+  push-keys)
+    echo "Generating a VAPID key pair..."
+    ssh "$SERVER" "$COMPOSE run --rm --no-deps -T -w /app/apps/server api       node -e \"const k=require('web-push').generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey)\""
+    echo
+    echo "Put those two lines in /opt/chat/.env, along with:"
+    echo "  VAPID_SUBJECT=mailto:you@yourdomain.com"
+    echo "Then run: deploy/deploy.sh deploy"
+    ;;
+
   status)
     ssh "$SERVER" "$COMPOSE ps; echo; cat $SRC_DIR/REVISION 2>/dev/null"
     ;;
@@ -111,7 +121,7 @@ case "${1:-}" in
     ;;
 
   *)
-    sed -n '2,22p' "$0"
+    sed -n '2,23p' "$0"
     exit 1
     ;;
 esac

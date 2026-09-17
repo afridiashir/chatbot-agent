@@ -17,6 +17,15 @@
 		file_server
 	}
 
+	# The service worker behind push notifications. It must come from the root
+	# for its scope to cover /chat, and must not be cached for long or a fix
+	# would take a day to reach anyone.
+	handle /sw.js {
+		root * /srv/widget
+		header Cache-Control "public, max-age=60"
+		file_server
+	}
+
 	# Shareable chat links: /chat?agent=ID or /chat?branch=ID.
 	handle /chat {
 		root * /srv/widget

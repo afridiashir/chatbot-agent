@@ -24,6 +24,15 @@ const envSchema = z.object({
   MINIO_ACCESS_KEY: z.string().min(3, "MINIO_ACCESS_KEY is required"),
   MINIO_SECRET_KEY: z.string().min(8, "MINIO_SECRET_KEY must be at least 8 characters"),
   MINIO_BUCKET: z.string().min(3).default("chat-media"),
+  /**
+   * Web Push. Without a key pair push is simply off; `deploy.sh push-keys`
+   * generates one. The subject is the contact a push service can complain to.
+   */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:admin@example.com"),
+  /** Where a notification's link opens: the hosted chat page. */
+  PUBLIC_CHAT_URL: z.string().default("http://localhost:3002/chat"),
   MINIO_REGION: z.string().default("us-east-1"),
 });
 

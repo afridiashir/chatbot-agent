@@ -6,6 +6,7 @@ import { Launcher } from "./components/Launcher.js";
 import { PreChatForm } from "./components/PreChatForm.js";
 import { useChat } from "./hooks/useChat.js";
 import { useVisualViewport } from "./hooks/useVisualViewport.js";
+import { pushSupported } from "./lib/push.js";
 
 export function Widget({ config }: { config: WidgetConfig }) {
   // The hosted chat page is the chat: always open, nothing to close it to.
@@ -151,6 +152,8 @@ export function Widget({ config }: { config: WidgetConfig }) {
           isClosed={chat.isClosed}
           agentTyping={chat.agentTyping}
           error={chat.error}
+          canPush={page && pushSupported()}
+          visitorId={chat.visitorId}
           onSend={chat.sendMessage}
           onReact={chat.react}
           onSendMedia={chat.sendMedia}

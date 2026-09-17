@@ -60,6 +60,7 @@ export const ModelName = {
   Visitor: 'Visitor',
   Conversation: 'Conversation',
   Reaction: 'Reaction',
+  PushSubscription: 'PushSubscription',
   Message: 'Message',
   Attachment: 'Attachment'
 } as const
@@ -193,6 +194,20 @@ export const ReactionScalarFieldEnum = {
 } as const
 
 export type ReactionScalarFieldEnum = (typeof ReactionScalarFieldEnum)[keyof typeof ReactionScalarFieldEnum]
+
+
+export const PushSubscriptionScalarFieldEnum = {
+  id: 'id',
+  endpoint: 'endpoint',
+  p256dh: 'p256dh',
+  auth: 'auth',
+  visitorId: 'visitorId',
+  agentId: 'agentId',
+  createdAt: 'createdAt',
+  lastSeenAt: 'lastSeenAt'
+} as const
+
+export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
 
 
 export const MessageScalarFieldEnum = {
