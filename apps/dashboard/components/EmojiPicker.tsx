@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EMOJI_CATEGORIES, searchEmoji, type EmojiCategoryId, type EmojiEntry } from "@/lib/emoji";
 import { getRecentEmoji, storeRecentEmoji } from "@/lib/recent-emoji";
 
@@ -66,12 +66,35 @@ export function EmojiPicker({
   onPick: (emoji: string) => void;
   onClose: () => void;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   // Read once per opening: reshuffling "Recent" under the pointer mid-pick
   // would move the emoji the visitor is about to tap again.
   const [recent] = useState(getRecentEmoji);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<TabId>(recent.length > 0 ? "recent" : "smileys");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Escape closes it wherever the focus happens to be: in the message box, in
+  // the panel's own search, or nowhere in particular. So does a click outside
+  // it, as a floating panel should — except on the button that opened it,
+  // which does its own toggling.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (rootRef.current?.contains(target ?? null)) return;
+      if (target?.closest("[data-emoji-toggle]")) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [onClose]);
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
 
   const sections: { id: TabId; label: string; emoji: EmojiEntry[] }[] = [
@@ -125,7 +148,7 @@ export function EmojiPicker({
           onClick={() => pick(entry.char)}
           aria-label={entry.keywords || entry.char}
           title={entry.keywords.split(" ").slice(0, 3).join(" ")}
-          className="emoji flex aspect-square items-center justify-center rounded-md text-[26px] leading-none transition hover:bg-accent active:scale-90"
+          className="emoji flex aspect-square items-center justify-center rounded-md text-[22px] leading-none transition hover:bg-accent active:scale-90"
         >
           {entry.char}
         </button>
@@ -135,7 +158,8 @@ export function EmojiPicker({
 
   return (
     <div
-      className="flex h-64 flex-col border-t bg-card"
+      ref={rootRef}
+      className="flex h-[19rem] w-[21rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-card shadow-lg"
       role="dialog"
       aria-label="Emoji"
       onKeyDown={(event) => {
@@ -181,8 +205,8 @@ export function EmojiPicker({
         })}
       </div>
 
-      <div className="px-2 pt-2">
-        <label className="flex items-center gap-2 rounded-lg bg-chat-panel px-3">
+      <div className="flex items-center gap-1 px-2 pt-2">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-chat-panel px-3">
           <svg
             viewBox="0 0 24 24"
             className="h-4 w-4 shrink-0 text-chat-meta"
@@ -203,6 +227,26 @@ export function EmojiPicker({
             className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-foreground placeholder:text-chat-meta focus:outline-none sm:text-sm"
           />
         </label>
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onClose}
+          aria-label="Close emoji"
+          title="Close"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-accent hover:text-foreground"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
       </div>
 
       <div

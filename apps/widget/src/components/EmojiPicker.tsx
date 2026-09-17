@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   EMOJI_CATEGORIES,
   searchEmoji,
@@ -52,9 +52,7 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
   objects: (
     <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z" />
   ),
-  symbols: (
-    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
-  ),
+  symbols: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
   flags: <path d="M5 21V4h11l-2 4 2 4H5" />,
 };
 
@@ -76,11 +74,27 @@ export function EmojiPicker({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<TabId>(recent.length > 0 ? "recent" : "smileys");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Escape closes it wherever the focus happens to be: in the message box, in
+  // the panel's own search, or nowhere in particular.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
 
   const sections: { id: TabId; label: string; emoji: EmojiEntry[] }[] = [
     ...(recent.length > 0
-      ? [{ id: "recent" as const, label: "Recent", emoji: recent.map((char) => ({ char, keywords: "" })) }]
+      ? [
+          {
+            id: "recent" as const,
+            label: "Recent",
+            emoji: recent.map((char) => ({ char, keywords: "" })),
+          },
+        ]
       : []),
     ...EMOJI_CATEGORIES,
   ];
@@ -88,7 +102,9 @@ export function EmojiPicker({
 
   function pick(emoji: string) {
     onPick(emoji);
-    storeRecentEmoji([emoji, ...getRecentEmoji().filter((e) => e !== emoji)].slice(0, RECENT_LIMIT));
+    storeRecentEmoji(
+      [emoji, ...getRecentEmoji().filter((e) => e !== emoji)].slice(0, RECENT_LIMIT),
+    );
   }
 
   function jumpTo(id: TabId) {
@@ -177,8 +193,8 @@ export function EmojiPicker({
         })}
       </div>
 
-      <div className="px-2 pt-2">
-        <label className="flex items-center gap-2 rounded-lg bg-wa-panel px-3">
+      <div className="flex items-center gap-1 px-2 pt-2">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-wa-panel px-3">
           <svg
             viewBox="0 0 24 24"
             className="h-4 w-4 shrink-0 text-wa-meta"
@@ -199,6 +215,26 @@ export function EmojiPicker({
             className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-wa-text placeholder:text-wa-meta focus:outline-none sm:text-sm"
           />
         </label>
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onClose}
+          aria-label="Close emoji"
+          title="Close"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-wa-icon transition hover:bg-black/5"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
       </div>
 
       <div

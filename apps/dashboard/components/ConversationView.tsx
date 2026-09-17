@@ -609,7 +609,7 @@ function Composer({
   const error = mediaError ?? recorder.error;
 
   return (
-    <div className="border-t bg-chat-header">
+    <div className="relative border-t bg-chat-header">
       {replyTo && (
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <div className="chat-quote min-w-0 flex-1 px-2 py-1">
@@ -734,6 +734,7 @@ function Composer({
           />
           <button
             type="button"
+            data-emoji-toggle
             onClick={() => {
               setEmojiOpen((open) => !open);
               if (emojiOpen) boxRef.current?.focus();
@@ -813,14 +814,17 @@ function Composer({
         </form>
       )}
 
+      {/* Floats above the composer, anchored to the button, like WhatsApp Web. */}
       {emojiOpen && (
-        <EmojiPicker
-          onPick={insertEmoji}
-          onClose={() => {
-            setEmojiOpen(false);
-            boxRef.current?.focus();
-          }}
-        />
+        <div className="absolute bottom-full left-2 z-20 mb-2">
+          <EmojiPicker
+            onPick={insertEmoji}
+            onClose={() => {
+              setEmojiOpen(false);
+              boxRef.current?.focus();
+            }}
+          />
+        </div>
       )}
     </div>
   );
