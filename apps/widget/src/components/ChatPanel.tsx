@@ -160,7 +160,7 @@ function MessageBubble({
   return (
     <div
       ref={(element) => registerRef(message.id, element)}
-      className={`group relative flex items-center gap-1 ${
+      className={`wa-hold group relative flex items-center gap-1 ${
         outgoing ? "justify-end" : "justify-start"
       } ${continued ? "mt-0.5" : "mt-2"} ${flash ? "wa-flash" : ""}`}
       style={{ touchAction: "pan-y" }}
@@ -280,7 +280,7 @@ function MessageBubble({
             onClick={() => (mine ? onReact(message.id, null) : onOpenReactions(message.id))}
             aria-label={mine ? "Remove your reaction" : "React to this message"}
             title={mine ? "Tap to remove your reaction" : "React"}
-            className="-mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[13px] leading-none shadow-[0_1px_2px_rgb(11_20_26/0.2)]"
+            className="relative z-10 -mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[13px] leading-none opacity-100 shadow-[0_1px_2px_rgb(11_20_26/0.2)]"
           >
             {message.reactions.map((reaction) => (
               <span key={reaction.senderType} className="emoji">
@@ -450,7 +450,17 @@ export function ChatPanel({
   // A tap anywhere else closes the reaction bar, as a popup should.
   useEffect(() => {
     if (!reactingId) return;
-    const close = () => setReactingId(null);
+    const close = (event: Event) => {
+      // Inside a shadow root `event.target` is retargeted to the host, so the
+      // bar is found along the composed path instead. A press on the bar is a
+      // reaction being picked, not a dismissal.
+      const path = event.composedPath?.() ?? [];
+      const onBar = path.some(
+        (node) => node instanceof HTMLElement && node.hasAttribute("data-reaction-bar"),
+      );
+      if (onBar) return;
+      setReactingId(null);
+    };
     // Queued, so the click that opened it does not close it again.
     const timer = setTimeout(() => {
       document.addEventListener("pointerdown", close);
@@ -520,12 +530,15 @@ export function ChatPanel({
       if (ok) {
         setStaged(null);
         setDraft("");
+        inputRef.current?.focus();
       }
       return;
     }
 
     const content = draft.trim();
     const quoted = replyTo;
+    // The keyboard stays up for the next message rather than closing on send.
+    inputRef.current?.focus();
     setSending(true);
     // Cleared up front so the input feels responsive; the message itself is
     // rendered only once the server has stored and broadcast it.
@@ -930,6 +943,10 @@ export function ChatPanel({
                   type="submit"
                   disabled={!canSend}
                   aria-label="Send message"
+                  // Keeps the caret — and so the on-screen keyboard — where it
+                  // is: without this the button takes focus and the keyboard
+                  // drops between every message.
+                  onPointerDown={(event) => event.preventDefault()}
                   className={roundButton}
                 >
                   {progress !== null ? (

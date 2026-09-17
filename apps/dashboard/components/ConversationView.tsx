@@ -177,7 +177,7 @@ export function Bubble({
     <div
       ref={(element) => registerRef?.(message.id, element)}
       className={cn(
-        "group relative flex items-center gap-1",
+        "chat-hold group relative flex items-center gap-1",
         fromAgent ? "justify-end" : "justify-start",
         flash && "chat-flash",
       )}
@@ -299,7 +299,7 @@ export function Bubble({
             onClick={() => (mine ? onReact?.(message.id, null) : onOpenReactions?.(message.id))}
             aria-label={mine ? "Remove your reaction" : "React to this message"}
             title={mine ? "Click to remove your reaction" : "React"}
-            className="clear-both -mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full border bg-card px-1.5 py-0.5 text-[13px] leading-none shadow-sm"
+            className="emoji relative z-10 clear-both -mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full border bg-card px-1.5 py-0.5 text-[13px] leading-none shadow-sm"
           >
             {message.reactions.map((reaction) => (
               <span key={reaction.senderType}>{reaction.emoji}</span>
@@ -402,7 +402,15 @@ export function ConversationView({
   // A click anywhere else closes the reaction bar, as a popup should.
   useEffect(() => {
     if (!reactingId) return;
-    const close = () => setReactingId(null);
+    const close = (event: Event) => {
+      // A press on the bar is a reaction being picked, not a dismissal.
+      const path = event.composedPath?.() ?? [];
+      const onBar = path.some(
+        (node) => node instanceof HTMLElement && node.hasAttribute("data-reaction-bar"),
+      );
+      if (onBar) return;
+      setReactingId(null);
+    };
     // Queued, so the click that opened it does not close it again.
     const timer = setTimeout(() => {
       document.addEventListener("pointerdown", close);
@@ -736,6 +744,7 @@ function Composer({
     if (!hasText) return;
     const content = draft.trim();
     const quoted = replyTo ? toQuote(replyTo) : null;
+    boxRef.current?.focus();
     setSending(true);
     clearDraft();
     onCancelReply();
@@ -949,6 +958,8 @@ function Composer({
               // Text may be sent offline (it is queued); media needs a connection.
               disabled={busy || (staged !== null && !connected)}
               aria-label="Send"
+              // Keeps the caret in the box, so a touch keyboard stays up.
+              onPointerDown={(event) => event.preventDefault()}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Send className="h-4 w-4" aria-hidden="true" />

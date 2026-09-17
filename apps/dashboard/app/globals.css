@@ -177,6 +177,24 @@
   }
 
   /* The quoted message above a reply. */
+  /* Holding a message opens its reactions, so the browser must not answer the
+     same press with its own selection handles and dimmed overlay. */
+  .chat-hold {
+    -webkit-touch-callout: none;
+  }
+  @media (pointer: coarse) {
+    .chat-hold {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  }
+
+  /* Colour emoji fonts first, so the UI font cannot draw them as flat text. */
+  .emoji {
+    font-family:
+      "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+  }
+
   .chat-quote {
     border-left: 3px solid var(--primary);
     background-color: color-mix(in oklab, var(--foreground) 8%, transparent);

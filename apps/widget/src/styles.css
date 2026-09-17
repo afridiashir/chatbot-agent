@@ -86,6 +86,19 @@
   .wa-bubble-out.wa-cont {
     border-radius: 0.5rem;
   }
+  /* Holding a message opens its reactions, so the browser must not answer the
+     same press with its own selection handles and dimmed overlay. Text stays
+     selectable with a mouse. */
+  .wa-hold {
+    -webkit-touch-callout: none;
+  }
+  @media (pointer: coarse) {
+    .wa-hold {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  }
+
   /* Colour emoji fonts first, so a host page's font can't draw them as text. */
   .emoji {
     font-family:

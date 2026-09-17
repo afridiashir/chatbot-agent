@@ -23,6 +23,9 @@ export function ReactionBar({
     <div
       role="dialog"
       aria-label="React to this message"
+      // Marks the bar for the outside-click check: without it the closing
+      // pointerdown unmounts the button before its click can land.
+      data-reaction-bar
       onKeyDown={(event) => {
         if (event.key === "Escape") onClose();
       }}
@@ -36,7 +39,7 @@ export function ReactionBar({
           onClick={() => onPick(emoji)}
           aria-label={mine === emoji ? `Remove ${emoji} reaction` : `React with ${emoji}`}
           aria-pressed={mine === emoji}
-          className={`emoji flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition hover:scale-110 ${
+          className={`emoji flex h-8 w-8 items-center justify-center rounded-full text-[22px] leading-none opacity-100 transition hover:scale-110 ${
             mine === emoji ? "bg-accent" : ""
           }`}
         >
