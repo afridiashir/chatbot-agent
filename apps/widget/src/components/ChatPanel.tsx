@@ -301,12 +301,22 @@ export function ChatPanel({
   }, [messages.length, agentTyping]);
 
   // One line until the text needs more, then taller up to the CSS max height.
+  // Only a change of height is followed: scrolling on every keystroke would
+  // drag someone out of the history they were reading.
   useEffect(() => {
     const box = inputRef.current;
     if (!box) return;
+    const before = box.offsetHeight;
     box.style.height = "auto";
     box.style.height = `${box.scrollHeight}px`;
+    if (box.offsetHeight !== before) endRef.current?.scrollIntoView({ block: "end" });
   }, [draft]);
+
+  // Starting a reply, or tapping into the box, returns to the newest messages:
+  // the visitor is about to write, and what they answer belongs in view.
+  useEffect(() => {
+    if (replyTo) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [replyTo]);
 
   const busy = sending || progress !== null;
   const hasText = draft.trim().length > 0;
@@ -722,6 +732,7 @@ export function ChatPanel({
                   }}
                   onFocus={() => {
                     if (touch) setEmojiOpen(false);
+                    endRef.current?.scrollIntoView({ block: "end" });
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Escape" && emojiOpen) setEmojiOpen(false);

@@ -300,6 +300,16 @@ export function ConversationView({
     return () => clearTimeout(timer);
   }, [flashId]);
 
+  const scrollToLatest = useCallback((smooth = false) => {
+    endRef.current?.scrollIntoView({ block: "end", ...(smooth ? { behavior: "smooth" } : {}) });
+  }, []);
+
+  // Starting a reply returns to the newest messages: the agent is about to
+  // write, and their answer belongs in view.
+  useEffect(() => {
+    if (replyTo) scrollToLatest(true);
+  }, [replyTo, scrollToLatest]);
+
   const conversationId = detail?.id ?? null;
 
   // Drafts are per conversation and survive a reload, so switching away from a
@@ -424,6 +434,7 @@ export function ConversationView({
             onTyping();
           }}
           connected={connected}
+          onActivity={scrollToLatest}
           replyTo={replyTo}
           names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
           onCancelReply={() => setReplyTo(null)}
@@ -448,6 +459,7 @@ function Composer({
   draft,
   onDraftChange,
   connected,
+  onActivity,
   replyTo,
   names,
   onCancelReply,
@@ -458,6 +470,8 @@ function Composer({
   draft: string;
   onDraftChange: (value: string) => void;
   connected: boolean;
+  /** Follow the newest messages: writing pushes them up behind the box. */
+  onActivity: (smooth?: boolean) => void;
   /** The message this one will quote, or null. */
   replyTo: Message | null;
   names: { agent: string; visitor: string };
@@ -493,12 +507,16 @@ function Composer({
   }
 
   // One line until the text needs more, then taller up to the CSS max height.
+  // Only a change of height is followed: scrolling on every keystroke would
+  // drag the agent out of the history they were reading.
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
+    const before = box.offsetHeight;
     box.style.height = "auto";
     box.style.height = `${box.scrollHeight}px`;
-  }, [draft]);
+    if (box.offsetHeight !== before) onActivity();
+  }, [draft, onActivity]);
 
   // Starting a reply puts the caret in the box, ready to type.
   useEffect(() => {
@@ -764,6 +782,7 @@ function Composer({
             rows={1}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
+            onFocus={() => onActivity()}
             onBlur={(event) => {
               caretRef.current = event.currentTarget.selectionStart;
             }}
