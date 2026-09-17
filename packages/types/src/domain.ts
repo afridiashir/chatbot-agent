@@ -94,7 +94,17 @@ export interface Message {
   /** Idempotency key from the sender, when it queued the message. */
   clientId: string | null;
   createdAt: string;
+  /** The other side's app had it (two grey ticks); null until then. */
+  deliveredAt: string | null;
+  /** The other side had the chat open on screen (two blue ticks). */
+  readAt: string | null;
 }
+
+/** One, two grey or two blue ticks, for a message the viewer sent. */
+export type ReceiptStatus = "SENT" | "DELIVERED" | "READ";
+
+export const receiptStatus = (message: Pick<Message, "deliveredAt" | "readAt">): ReceiptStatus =>
+  message.readAt ? "READ" : message.deliveredAt ? "DELIVERED" : "SENT";
 
 export interface Conversation {
   id: string;

@@ -10,8 +10,9 @@ import { ApiError } from "@/lib/api";
 import { checkAvatar, removeAvatar, uploadAvatar } from "@/lib/media";
 
 /**
- * Lets an agent set or remove their profile photo. It shows next to their name
- * across the dashboard and, for visitors, in the website chat widget.
+ * Sets or removes an agent's profile photo, either their own or, with
+ * `asAdmin`, one an admin manages. It shows next to their name across the
+ * dashboard and, for visitors, in the website chat widget.
  */
 export function ProfilePhotoDialog({
   open,
@@ -19,12 +20,14 @@ export function ProfilePhotoDialog({
   agent,
   token,
   onChange,
+  asAdmin = false,
 }: {
   open: boolean;
   onClose: () => void;
   agent: Agent;
   token: string;
   onChange: (agent: Agent) => void;
+  asAdmin?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -68,7 +71,7 @@ export function ProfilePhotoDialog({
     setError(null);
     setProgress(0);
     try {
-      onChange(await uploadAvatar({ agentId: agent.id, token, file, onProgress: setProgress }));
+      onChange(await uploadAvatar({ agentId: agent.id, token, file, asAdmin, onProgress: setProgress }));
       onClose();
     } catch (err) {
       setError(
@@ -83,7 +86,7 @@ export function ProfilePhotoDialog({
     setRemoving(true);
     setError(null);
     try {
-      onChange(await removeAvatar(agent.id, token));
+      onChange(await removeAvatar(agent.id, token, asAdmin));
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not remove the photo");
@@ -98,8 +101,12 @@ export function ProfilePhotoDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Profile photo"
-      description="Visitors see it next to your name in the chat widget."
+      title={asAdmin ? `${agent.name}'s photo` : "Profile photo"}
+      description={
+        asAdmin
+          ? "Visitors see it next to this agent's name in the chat widget, including chats open right now."
+          : "Visitors see it next to your name in the chat widget."
+      }
       icon={<Camera className="size-5" aria-hidden />}
     >
       <div className="flex flex-col items-center gap-4">
@@ -140,8 +147,8 @@ export function ProfilePhotoDialog({
         />
 
         <p className="text-center text-xs text-muted-foreground">
-          JPEG, PNG or WebP, up to {AVATAR_RULES.maxBytes / 1024 / 1024} MB. A square photo of your
-          face works best.
+          JPEG, PNG or WebP, up to {AVATAR_RULES.maxBytes / 1024 / 1024} MB. A square photo of{" "}
+          {asAdmin ? "their" : "your"} face works best.
         </p>
 
         {progress !== null && (

@@ -162,6 +162,8 @@ export function toMessage(row: MessageRow & { attachment?: AttachmentRow | null 
       : null,
     clientId: row.clientId,
     createdAt: row.createdAt.toISOString(),
+    deliveredAt: row.deliveredAt?.toISOString() ?? null,
+    readAt: row.readAt?.toISOString() ?? null,
   };
 }
 

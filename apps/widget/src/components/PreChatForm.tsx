@@ -50,82 +50,88 @@ export function PreChatForm({ branches, submitting, onStart }: PreChatFormProps)
 
   const field = (key: keyof typeof EMPTY) =>
     [
-      "w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none",
-      errors[key] ? "border-red-400" : "border-slate-200 focus:border-slate-400",
+      "w-full rounded-lg border bg-white px-3 py-2 text-base text-wa-text placeholder:text-wa-meta/70 focus:outline-none sm:text-sm",
+      errors[key] ? "border-red-400" : "border-wa-divider focus:border-wa-green",
     ].join(" ");
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 overflow-y-auto p-4">
-      <p className="text-sm text-slate-600">
-        Tell us how to reach you and we will connect you to an agent.
-      </p>
+    <form
+      onSubmit={submit}
+      className="wa-canvas flex flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+    >
+      {/* A greeting bubble, so the form reads as the start of a chat. */}
+      <div className="wa-bubble-in max-w-[85%] px-3 py-2 text-sm">
+        👋 Hi! Tell us how to reach you and we'll connect you to an agent.
+      </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-slate-700">Name</span>
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Your name"
-          aria-label="Name"
-          autoComplete="name"
-          className={field("name")}
-        />
-        {errors.name && <span className="text-xs text-red-600">{errors.name}</span>}
-      </label>
+      <div className="flex flex-col gap-3 rounded-lg bg-white p-3 shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-wa-icon">Name</span>
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Your name"
+            aria-label="Name"
+            autoComplete="name"
+            className={field("name")}
+          />
+          {errors.name && <span className="text-xs text-red-600">{errors.name}</span>}
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-slate-700">Phone number</span>
-        <input
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          placeholder="+92 300 1234567"
-          aria-label="Phone number"
-          autoComplete="tel"
-          inputMode="tel"
-          className={field("phone")}
-        />
-        {errors.phone && <span className="text-xs text-red-600">{errors.phone}</span>}
-      </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-wa-icon">Phone number</span>
+          <input
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="+92 300 1234567"
+            aria-label="Phone number"
+            autoComplete="tel"
+            inputMode="tel"
+            className={field("phone")}
+          />
+          {errors.phone && <span className="text-xs text-red-600">{errors.phone}</span>}
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-slate-700">Email</span>
-        <input
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          placeholder="you@example.com"
-          aria-label="Email"
-          autoComplete="email"
-          inputMode="email"
-          className={field("email")}
-        />
-        {errors.email && <span className="text-xs text-red-600">{errors.email}</span>}
-      </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-wa-icon">Email</span>
+          <input
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="you@example.com"
+            aria-label="Email"
+            autoComplete="email"
+            inputMode="email"
+            className={field("email")}
+          />
+          {errors.email && <span className="text-xs text-red-600">{errors.email}</span>}
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-slate-700">Branch</span>
-        <select
-          value={form.branchId}
-          onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-          aria-label="Branch"
-          className={field("branchId")}
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-wa-icon">Branch</span>
+          <select
+            value={form.branchId}
+            onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+            aria-label="Branch"
+            className={field("branchId")}
+          >
+            <option value="">Select your branch</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+          {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
+        </label>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-1 rounded-full bg-wa-green px-3 py-2.5 text-sm font-medium text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <option value="">Select your branch</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name}
-            </option>
-          ))}
-        </select>
-        {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
-      </label>
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="mt-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {submitting ? "Connecting..." : "Start chat"}
-      </button>
+          {submitting ? "Connecting…" : "Start chat"}
+        </button>
+      </div>
     </form>
   );
 }

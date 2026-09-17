@@ -109,26 +109,32 @@ export function checkAvatar(file: Blob): string | null {
   return null;
 }
 
-/** Uploads and applies a new profile photo for the signed-in agent. */
+/** Agents change their own photo; admins change it for agents they manage. */
+const avatarBase = (agentId: string, asAdmin: boolean) =>
+  `${asAdmin ? "/api/admin/agents" : "/api/agents"}/${agentId}/avatar`;
+
+/** Uploads and applies a new profile photo. */
 export async function uploadAvatar(input: {
   agentId: string;
   token: string;
   file: File;
+  asAdmin?: boolean;
   onProgress?: (fraction: number) => void;
 }): Promise<Agent> {
-  const ticket = await api<UploadTicket>(`/api/agents/${input.agentId}/avatar/uploads`, {
+  const base = avatarBase(input.agentId, input.asAdmin ?? false);
+  const ticket = await api<UploadTicket>(`${base}/uploads`, {
     method: "POST",
     token: input.token,
     body: JSON.stringify({ mimeType: baseMimeType(input.file.type), size: input.file.size }),
   });
   await postToStorage(ticket, input.file, input.file.name, input.onProgress);
-  return api<Agent>(`/api/agents/${input.agentId}/avatar`, {
+  return api<Agent>(base, {
     method: "PUT",
     token: input.token,
     body: JSON.stringify({ uploadToken: ticket.uploadToken }),
   });
 }
 
-export function removeAvatar(agentId: string, token: string): Promise<Agent> {
-  return api<Agent>(`/api/agents/${agentId}/avatar`, { method: "DELETE", token });
+export function removeAvatar(agentId: string, token: string, asAdmin = false): Promise<Agent> {
+  return api<Agent>(avatarBase(agentId, asAdmin), { method: "DELETE", token });
 }

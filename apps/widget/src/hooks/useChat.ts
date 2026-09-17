@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { applyReceipt } from "@repo/types";
 import type {
   AssignmentResult,
   Branch,
@@ -50,7 +51,11 @@ export interface ChatController {
   startOver: () => void;
 }
 
-export function useChat(config: WidgetConfig): ChatController {
+/**
+ * `visible` is whether the chat panel is open. Only then, with the tab in front,
+ * does the visitor count as having seen the agent's messages.
+ */
+export function useChat(config: WidgetConfig, visible: boolean): ChatController {
   const visitorId = useMemo(() => getVisitorId(), []);
   const [phase, setPhase] = useState<ChatPhase>("loading");
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -64,6 +69,9 @@ export function useChat(config: WidgetConfig): ChatController {
 
   const socketRef = useRef<ClientSocket | null>(null);
   const conversationId = conversation?.id ?? null;
+  const [pageVisible, setPageVisible] = useState(() => document.visibilityState === "visible");
+  /** The newest agent message already reported read, so each is reported once. */
+  const reportedReadRef = useRef<string | null>(null);
 
   const { isTyping: agentTyping, setTyping: setAgentTyping } = useTypingIndicator();
 
@@ -168,10 +176,23 @@ export function useChat(config: WidgetConfig): ChatController {
       if (message.senderType === "AGENT") setAgentTyping(false);
       appendMessage(message);
     });
+    socket.on("message:receipt", (receipt) => {
+      setMessages((current) => applyReceipt(current, receipt));
+    });
     socket.on("typing:update", (payload) => {
       if (payload.conversationId === conversationId && payload.senderType === "AGENT") {
         setAgentTyping(payload.isTyping);
       }
+    });
+    socket.on("agent:profile", (profile) => {
+      setConversation((current) =>
+        current && current.agent.id === profile.agentId
+          ? {
+              ...current,
+              agent: { ...current.agent, name: profile.name, avatarUrl: profile.avatarUrl },
+            }
+          : current,
+      );
     });
     socket.on("conversation:closed", (closed) => {
       setConversation((current) =>
@@ -285,6 +306,30 @@ export function useChat(config: WidgetConfig): ChatController {
     setError(null);
     setPhase("picking");
   }, []);
+
+  useEffect(() => {
+    const onChange = () => setPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+
+  // Blue ticks: tell the server once the agent's latest message is actually on
+  // screen, meaning the panel is open and the tab is in front.
+  useEffect(() => {
+    if (!visible || !pageVisible || !conversationId) return;
+    let unread: Message | undefined;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]!;
+      if (message.senderType === "AGENT" && !message.readAt) {
+        unread = message;
+        break;
+      }
+    }
+    if (!unread || reportedReadRef.current === unread.id) return;
+    reportedReadRef.current = unread.id;
+    // Buffered by socket.io while reconnecting, so it isn't lost.
+    socketRef.current?.emit("conversation:read", { conversationId });
+  }, [visible, pageVisible, conversationId, messages, connected]);
 
   return {
     phase,

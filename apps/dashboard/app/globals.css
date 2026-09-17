@@ -49,6 +49,8 @@
   --chat-bubble-out: #d9fdd3;
   --chat-bubble-out-fg: #111b21;
   --chat-meta: #667781;
+  /* WhatsApp's "seen" blue, the same in both themes. */
+  --chat-read: #53bdeb;
 
   /* Charts. Series hues are validated for colour-blind separation and 3:1
      contrast against the card surface in each theme; change them together. */
@@ -98,6 +100,7 @@
   --chat-bubble-out: #005c4b;
   --chat-bubble-out-fg: #e9edef;
   --chat-meta: #8696a0;
+  --chat-read: #53bdeb;
 
   --chart-1: #00a884;
   --chart-2: #d95926;
@@ -137,6 +140,7 @@
   --color-chat-bg: var(--chat-bg);
   --color-chat-panel: var(--chat-panel);
   --color-chat-meta: var(--chat-meta);
+  --color-chat-read: var(--chat-read);
   --color-chat-header: var(--chat-header);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);

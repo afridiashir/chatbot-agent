@@ -13,7 +13,8 @@ import { loadAdminScope } from "../middleware/require-agent.js";
 import { HttpError } from "../lib/http.js";
 import { env } from "../env.js";
 import { addMessage, assertConversationAccess } from "../services/conversations.js";
-import { emitMessage, setRealtimeServer } from "./emit.js";
+import { markReceipt } from "../services/receipts.js";
+import { announceMessage, emitReceipt, setRealtimeServer } from "./emit.js";
 import type { AppServer, AppSocket } from "./types.js";
 
 /**
@@ -65,6 +66,13 @@ function registerHandlers(socket: AppSocket): void {
         await assertConversationAccess(conversationId, actor);
         await socket.join(rooms.conversation(conversationId));
         ack?.({ ok: true });
+
+        // A participant connecting has now received everything the other side
+        // sent while they were away.
+        if (actor.type !== "ADMIN") {
+          const receipt = await markReceipt(conversationId, actor.type, "DELIVERED");
+          if (receipt) emitReceipt(receipt);
+        }
       } catch (error) {
         ack?.(toAckError(error));
       }
@@ -99,6 +107,27 @@ function registerHandlers(socket: AppSocket): void {
     });
   });
 
+  socket.on("conversation:read", (payload) => {
+    const parsed = socketJoinPayloadSchema.safeParse(payload);
+    // Admins looking at a chat must not tell the visitor it was read.
+    if (!parsed.success || actor.type === "ADMIN") return;
+    const { conversationId } = parsed.data;
+    const reader = actor.type;
+
+    void (async () => {
+      try {
+        // Checked against the database rather than room membership: a client
+        // may report "read" before its join has finished. Reads are rare
+        // enough (once per new message on screen) for the lookup to be cheap.
+        await assertConversationAccess(conversationId, actor);
+        const receipt = await markReceipt(conversationId, reader, "READ");
+        if (receipt) emitReceipt(receipt);
+      } catch (error) {
+        if (!(error instanceof HttpError)) console.error("[socket] read receipt", error);
+      }
+    })();
+  });
+
   socket.on("message:send", (payload, ack) => {
     void (async () => {
       try {
@@ -119,7 +148,7 @@ function registerHandlers(socket: AppSocket): void {
           { content, senderType, clientId, attachment },
           actor,
         );
-        if (created) emitMessage(message);
+        if (created) void announceMessage(message).catch((e: unknown) => console.error("[socket]", e));
 
         ack?.({ ok: true, data: message });
       } catch (error) {

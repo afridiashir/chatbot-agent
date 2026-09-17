@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCheck, Clock, FileAudio, Film, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import { Clock, FileAudio, Film, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
 import {
   ATTACHMENT_ACCEPT,
   formatBytes,
@@ -16,6 +16,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
+import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
 import { loadDrafts, saveDraft, type QueuedMessage } from "@/lib/outbox";
 import { cn } from "@/lib/utils";
@@ -85,11 +86,11 @@ export function DaySeparator({ iso }: { iso: string }) {
 }
 
 /** Time plus, on the agent's own messages, WhatsApp's grey "delivered" ticks. */
-function Stamp({ iso, outgoing }: { iso: string; outgoing: boolean }) {
+function Stamp({ message, outgoing }: { message: Message; outgoing: boolean }) {
   return (
     <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-      {formatClock(iso)}
-      {outgoing && <CheckCheck className="size-3.5" aria-label="Delivered" />}
+      {formatClock(message.createdAt)}
+      {outgoing && <ReceiptTicks message={message} />}
     </span>
   );
 }
@@ -121,7 +122,7 @@ export function Bubble({
             attachment={media}
             outgoing={fromAgent}
             sender={sender}
-            footer={bareVoice ? <Stamp iso={message.createdAt} outgoing={fromAgent} /> : undefined}
+            footer={bareVoice ? <Stamp message={message} outgoing={fromAgent} /> : undefined}
           />
         )}
         {message.content && (
@@ -137,7 +138,7 @@ export function Bubble({
               media && "mr-1.5 mb-0.5",
             )}
           >
-            <Stamp iso={message.createdAt} outgoing={fromAgent} />
+            <Stamp message={message} outgoing={fromAgent} />
           </span>
         )}
       </div>

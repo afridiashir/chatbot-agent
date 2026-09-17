@@ -10,3 +10,58 @@
     color-scheme: light;
   }
 }
+
+/* WhatsApp's palette, as utilities (bg-wa-teal, text-wa-meta, ...). */
+@theme {
+  --color-wa-teal: #008069;
+  --color-wa-green: #00a884;
+  --color-wa-launcher: #25d366;
+  --color-wa-canvas: #efeae2;
+  --color-wa-out: #d9fdd3;
+  --color-wa-in: #ffffff;
+  --color-wa-panel: #f0f2f5;
+  --color-wa-text: #111b21;
+  --color-wa-meta: #667781;
+  --color-wa-icon: #54656f;
+  --color-wa-blue: #53bdeb;
+  --color-wa-divider: #e9edef;
+}
+
+@layer components {
+  /* The chat wallpaper: beige with a faint speckle, drawn in CSS so it costs no request. */
+  .wa-canvas {
+    background-color: var(--color-wa-canvas);
+    background-image:
+      radial-gradient(rgb(17 27 33 / 0.05) 1px, transparent 1px),
+      radial-gradient(rgb(17 27 33 / 0.035) 1px, transparent 1px);
+    background-size:
+      22px 22px,
+      22px 22px;
+    background-position:
+      0 0,
+      11px 11px;
+  }
+
+  /* Bubbles with WhatsApp's tail corner on the sender's side. */
+  .wa-bubble-in {
+    background-color: var(--color-wa-in);
+    color: var(--color-wa-text);
+    border-radius: 0 0.5rem 0.5rem 0.5rem;
+    box-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13);
+  }
+  .wa-bubble-out {
+    background-color: var(--color-wa-out);
+    color: var(--color-wa-text);
+    border-radius: 0.5rem 0 0.5rem 0.5rem;
+    box-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13);
+  }
+  /* Follow-on bubbles in a run lose the tail, as in WhatsApp. */
+  .wa-bubble-in.wa-cont,
+  .wa-bubble-out.wa-cont {
+    border-radius: 0.5rem;
+  }
+  /* Colour emoji fonts first, so a host page's font can't draw them as text. */
+  .emoji {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+  }
+}

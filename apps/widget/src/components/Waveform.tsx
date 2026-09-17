@@ -1,33 +1,34 @@
+/** Redraws stored bars at a narrower count, keeping each group's peak. */
 function fit(bars: number[], count: number): number[] {
   if (bars.length <= count) return bars;
   const size = bars.length / count;
-  return Array.from({ length: count }, (_, i) =>
-    Math.max(
-      ...bars.slice(
-        Math.floor(i * size),
-        Math.max(Math.floor(i * size) + 1, Math.floor((i + 1) * size)),
-      ),
-    ),
-  );
+  return Array.from({ length: count }, (_, i) => {
+    const from = Math.floor(i * size);
+    const to = Math.max(from + 1, Math.floor((i + 1) * size));
+    return Math.max(...bars.slice(from, to));
+  });
 }
 
-/** WhatsApp-style voice waveform for the widget; played bars take `playedClass`. */
+/**
+ * WhatsApp's voice waveform for the widget: bars that fill as the note plays,
+ * with a round playhead. Click or drag to seek.
+ */
 export function Waveform({
   bars,
   progress,
   onSeek,
   playedClass,
   unplayedClass,
+  thumbClass,
 }: {
   bars: number[];
   progress: number;
   onSeek: (fraction: number) => void;
   playedClass: string;
   unplayedClass: string;
+  thumbClass: string;
 }) {
-  // The widget's bubbles are narrow: redraw the stored 48 bars as 30, keeping
-  // each group's peak, so the waveform never runs under the duration.
-  const shown = fit(bars, 30);
+  const shown = fit(bars, 34);
   const played = Math.round(progress * shown.length);
 
   function seek(event: React.PointerEvent<HTMLDivElement>) {
@@ -54,16 +55,21 @@ export function Waveform({
         if (event.key === "ArrowRight") onSeek(Math.min(1, progress + 0.05));
         if (event.key === "ArrowLeft") onSeek(Math.max(0, progress - 0.05));
       }}
-      className="flex h-6 min-w-0 flex-1 cursor-pointer touch-none items-center gap-[2px] overflow-hidden outline-none"
+      className="relative flex h-6 min-w-0 flex-1 cursor-pointer touch-none items-center gap-[2px] outline-none"
     >
       {shown.map((height, index) => (
         <span
           key={index}
           aria-hidden="true"
-          className={`w-[2px] shrink-0 rounded-full ${index < played ? playedClass : unplayedClass}`}
+          className={`max-w-[3px] min-w-px flex-1 rounded-full ${index < played ? playedClass : unplayedClass}`}
           style={{ height: `${Math.max(20, height)}%` }}
         />
       ))}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-sm ${thumbClass}`}
+        style={{ left: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+      />
     </div>
   );
 }
@@ -82,7 +88,7 @@ export function LiveWaveform({ levels, count }: { levels: number[]; count: numbe
       {padded.map((level, index) => (
         <span
           key={index}
-          className={`w-[2px] shrink-0 rounded-full ${level > 0 ? "bg-slate-900" : "bg-slate-300"}`}
+          className={`w-[2px] shrink-0 rounded-full ${level > 0 ? "bg-wa-green" : "bg-wa-meta/30"}`}
           style={{ height: `${Math.max(20, Math.round(Math.sqrt(level) * 100))}%` }}
         />
       ))}

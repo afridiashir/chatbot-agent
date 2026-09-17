@@ -1,38 +1,101 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { WidgetConfig } from "./config.js";
-import { PreChatForm } from "./components/PreChatForm.js";
+import { AgentAvatar } from "./components/AgentAvatar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
 import { Launcher } from "./components/Launcher.js";
+import { PreChatForm } from "./components/PreChatForm.js";
 import { useChat } from "./hooks/useChat.js";
 
 export function Widget({ config }: { config: WidgetConfig }) {
   const [isOpen, setIsOpen] = useState(false);
-  const chat = useChat(config);
+  const chat = useChat(config, isOpen);
+  const agent = chat.phase === "chatting" ? chat.conversation?.agent : undefined;
 
-  const title = chat.phase === "chatting" ? "Chat with our team" : "Start a chat";
+  // Full screen on phones: stop the page underneath from scrolling while the
+  // chat covers it, and put the host page back exactly as it was on close.
+  useEffect(() => {
+    if (!isOpen || !window.matchMedia("(max-width: 639px)").matches) return;
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = previous;
+    };
+  }, [isOpen]);
 
   return (
     <div className="fixed right-4 bottom-4 z-[2147483000] flex flex-col items-end gap-3 font-sans">
       {isOpen && (
         <section
           aria-label="Support chat"
-          className="flex h-[28rem] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+          // Phones: the whole screen, like the WhatsApp app (dvh follows the
+          // on-screen keyboard). From 640px up: the floating panel. Positioned
+          // either way, so the media viewer can cover it.
+          className="fixed inset-0 flex h-[100dvh] w-full flex-col overflow-hidden bg-wa-panel sm:relative sm:inset-auto sm:h-[36rem] sm:max-h-[calc(100vh-6rem)] sm:w-[23rem] sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:shadow-[0_12px_40px_rgb(0_0_0/0.25)]"
         >
-          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+          {/* WhatsApp's teal header: the agent once chatting, a welcome before. */}
+          <header className="flex items-center gap-3 bg-wa-teal px-3 pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 text-white">
+            {agent ? (
+              <>
+                <AgentAvatar
+                  apiUrl={config.apiUrl}
+                  name={agent.name}
+                  photo={agent.avatarUrl ?? null}
+                  size={40}
+                />
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-[15px] leading-tight font-medium">{agent.name}</h2>
+                  <p className="truncate text-xs text-white/80" aria-live="polite">
+                    {chat.agentTyping
+                      ? "typing…"
+                      : chat.isClosed
+                        ? "Conversation ended"
+                        : agent.isOnline
+                          ? "online"
+                          : "Support agent"}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 2C6.5 2 2 6.2 2 11.4c0 2 .7 3.9 1.9 5.4L2.6 21.3a.5.5 0 0 0 .6.6l4.7-1.3c1.2.5 2.6.8 4.1.8 5.5 0 10-4.2 10-9.4S17.5 2 12 2z" />
+                  </svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-[15px] leading-tight font-medium">Chat with us</h2>
+                  <p className="truncate text-xs text-white/80">
+                    We typically reply in a few minutes
+                  </p>
+                </div>
+              </>
+            )}
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               aria-label="Close chat"
-              className="text-slate-400 transition hover:text-slate-700"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
           </header>
 
-          {chat.phase === "loading" && <Status>Loading...</Status>}
+          {chat.phase === "loading" && <Status>Loading…</Status>}
 
           {(chat.phase === "picking" || chat.phase === "starting") && (
             <PreChatForm
@@ -43,32 +106,20 @@ export function Widget({ config }: { config: WidgetConfig }) {
           )}
 
           {chat.phase === "unavailable" && (
-            <div className="flex flex-1 flex-col justify-center gap-3 p-4 text-center">
-              <p className="text-sm text-slate-700">
-                {chat.error ?? "No agents are currently available."}
-              </p>
-              <p className="text-xs text-slate-500">Please try another branch or check back soon.</p>
-              <button
-                type="button"
-                onClick={chat.startOver}
-                className="mx-auto rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
-              >
-                Choose another branch
-              </button>
-            </div>
+            <Notice
+              text={chat.error ?? "No agents are currently available."}
+              hint="Please try another branch or check back soon."
+              action="Choose another branch"
+              onAction={chat.startOver}
+            />
           )}
 
           {chat.phase === "failed" && (
-            <div className="flex flex-1 flex-col justify-center gap-3 p-4 text-center">
-              <p className="text-sm text-slate-700">{chat.error ?? "Something went wrong."}</p>
-              <button
-                type="button"
-                onClick={chat.startOver}
-                className="mx-auto rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
-              >
-                Try again
-              </button>
-            </div>
+            <Notice
+              text={chat.error ?? "Something went wrong."}
+              action="Try again"
+              onAction={chat.startOver}
+            />
           )}
 
           {chat.phase === "chatting" && chat.conversation && (
@@ -76,31 +127,60 @@ export function Widget({ config }: { config: WidgetConfig }) {
               apiUrl={config.apiUrl}
               agentName={chat.conversation.agent.name}
               agentPhoto={chat.conversation.agent.avatarUrl ?? null}
-              agentOnline={chat.conversation.agent.isOnline}
               messages={chat.messages}
               connected={chat.connected}
               isClosed={chat.isClosed}
               agentTyping={chat.agentTyping}
+              error={chat.error}
               onSend={chat.sendMessage}
               onSendMedia={chat.sendMedia}
               onTyping={chat.notifyTyping}
               onStartOver={chat.startOver}
             />
           )}
-
-          {chat.phase === "chatting" && chat.error && (
-            <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
-              {chat.error}
-            </p>
-          )}
         </section>
       )}
 
-      <Launcher isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
+      {/* On phones the open chat covers the button; the header's close takes over. */}
+      <div className={isOpen ? "hidden sm:block" : ""}>
+        <Launcher isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
+      </div>
     </div>
   );
 }
 
 function Status({ children }: { children: React.ReactNode }) {
-  return <p className="flex flex-1 items-center justify-center text-sm text-slate-400">{children}</p>;
+  return (
+    <p className="wa-canvas flex flex-1 items-center justify-center text-sm text-wa-meta">
+      {children}
+    </p>
+  );
+}
+
+function Notice({
+  text,
+  hint,
+  action,
+  onAction,
+}: {
+  text: string;
+  hint?: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="wa-canvas flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="wa-bubble-in max-w-[85%] px-3 py-2 text-left">
+        <p className="text-sm">{text}</p>
+        {hint && <p className="mt-1 text-xs text-wa-meta">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        className="rounded-full bg-wa-green px-5 py-2 text-sm font-medium text-white transition hover:brightness-95"
+      >
+        {action}
+      </button>
+    </div>
+  );
 }

@@ -48,3 +48,18 @@ export function getVisitorId(): string {
 export const getStoredConversationId = (): string | null => read(CONVERSATION_KEY);
 export const storeConversationId = (id: string): void => write(CONVERSATION_KEY, id);
 export const clearStoredConversationId = (): void => remove(CONVERSATION_KEY);
+
+const RECENT_EMOJI_KEY = "acme-chat:recent-emoji";
+
+/** The emoji picker's "Recent" row, newest first. */
+export function getRecentEmoji(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(read(RECENT_EMOJI_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((e): e is string => typeof e === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export const storeRecentEmoji = (emoji: string[]): void =>
+  write(RECENT_EMOJI_KEY, JSON.stringify(emoji));

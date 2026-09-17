@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Building2,
+  Camera,
   CircleCheck,
   KeyRound,
   Mail,
@@ -18,6 +19,7 @@ import {
 import type { Agent, AgentWithLoad, BranchWithAgents, DeactivateAgentResult } from "@repo/types";
 import { AdminShell } from "@/components/AdminShell";
 import { Field, PasswordInput, firstFieldErrors, selectClass } from "@/components/admin/form";
+import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -52,6 +54,7 @@ type DialogState =
   | { kind: "create" }
   | { kind: "edit"; agent: AgentRow }
   | { kind: "password"; agent: AgentRow }
+  | { kind: "photo"; agent: AgentRow }
   | { kind: "deactivate"; agent: AgentRow }
   | null;
 
@@ -283,6 +286,7 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
               busy={busyId === agent.id}
               onEdit={() => setDialog({ kind: "edit", agent })}
               onPassword={() => setDialog({ kind: "password", agent })}
+              onPhoto={() => setDialog({ kind: "photo", agent })}
               onDeactivate={() => setDialog({ kind: "deactivate", agent })}
               onReactivate={() => void setActive(agent, true)}
             />
@@ -314,6 +318,23 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
         onClose={() => setDialog(null)}
         onSaved={onSaved}
       />
+
+      {dialog?.kind === "photo" && (
+        <ProfilePhotoDialog
+          open
+          asAdmin
+          agent={dialog.agent}
+          token={token}
+          onClose={() => setDialog(null)}
+          onChange={(agent) =>
+            void onSaved(
+              agent.avatarUrl
+                ? `${agent.name}'s photo was updated. Visitors see it in the chat widget.`
+                : `${agent.name}'s photo was removed.`,
+            )
+          }
+        />
+      )}
 
       <Dialog
         open={dialog?.kind === "deactivate"}
@@ -368,6 +389,7 @@ function AgentCard({
   busy,
   onEdit,
   onPassword,
+  onPhoto,
   onDeactivate,
   onReactivate,
 }: {
@@ -375,6 +397,7 @@ function AgentCard({
   busy: boolean;
   onEdit: () => void;
   onPassword: () => void;
+  onPhoto: () => void;
   onDeactivate: () => void;
   onReactivate: () => void;
 }) {
@@ -389,13 +412,35 @@ function AgentCard({
       )}
     >
       <div className="flex items-start gap-3 p-4">
-        <Avatar
-          name={agent.name}
-          seed={agent.id}
-          photo={agent.avatarUrl}
-          size="lg"
-          online={agent.isActive ? agent.isOnline : undefined}
-        />
+        {agent.isActive ? (
+          // The photo is the button: a camera badge says so, and hovering darkens it.
+          <button
+            type="button"
+            onClick={onPhoto}
+            aria-label={`Change ${agent.name}'s photo`}
+            title="Change photo"
+            className="group relative shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <Avatar
+              name={agent.name}
+              seed={agent.id}
+              photo={agent.avatarUrl}
+              size="lg"
+              online={agent.isOnline}
+            />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              <Camera className="size-4" aria-hidden />
+            </span>
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 -left-0.5 flex size-5 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition-colors group-hover:text-primary"
+            >
+              <Camera className="size-3" />
+            </span>
+          </button>
+        ) : (
+          <Avatar name={agent.name} seed={agent.id} photo={agent.avatarUrl} size="lg" />
+        )}
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold">{agent.name}</h2>
           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">

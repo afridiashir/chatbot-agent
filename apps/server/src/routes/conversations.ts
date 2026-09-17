@@ -11,9 +11,9 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import {
+  announceMessage,
   emitConversationAssigned,
   emitConversationClosed,
-  emitMessage,
 } from "../realtime/emit.js";
 import { requireAgent } from "../middleware/require-agent.js";
 import {
@@ -81,7 +81,7 @@ conversationsRouter.post(
       resolveActor(req, body.visitorId),
     );
     // A retry of an already-stored message must not reach the room twice.
-    if (created) emitMessage(message);
+    if (created) void announceMessage(message).catch((e: unknown) => console.error("[receipts]", e));
     sendOk(res, message, created ? 201 : 200);
   }),
 );

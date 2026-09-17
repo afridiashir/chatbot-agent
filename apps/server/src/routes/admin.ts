@@ -17,6 +17,8 @@ import {
   updateBranchBodySchema,
   leadIdParamSchema,
   adminIdParamSchema,
+  avatarUploadBodySchema,
+  setAvatarBodySchema,
   createAdminBodySchema,
   updateAdminBodySchema,
 } from "@repo/validation";
@@ -25,7 +27,13 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAdmin, requireAdmin } from "../middleware/require-agent.js";
-import { emitAgentStatus, emitConversationClosed } from "../realtime/emit.js";
+import { emitAgentProfile, emitAgentStatus, emitConversationClosed } from "../realtime/emit.js";
+import {
+  createAvatarUpload,
+  openConversationIds,
+  removeAvatar,
+  setAvatar,
+} from "../services/avatars.js";
 import {
   createAdmin,
   createAgent,
@@ -185,6 +193,49 @@ adminRouter.patch(
     }
 
     sendOk(res, result);
+  }),
+);
+
+/*
+ * An agent's profile photo, set by an admin: company admins for any agent,
+ * branch admins for agents in their branch. Same upload flow as the agent's
+ * own, and visitors in an open chat see the new photo straight away.
+ */
+
+/** POST /api/admin/agents/:agentId/avatar/uploads */
+adminRouter.post(
+  "/agents/:agentId/avatar/uploads",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    const body = parseOrThrow(avatarUploadBodySchema, req.body, "photo");
+    const actor = { kind: "admin", admin: currentAdmin(req) } as const;
+    sendOk(res, await createAvatarUpload(agentId, body, actor), 201);
+  }),
+);
+
+/** PUT /api/admin/agents/:agentId/avatar */
+adminRouter.put(
+  "/agents/:agentId/avatar",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    const { uploadToken } = parseOrThrow(setAvatarBodySchema, req.body, "photo");
+    const agent = await setAvatar(agentId, uploadToken, { kind: "admin", admin: currentAdmin(req) });
+    emitAgentProfile(agent, await openConversationIds(agentId));
+    sendOk(res, agent);
+  }),
+);
+
+/** DELETE /api/admin/agents/:agentId/avatar */
+adminRouter.delete(
+  "/agents/:agentId/avatar",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    const agent = await removeAvatar(agentId, { kind: "admin", admin: currentAdmin(req) });
+    emitAgentProfile(agent, await openConversationIds(agentId));
+    sendOk(res, agent);
   }),
 );
 

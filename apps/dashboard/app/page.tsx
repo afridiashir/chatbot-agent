@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, CloudOff, Search } from "lucide-react";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
+import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { describeAttachment, type Agent } from "@repo/types";
 import { ConversationView } from "@/components/ConversationView";
 import { Avatar } from "@/components/ui/avatar";
@@ -39,7 +40,9 @@ function Dashboard({
   onAgentChange: (agent: Agent) => void;
   onLogout: () => void;
 }) {
-  const inbox = useInbox(agent.id, token);
+  const inbox = useInbox(agent.id, token, (profile) =>
+    onAgentChange({ ...agent, name: profile.name, avatarUrl: profile.avatarUrl }),
+  );
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [query, setQuery] = useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -221,17 +224,22 @@ function Dashboard({
                         {drafts[conversation.id]}
                       </span>
                     ) : (
-                      <span className="block truncate text-xs text-chat-meta">
-                        {conversation.lastMessage
-                          ? (conversation.lastMessage.senderType === "AGENT" ? "You: " : "") +
-                            (conversation.lastMessage.content ||
+                      <span className="flex min-w-0 items-center gap-1 text-xs text-chat-meta">
+                        {/* The agent's own last message carries its ticks, as in WhatsApp. */}
+                        {conversation.lastMessage?.senderType === "AGENT" && (
+                          <ReceiptTicks message={conversation.lastMessage} />
+                        )}
+                        <span className="truncate">
+                          {conversation.lastMessage
+                            ? conversation.lastMessage.content ||
                               (conversation.lastMessage.attachment
                                 ? describeAttachment(
                                     conversation.lastMessage.attachment.kind,
                                     conversation.lastMessage.attachment.durationMs,
                                   )
-                                : ""))
-                          : "No messages yet"}
+                                : "")
+                            : "No messages yet"}
+                        </span>
                       </span>
                     )}
                   </span>

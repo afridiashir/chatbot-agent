@@ -206,6 +206,11 @@ model Message {
   /// Null for messages sent by clients that do not queue.
   clientId       String?    @unique
   createdAt      DateTime   @default(now())
+  /// When the other side's app first had it: they were connected to the chat
+  /// when it was sent, or connected later. The grey double tick.
+  deliveredAt    DateTime?
+  /// When the other side had the chat open on screen. The blue double tick.
+  readAt         DateTime?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   /// Media sent with the message. `content` is then an optional caption.

@@ -16,6 +16,44 @@ export interface AgentStatusPayload {
   isOnline: boolean;
 }
 
+/** An agent's name or photo changed; open chats redraw their header. */
+export interface AgentProfilePayload {
+  agentId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * Every message from `senderType` up to `at` is now delivered, or read. Sent
+ * as one sweep rather than per message: seeing a chat reads all of it.
+ */
+export interface ReceiptPayload {
+  conversationId: string;
+  senderType: SenderType;
+  status: "DELIVERED" | "READ";
+  at: string;
+}
+
+/** Applies a receipt to a list of messages, keeping the earliest times. */
+export function applyReceipt<T extends Message>(messages: T[], receipt: ReceiptPayload): T[] {
+  let changed = false;
+  const next = messages.map((message) => {
+    if (
+      message.conversationId !== receipt.conversationId ||
+      message.senderType !== receipt.senderType ||
+      message.createdAt > receipt.at
+    ) {
+      return message;
+    }
+    const deliveredAt = message.deliveredAt ?? receipt.at;
+    const readAt = receipt.status === "READ" ? (message.readAt ?? receipt.at) : message.readAt;
+    if (deliveredAt === message.deliveredAt && readAt === message.readAt) return message;
+    changed = true;
+    return { ...message, deliveredAt, readAt };
+  });
+  return changed ? next : messages;
+}
+
 /** Who is typing, and whether they still are. Never persisted. */
 export interface TypingPayload {
   conversationId: string;
@@ -46,6 +84,8 @@ export interface ServerToClientEvents {
   "conversation:assigned": (conversation: ConversationWithAgent) => void;
   "conversation:closed": (conversation: Conversation) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
+  "agent:profile": (payload: AgentProfilePayload) => void;
+  "message:receipt": (payload: ReceiptPayload) => void;
   "typing:update": (payload: TypingPayload) => void;
   error: (payload: { message: string }) => void;
 }
@@ -57,6 +97,8 @@ export interface ClientToServerEvents {
     ack?: (result: SocketAck) => void,
   ) => void;
   "conversation:leave": (payload: { conversationId: string }) => void;
+  /** The chat is on screen: everything the other side said so far is read. */
+  "conversation:read": (payload: { conversationId: string }) => void;
   "message:send": (
     payload: {
       conversationId: string;

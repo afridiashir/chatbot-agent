@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Building2,
   CalendarClock,
-  CheckCheck,
   Headset,
   Info,
   Lock,
@@ -18,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  applyReceipt,
   describeAttachment,
   type AdminConversationDetail,
   type AdminConversationSummary,
@@ -28,6 +28,7 @@ import {
   type ServerToClientEvents,
 } from "@repo/types";
 import { Bubble, DaySeparator, TypingDots } from "@/components/ConversationView";
+import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { Avatar } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/config";
@@ -189,6 +190,22 @@ export function AdminInbox({
           : current,
       );
       setTyping((current) => ({ ...current, [message.conversationId]: undefined }));
+    });
+
+    // Admins only watch the ticks change; their own viewing never marks anything read.
+    socket.on("message:receipt", (receipt) => {
+      setRows((current) =>
+        current?.map((row) =>
+          row.id === receipt.conversationId && row.lastMessage
+            ? { ...row, lastMessage: applyReceipt([row.lastMessage], receipt)[0]! }
+            : row,
+        ) ?? current,
+      );
+      setDetail((current) =>
+        current && current.id === receipt.conversationId
+          ? { ...current, messages: applyReceipt(current.messages, receipt) }
+          : current,
+      );
     });
 
     socket.on("typing:update", ({ conversationId, senderType, isTyping }) => {
@@ -583,8 +600,7 @@ function ChatRow({
               </span>
             ) : last ? (
               <>
-                {/* Grey, not blue: messages are stored (delivered) but reads are not tracked. */}
-                {fromAgent && <CheckCheck className="size-4 shrink-0" aria-label="Delivered" />}
+                {fromAgent && <ReceiptTicks message={last} className="size-4" />}
                 <span className="truncate">
                   {fromAgent ? `${row.agent.name.split(" ")[0]}: ` : ""}
                   {last.content ||

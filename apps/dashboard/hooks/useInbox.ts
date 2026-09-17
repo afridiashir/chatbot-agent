@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type {
   Agent,
+  AgentProfilePayload,
   ClientToServerEvents,
   ConversationDetail,
   ConversationSummary,
@@ -16,7 +17,7 @@ import { uploadAttachment } from "@/lib/media";
 import { API_URL } from "@/lib/config";
 import { useTypingSignal } from "@/hooks/useTyping";
 import { loadOutbox, newClientId, saveOutbox, type QueuedMessage } from "@/lib/outbox";
-import { TYPING } from "@repo/types";
+import { TYPING, applyReceipt } from "@repo/types";
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -43,7 +44,19 @@ export interface Inbox {
   pendingCount: number;
 }
 
-export function useInbox(agentId: string, token: string): Inbox {
+export function useInbox(
+  agentId: string,
+  token: string,
+  /** An admin changed this agent's name or photo from their dashboard. */
+  onProfile?: (profile: AgentProfilePayload) => void,
+): Inbox {
+  const [pageVisible, setPageVisible] = useState(true);
+  /** The newest visitor message already reported read, so each is reported once. */
+  const reportedReadRef = useRef<string | null>(null);
+  const onProfileRef = useRef(onProfile);
+  useEffect(() => {
+    onProfileRef.current = onProfile;
+  });
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
@@ -243,6 +256,25 @@ export function useInbox(agentId: string, token: string): Inbox {
       }
     });
 
+    socket.on("message:receipt", (receipt) => {
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === receipt.conversationId && row.lastMessage
+            ? { ...row, lastMessage: applyReceipt([row.lastMessage], receipt)[0]! }
+            : row,
+        ),
+      );
+      setDetail((current) =>
+        current && current.id === receipt.conversationId
+          ? { ...current, messages: applyReceipt(current.messages, receipt) }
+          : current,
+      );
+    });
+
+    socket.on("agent:profile", (profile) => {
+      if (profile.agentId === agentId) onProfileRef.current?.(profile);
+    });
+
     socket.on("conversation:closed", (conversation) => {
       setVisitorTyping(conversation.id, false);
       // Kept, not removed: it moves from the Open tab to Closed.
@@ -265,7 +297,31 @@ export function useInbox(agentId: string, token: string): Inbox {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [token, loadConversations, setVisitorTyping, updateOutbox]);
+  }, [agentId, token, loadConversations, setVisitorTyping, updateOutbox]);
+
+  useEffect(() => {
+    const onChange = () => setPageVisible(document.visibilityState === "visible");
+    onChange();
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+
+  // Blue ticks for the visitor: the open conversation is on screen and the tab
+  // is in front, so everything they said so far has been seen.
+  useEffect(() => {
+    if (!detail || !pageVisible) return;
+    let unread: Message | undefined;
+    for (let i = detail.messages.length - 1; i >= 0; i--) {
+      const message = detail.messages[i]!;
+      if (message.senderType === "VISITOR" && !message.readAt) {
+        unread = message;
+        break;
+      }
+    }
+    if (!unread || reportedReadRef.current === unread.id) return;
+    reportedReadRef.current = unread.id;
+    socketRef.current?.emit("conversation:read", { conversationId: detail.id });
+  }, [detail, pageVisible]);
 
   const select = useCallback(
     (conversationId: string) => {

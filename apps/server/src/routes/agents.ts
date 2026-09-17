@@ -11,9 +11,14 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAgent, requireAgent } from "../middleware/require-agent.js";
-import { emitAgentStatus } from "../realtime/emit.js";
+import { emitAgentProfile, emitAgentStatus } from "../realtime/emit.js";
 import { setAgentStatus } from "../services/agents.js";
-import { createAvatarUpload, removeAvatar, setAvatar } from "../services/avatars.js";
+import {
+  createAvatarUpload,
+  openConversationIds,
+  removeAvatar,
+  setAvatar,
+} from "../services/avatars.js";
 import { listAgentConversations } from "../services/conversations.js";
 
 export const agentsRouter: Router = Router();
@@ -39,7 +44,8 @@ agentsRouter.post(
   asyncHandler(async (req, res) => {
     const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
     const body = parseOrThrow(avatarUploadBodySchema, req.body, "photo");
-    sendOk(res, await createAvatarUpload(agentId, body, currentAgent(req)), 201);
+    const actor = { kind: "agent", agent: currentAgent(req) } as const;
+    sendOk(res, await createAvatarUpload(agentId, body, actor), 201);
   }),
 );
 
@@ -50,7 +56,9 @@ agentsRouter.put(
   asyncHandler(async (req, res) => {
     const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
     const { uploadToken } = parseOrThrow(setAvatarBodySchema, req.body, "photo");
-    sendOk(res, await setAvatar(agentId, uploadToken, currentAgent(req)));
+    const agent = await setAvatar(agentId, uploadToken, { kind: "agent", agent: currentAgent(req) });
+    emitAgentProfile(agent, await openConversationIds(agentId));
+    sendOk(res, agent);
   }),
 );
 
@@ -60,7 +68,9 @@ agentsRouter.delete(
   requireAgent,
   asyncHandler(async (req, res) => {
     const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
-    sendOk(res, await removeAvatar(agentId, currentAgent(req)));
+    const agent = await removeAvatar(agentId, { kind: "agent", agent: currentAgent(req) });
+    emitAgentProfile(agent, await openConversationIds(agentId));
+    sendOk(res, agent);
   }),
 );
 

@@ -1,56 +1,45 @@
 import { useState } from "react";
 
 /**
- * The assigned agent's photo, or their initials when they have none (or it
- * fails to load). Kept small and dependency-free for the widget bundle.
+ * The agent's photo, or WhatsApp's grey default silhouette when they have none
+ * (or it fails to load). Dependency-free for the widget bundle.
  */
 export function AgentAvatar({
   apiUrl,
   name,
   photo,
-  size = 32,
-  online,
+  size = 40,
 }: {
   apiUrl: string;
   name: string;
   photo: string | null;
   size?: number;
-  online?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
 
   return (
-    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+    <span
+      className="relative inline-flex shrink-0 overflow-hidden rounded-full"
+      style={{ width: size, height: size }}
+    >
       {photo && !failed ? (
         <img
           src={`${apiUrl}${photo}`}
-          alt=""
+          alt={name}
           onError={() => setFailed(true)}
-          className="h-full w-full rounded-full bg-slate-100 object-cover"
+          className="h-full w-full bg-[#dfe5e7] object-cover"
         />
       ) : (
-        <span
-          aria-hidden="true"
-          className="flex h-full w-full items-center justify-center rounded-full bg-slate-900 font-semibold text-white"
-          style={{ fontSize: Math.max(10, Math.round(size * 0.38)) }}
-        >
-          {initials || "?"}
-        </span>
-      )}
-      {online !== undefined && (
-        <span
-          aria-hidden="true"
-          className={[
-            "absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full ring-2 ring-white",
-            online ? "bg-emerald-500" : "bg-slate-300",
-          ].join(" ")}
-        />
+        <svg viewBox="0 0 212 212" className="h-full w-full" role="img" aria-label={name}>
+          <path
+            fill="#DFE5E7"
+            d="M106 0C47.5 0 0 47.5 0 106s47.5 106 106 106 106-47.5 106-106S164.5 0 106 0z"
+          />
+          <path
+            fill="#FFF"
+            d="M173.6 164.9c-7.5-12.5-19.8-21.4-34-24.7 11.5-9.9 17.1-25 14.8-40-3.4-22.5-24.4-38-47-34.6-22.5 3.4-38 24.4-34.6 47 1.5 9.9 6.5 19 14.2 25.5-14.2 3.3-26.5 12.2-34 24.7 16.9 20.3 41.6 32 68 32.1 26.3-.1 51-11.8 67.6-32z"
+          />
+        </svg>
       )}
     </span>
   );
