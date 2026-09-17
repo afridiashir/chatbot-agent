@@ -115,6 +115,27 @@ export async function getConversation(
  * was already stored. `created` tells the caller whether anything new
  * happened, so a retry does not re-broadcast.
  */
+/**
+ * How many of the visitor's messages the agent has not read, per conversation.
+ * One grouped query for the whole page: the read receipt already records this,
+ * so nothing new has to be tracked.
+ */
+export async function unreadCounts(conversationIds: string[]): Promise<Map<string, number>> {
+  if (conversationIds.length === 0) return new Map();
+
+  const groups = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: {
+      conversationId: { in: conversationIds },
+      senderType: "VISITOR",
+      readAt: null,
+    },
+    _count: { _all: true },
+  });
+
+  return new Map(groups.map((group) => [group.conversationId, group._count._all]));
+}
+
 export async function addMessage(
   conversationId: string,
   input: CreateMessageBody,
@@ -276,5 +297,6 @@ export async function listAgentConversations(
     },
   });
 
-  return rows.map(toConversationSummary);
+  const unread = await unreadCounts(rows.map((row) => row.id));
+  return rows.map((row) => toConversationSummary(row, unread.get(row.id) ?? 0));
 }

@@ -38,6 +38,7 @@ import {
 } from "../lib/admin-scope.js";
 import type { AdminTokenPayload } from "../lib/auth.js";
 import { signAdminToken } from "../lib/auth.js";
+import { unreadCounts } from "./conversations.js";
 import {
   toAdmin,
   toAgent,
@@ -500,8 +501,9 @@ export async function listAllConversations(
     },
   });
 
+  const unread = await unreadCounts(rows.map((row) => row.id));
   return rows.map((row) => ({
-    ...toConversationSummary(row),
+    ...toConversationSummary(row, unread.get(row.id) ?? 0),
     agent: { id: row.agent.id, name: row.agent.name, branchId: row.agent.branchId },
     branch: { id: row.agent.branch.id, name: row.agent.branch.name },
   }));

@@ -226,6 +226,8 @@ function Dashboard({
           ) : (
             visible.map((conversation) => {
               const typing = Boolean(inbox.typingIn[conversation.id]);
+              // Never on the conversation already open: opening it is reading it.
+              const unread = inbox.selectedId === conversation.id ? 0 : conversation.unreadCount;
               return (
                 <button
                   key={conversation.id}
@@ -245,12 +247,21 @@ function Dashboard({
 
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-medium">
+                      <span
+                        className={cn("truncate text-sm", unread ? "font-semibold" : "font-medium")}
+                      >
                         {conversation.visitor.name}
                       </span>
-                      <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-chat-meta">
+                      <span
+                        className={cn(
+                          "flex shrink-0 items-center gap-1.5 text-[10px]",
+                          unread ? "font-medium text-success" : "text-chat-meta",
+                        )}
+                      >
                         {conversation.status === "CLOSED" && (
-                          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">Closed</span>
+                          <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-chat-meta">
+                            Closed
+                          </span>
                         )}
                         {formatListTime(conversation.closedAt ?? conversation.updatedAt)}
                       </span>
@@ -285,6 +296,16 @@ function Dashboard({
                       </span>
                     )}
                   </span>
+
+                  {/* The count of what is waiting, as a chat app shows it. */}
+                  {unread > 0 && (
+                    <span
+                      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-success px-1.5 text-[11px] font-semibold text-white"
+                      aria-label={`${unread} unread ${unread === 1 ? "message" : "messages"}`}
+                    >
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
                 </button>
               );
             })

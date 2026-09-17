@@ -240,6 +240,7 @@ export function toConversationSummary(
     messages: MessageRow[];
     _count: { messages: number };
   },
+  unreadCount = 0,
 ): ConversationSummary {
   const [lastMessage] = row.messages;
   return {
@@ -247,5 +248,6 @@ export function toConversationSummary(
     visitor: toVisitorSummary(row.visitor),
     lastMessage: lastMessage ? toMessage(lastMessage) : null,
     messageCount: row._count.messages,
+    unreadCount,
   };
 }

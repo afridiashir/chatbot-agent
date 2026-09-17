@@ -216,7 +216,7 @@ export function useInbox(
       setConversations((current) =>
         current.some((row) => row.id === conversation.id)
           ? current
-          : [{ ...conversation, lastMessage: null, messageCount: 0 }, ...current],
+          : [{ ...conversation, lastMessage: null, messageCount: 0, unreadCount: 0 }, ...current],
       );
     });
 
@@ -253,10 +253,17 @@ export function useInbox(
         const row = current[index];
         if (!row) return current;
 
+        // Read where the agent is looking at this chat with the page in
+        // front of them; the read receipt goes out in the same breath.
+        const seen =
+          message.senderType === "AGENT" ||
+          (message.conversationId === selectedIdRef.current && !document.hidden);
+
         const updated = {
           ...row,
           lastMessage: message,
           messageCount: row.messageCount + 1,
+          unreadCount: seen ? 0 : row.unreadCount + 1,
           updatedAt: message.createdAt,
         };
         return [updated, ...current.filter((_, i) => i !== index)];
@@ -336,12 +343,18 @@ export function useInbox(
     if (!unread || reportedReadRef.current === unread.id) return;
     reportedReadRef.current = unread.id;
     socketRef.current?.emit("conversation:read", { conversationId: detail.id });
+    setConversations((current) =>
+      current.map((row) => (row.id === detail.id ? { ...row, unreadCount: 0 } : row)),
+    );
   }, [detail, pageVisible]);
 
   const select = useCallback(
     (conversationId: string) => {
       setSelectedId(conversationId);
       setDetail(null);
+      setConversations((current) =>
+        current.map((row) => (row.id === conversationId ? { ...row, unreadCount: 0 } : row)),
+      );
       void api<ConversationDetail>(`/api/conversations/${conversationId}`, { token })
         .then(setDetail)
         .catch(() => setError("Could not open that conversation"));

@@ -146,6 +146,8 @@ export interface ConversationSummary extends Conversation {
   visitor: VisitorSummary;
   lastMessage: Message | null;
   messageCount: number;
+  /** Messages from the visitor the agent has not read yet. */
+  unreadCount: number;
 }
 
 export interface BranchWithAgents extends Branch {
