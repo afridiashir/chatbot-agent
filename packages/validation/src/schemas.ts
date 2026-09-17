@@ -310,6 +310,17 @@ export const socketMessagePayloadSchema = z
   })
   .refine(withContentOrAttachment, EMPTY_MESSAGE);
 
+/**
+ * One emoji, or null to take the reaction back. Capped at a few code points:
+ * an emoji with a skin tone and a zero-width joiner is still short, while a
+ * pasted sentence is not a reaction.
+ */
+export const socketReactionPayloadSchema = z.object({
+  conversationId: idSchema,
+  messageId: idSchema,
+  emoji: z.string().trim().min(1).max(16).nullable(),
+});
+
 export const socketTypingPayloadSchema = z.object({
   conversationId: idSchema,
   isTyping: z.boolean(),
@@ -324,6 +335,7 @@ export type VisitorDetails = z.infer<typeof visitorDetailsSchema>;
 export type CreateMessageBody = z.infer<typeof createMessageBodySchema>;
 export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
+export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
 export type CreateBranchBody = z.infer<typeof createBranchBodySchema>;
 export type UpdateBranchBody = z.infer<typeof updateBranchBodySchema>;
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;

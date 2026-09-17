@@ -5,6 +5,7 @@ import {
   socketAuthSchema,
   socketJoinPayloadSchema,
   socketMessagePayloadSchema,
+  socketReactionPayloadSchema,
   socketTypingPayloadSchema,
 } from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
@@ -12,9 +13,13 @@ import { verifyAgentToken, verifyAdminToken } from "../lib/auth.js";
 import { loadAdminScope } from "../middleware/require-agent.js";
 import { HttpError } from "../lib/http.js";
 import { env } from "../env.js";
-import { addMessage, assertConversationAccess } from "../services/conversations.js";
+import {
+  addMessage,
+  assertConversationAccess,
+  reactToMessage,
+} from "../services/conversations.js";
 import { markReceipt } from "../services/receipts.js";
-import { announceMessage, emitReceipt, setRealtimeServer } from "./emit.js";
+import { announceMessage, emitReaction, emitReceipt, setRealtimeServer } from "./emit.js";
 import type { AppServer, AppSocket } from "./types.js";
 
 /**
@@ -124,6 +129,19 @@ function registerHandlers(socket: AppSocket): void {
         if (receipt) emitReceipt(receipt);
       } catch (error) {
         if (!(error instanceof HttpError)) console.error("[socket] read receipt", error);
+      }
+    })();
+  });
+
+  socket.on("message:react", (payload, ack) => {
+    void (async () => {
+      try {
+        const { messageId, emoji } = socketReactionPayloadSchema.parse(payload);
+        const { conversationId, reactions } = await reactToMessage(messageId, emoji, actor);
+        emitReaction(conversationId, messageId, reactions);
+        ack?.({ ok: true, data: reactions });
+      } catch (error) {
+        ack?.(toAckError(error));
       }
     })();
   });

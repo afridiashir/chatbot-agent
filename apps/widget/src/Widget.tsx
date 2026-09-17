@@ -145,6 +145,7 @@ export function Widget({ config }: { config: WidgetConfig }) {
           agentTyping={chat.agentTyping}
           error={chat.error}
           onSend={chat.sendMessage}
+          onReact={chat.react}
           onSendMedia={chat.sendMedia}
           onTyping={chat.notifyTyping}
           onStartOver={chat.startOver}

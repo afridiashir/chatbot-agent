@@ -7,6 +7,7 @@ import type {
   Conversation,
   ConversationWithAgent,
   Message,
+  Reaction,
 } from "@repo/types";
 import type { AppServer } from "./types.js";
 
@@ -54,6 +55,19 @@ export async function announceMessage(message: Message): Promise<void> {
   const reader = message.senderType === "AGENT" ? "VISITOR" : "AGENT";
   const receipt = await markReceipt(message.conversationId, reader, "DELIVERED");
   if (receipt) emitReceipt(receipt);
+}
+
+/** Everyone in the chat sees a reaction the moment it changes. */
+export function emitReaction(
+  conversationId: string,
+  messageId: string,
+  reactions: Reaction[],
+): void {
+  io?.to(rooms.conversation(conversationId)).emit("message:reaction", {
+    conversationId,
+    messageId,
+    reactions,
+  });
 }
 
 export function emitConversationAssigned(conversation: ConversationWithAgent): void {

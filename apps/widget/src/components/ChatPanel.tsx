@@ -10,6 +10,8 @@ import {
 } from "@repo/types";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "../hooks/useVoiceRecorder.js";
 import { useSwipeReply } from "../hooks/useSwipeReply.js";
+import { useLongPress } from "../hooks/useLongPress.js";
+import { ReactionBar } from "./ReactionBar.js";
 import { quoteText, toQuote } from "../lib/quote.js";
 import { formatClock, formatDayLabel, isNewDay } from "../lib/format.js";
 import { isJumboEmoji } from "../lib/emoji.js";
@@ -44,6 +46,8 @@ interface ChatPanelProps {
   agentTyping: boolean;
   error: string | null;
   onSend: (content: string, replyToId?: string) => Promise<void>;
+  /** Adds, replaces or removes this visitor's reaction; null takes it back. */
+  onReact: (messageId: string, emoji: string | null) => void;
   /** Uploads and sends a file or voice note; rejects with a readable error. */
   onSendMedia: (media: VisitorMediaSend) => Promise<void>;
   onTyping: () => void;
@@ -114,8 +118,13 @@ function MessageBubble({
   continued,
   canReply,
   flash,
+  reacting,
   onView,
   onReply,
+  onReact,
+  onOpenReactions,
+  onCloseReactions,
+  onMoreEmoji,
   onJumpTo,
   registerRef,
 }: {
@@ -128,8 +137,14 @@ function MessageBubble({
   canReply: boolean;
   /** Briefly highlighted because a reply's quote pointed here. */
   flash: boolean;
+  /** The reaction bar is open on this message. */
+  reacting: boolean;
   onView: (media: ViewedMedia) => void;
   onReply: (message: Message) => void;
+  onReact: (messageId: string, emoji: string | null) => void;
+  onOpenReactions: (messageId: string) => void;
+  onCloseReactions: () => void;
+  onMoreEmoji: (messageId: string) => void;
   onJumpTo: (messageId: string) => void;
   registerRef: (messageId: string, element: HTMLDivElement | null) => void;
 }) {
@@ -138,6 +153,9 @@ function MessageBubble({
   const bareVoice = media?.kind === "VOICE" && !message.content;
   const jumbo = !media && isJumboEmoji(message.content);
   const swipe = useSwipeReply(canReply, () => onReply(message));
+  // Touch screens hold the message down; a pointer hovers it instead.
+  const longPress = useLongPress(() => canReply && onOpenReactions(message.id));
+  const mine = message.reactions.find((r) => r.senderType === "VISITOR")?.emoji ?? null;
 
   return (
     <div
@@ -147,7 +165,37 @@ function MessageBubble({
       } ${continued ? "mt-0.5" : "mt-2"} ${flash ? "wa-flash" : ""}`}
       style={{ touchAction: "pan-y" }}
       {...swipe.handlers}
+      onTouchStart={(event) => {
+        swipe.handlers.onTouchStart?.(event);
+        longPress.onTouchStart(event);
+      }}
+      onTouchMove={(event) => {
+        swipe.handlers.onTouchMove?.(event);
+        longPress.onTouchMove(event);
+      }}
+      onTouchEnd={() => {
+        swipe.handlers.onTouchEnd?.();
+        longPress.onTouchEnd();
+      }}
+      onTouchCancel={() => {
+        swipe.handlers.onTouchCancel?.();
+        longPress.onTouchCancel();
+      }}
     >
+      {reacting && (
+        <div className={`absolute bottom-full z-20 mb-1 ${outgoing ? "right-0" : "left-0"}`}>
+          <ReactionBar
+            mine={mine}
+            onPick={(emoji) => {
+              onReact(message.id, emoji);
+              onCloseReactions();
+            }}
+            onMore={() => onMoreEmoji(message.id)}
+            onClose={onCloseReactions}
+          />
+        </div>
+      )}
+
       {/* Appears from under the bubble as it is dragged aside. */}
       {swipe.swiping && (
         <span
@@ -162,7 +210,12 @@ function MessageBubble({
       {/* Beside the bubble on its outer side, so it stays next to a short
           message instead of drifting to the edge of the panel. Pointer devices
           only: on a touch screen the swipe does this job. */}
-      {canReply && outgoing && <ReplyButton onClick={() => onReply(message)} />}
+      {canReply && outgoing && (
+        <>
+          <ReactButton onClick={() => onOpenReactions(message.id)} />
+          <ReplyButton onClick={() => onReply(message)} />
+        </>
+      )}
 
       <div
         className={[
@@ -220,10 +273,56 @@ function MessageBubble({
             <Stamp message={message} outgoing={outgoing} />
           </div>
         )}
+
+        {message.reactions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => (mine ? onReact(message.id, null) : onOpenReactions(message.id))}
+            aria-label={mine ? "Remove your reaction" : "React to this message"}
+            title={mine ? "Tap to remove your reaction" : "React"}
+            className="-mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[13px] leading-none shadow-[0_1px_2px_rgb(11_20_26/0.2)]"
+          >
+            {message.reactions.map((reaction) => (
+              <span key={reaction.senderType} className="emoji">
+                {reaction.emoji}
+              </span>
+            ))}
+          </button>
+        )}
       </div>
 
-      {canReply && !outgoing && <ReplyButton onClick={() => onReply(message)} />}
+      {canReply && !outgoing && (
+        <>
+          <ReplyButton onClick={() => onReply(message)} />
+          <ReactButton onClick={() => onOpenReactions(message.id)} />
+        </>
+      )}
     </div>
+  );
+}
+
+/** The round react control that appears beside a message on hover. */
+function ReactButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="React to this message"
+      title="React"
+      className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-wa-icon opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8.5 14.5s1.3 2 3.5 2 3.5-2 3.5-2M9 9.5h.01M15 9.5h.01" strokeLinecap="round" />
+      </svg>
+    </button>
   );
 }
 
@@ -266,6 +365,7 @@ export function ChatPanel({
   agentTyping,
   error: chatError,
   onSend,
+  onReact,
   onSendMedia,
   onTyping,
   onStartOver,
@@ -283,6 +383,10 @@ export function ChatPanel({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   /** Briefly highlighted after jumping to it from a quote. */
   const [flashId, setFlashId] = useState<string | null>(null);
+  /** The message whose reaction bar is open, if any. */
+  const [reactingId, setReactingId] = useState<string | null>(null);
+  /** Set while the emoji panel is picking a reaction rather than typing. */
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
   const closeViewer = useCallback(() => setViewing(null), []);
   const endRef = useRef<HTMLDivElement>(null);
@@ -330,8 +434,34 @@ export function ChatPanel({
 
   const startReply = useCallback((message: Message) => {
     setReplyTo(message);
+    setReactingId(null);
     inputRef.current?.focus();
   }, []);
+
+  const closeReactions = useCallback(() => setReactingId(null), []);
+
+  /** "+" on the bar: the full emoji panel picks the reaction instead. */
+  const moreEmoji = useCallback((messageId: string) => {
+    setReactingId(null);
+    setReactionTarget(messageId);
+    setEmojiOpen(true);
+  }, []);
+
+  // A tap anywhere else closes the reaction bar, as a popup should.
+  useEffect(() => {
+    if (!reactingId) return;
+    const close = () => setReactingId(null);
+    // Queued, so the click that opened it does not close it again.
+    const timer = setTimeout(() => {
+      document.addEventListener("pointerdown", close);
+      window.addEventListener("keydown", close);
+    });
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [reactingId]);
 
   /** Tapping a quote scrolls to the original and flashes it. */
   const jumpTo = useCallback((messageId: string) => {
@@ -406,6 +536,16 @@ export function ChatPanel({
     } finally {
       setSending(false);
     }
+  }
+
+  function pickEmoji(emoji: string) {
+    if (reactionTarget) {
+      onReact(reactionTarget, emoji);
+      setReactionTarget(null);
+      setEmojiOpen(false);
+      return;
+    }
+    insertEmoji(emoji);
   }
 
   function insertEmoji(emoji: string) {
@@ -509,8 +649,13 @@ export function ChatPanel({
                 continued={!newDay && previous?.senderType === message.senderType}
                 canReply={!isClosed && connected}
                 flash={flashId === message.id}
+                reacting={reactingId === message.id}
                 onView={setViewing}
                 onReply={startReply}
+                onReact={onReact}
+                onOpenReactions={setReactingId}
+                onCloseReactions={closeReactions}
+                onMoreEmoji={moreEmoji}
                 onJumpTo={jumpTo}
                 registerRef={registerRef}
               />
@@ -823,9 +968,10 @@ export function ChatPanel({
 
           {emojiOpen && !recorder.recording && (
             <EmojiPicker
-              onPick={insertEmoji}
+              onPick={pickEmoji}
               onClose={() => {
                 setEmojiOpen(false);
+                setReactionTarget(null);
                 inputRef.current?.focus();
               }}
             />

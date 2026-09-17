@@ -32,6 +32,8 @@ export interface Inbox {
   error: string | null;
   select: (conversationId: string) => void;
   send: (content: string, replyTo?: MessageQuote | null) => Promise<void>;
+  /** Adds, replaces or removes this agent's reaction; null takes it back. */
+  react: (messageId: string, emoji: string | null) => void;
   /** Uploads a file or voice note, then sends it. Needs a live connection. */
   sendMedia: (media: MediaSend) => Promise<void>;
   close: (conversationId: string) => Promise<void>;
@@ -278,6 +280,26 @@ export function useInbox(
       }
     });
 
+    socket.on("message:reaction", ({ conversationId, messageId, reactions }) => {
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === conversationId && row.lastMessage?.id === messageId
+            ? { ...row, lastMessage: { ...row.lastMessage, reactions } }
+            : row,
+        ),
+      );
+      setDetail((current) =>
+        current?.id === conversationId
+          ? {
+              ...current,
+              messages: current.messages.map((message) =>
+                message.id === messageId ? { ...message, reactions } : message,
+              ),
+            }
+          : current,
+      );
+    });
+
     socket.on("message:receipt", (receipt) => {
       setConversations((current) =>
         current.map((row) =>
@@ -416,6 +438,16 @@ export function useInbox(
    * Media is not queued offline the way text is: the upload itself needs the
    * network, so it runs now and failures surface in the composer.
    */
+  const react = useCallback((messageId: string, emoji: string | null) => {
+    const conversationId = selectedIdRef.current;
+    const socket = socketRef.current;
+    if (!conversationId || !socket?.connected) return;
+    // The broadcast is what updates the screen; only a refusal is handled here.
+    socket.emit("message:react", { conversationId, messageId, emoji }, (result) => {
+      if (!result.ok) setError(result.message);
+    });
+  }, []);
+
   const sendMedia = useCallback(
     async (media: MediaSend) => {
       const conversationId = selectedIdRef.current;
@@ -481,6 +513,7 @@ export function useInbox(
     select,
     send,
     sendMedia,
+    react,
     close,
     setOnline,
     typingIn,

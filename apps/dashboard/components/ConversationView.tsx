@@ -23,12 +23,14 @@ import {
   type MessageQuote,
 } from "@repo/types";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { ReactionBar } from "@/components/ReactionBar";
 import { MessageMedia } from "@/components/MessageMedia";
 import { LiveWaveform } from "@/components/Waveform";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
+import { useLongPress } from "@/hooks/useLongPress";
 import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
@@ -58,6 +60,8 @@ interface ConversationViewProps {
   onSend: (content: string) => Promise<void>;
   /** Uploads and sends one media message; rejects with a readable error. */
   onSendMedia: (media: MediaSend) => Promise<void>;
+  /** Adds, replaces or removes this agent's reaction; null takes it back. */
+  onReact?: (messageId: string, emoji: string | null) => void;
   onTyping: () => void;
   onClose: (conversationId: string) => Promise<void>;
 }
@@ -132,7 +136,12 @@ export function Bubble({
   sender,
   names,
   flash,
+  reacting,
   onReply,
+  onReact,
+  onOpenReactions,
+  onCloseReactions,
+  onMoreEmoji,
   onJumpTo,
   registerRef,
 }: {
@@ -143,8 +152,14 @@ export function Bubble({
   names?: { agent: string; visitor: string };
   /** Briefly highlighted because a reply's quote pointed here. */
   flash?: boolean;
+  /** The reaction bar is open on this message. */
+  reacting?: boolean;
   /** Omitted where replying isn't possible, such as the admin's read-only view. */
   onReply?: (message: Message) => void;
+  onReact?: (messageId: string, emoji: string | null) => void;
+  onOpenReactions?: (messageId: string) => void;
+  onCloseReactions?: () => void;
+  onMoreEmoji?: (messageId: string) => void;
   onJumpTo?: (messageId: string) => void;
   registerRef?: (messageId: string, element: HTMLDivElement | null) => void;
 }) {
@@ -153,6 +168,8 @@ export function Bubble({
   // A voice note without a caption owns the whole bubble, footer included.
   const bareVoice = media?.kind === "VOICE" && !message.content;
   const swipe = useSwipeReply(Boolean(onReply), () => onReply?.(message));
+  const longPress = useLongPress(() => onOpenReactions?.(message.id));
+  const mine = message.reactions.find((r) => r.senderType === "AGENT")?.emoji ?? null;
   const quoteName = (quote: MessageQuote) =>
     quote.senderType === "AGENT" ? (names?.agent ?? "Agent") : (names?.visitor ?? "Visitor");
 
@@ -166,7 +183,36 @@ export function Bubble({
       )}
       style={{ touchAction: "pan-y" }}
       {...swipe.handlers}
+      onTouchStart={(event) => {
+        swipe.handlers.onTouchStart?.(event);
+        longPress.onTouchStart(event);
+      }}
+      onTouchMove={(event) => {
+        swipe.handlers.onTouchMove?.(event);
+        longPress.onTouchMove(event);
+      }}
+      onTouchEnd={() => {
+        swipe.handlers.onTouchEnd?.();
+        longPress.onTouchEnd();
+      }}
+      onTouchCancel={() => {
+        swipe.handlers.onTouchCancel?.();
+        longPress.onTouchCancel();
+      }}
     >
+      {reacting && onReact && (
+        <div className={cn("absolute bottom-full z-20 mb-1", fromAgent ? "right-0" : "left-0")}>
+          <ReactionBar
+            mine={mine}
+            onPick={(emoji) => {
+              onReact(message.id, emoji);
+              onCloseReactions?.();
+            }}
+            onMore={() => onMoreEmoji?.(message.id)}
+            onClose={() => onCloseReactions?.()}
+          />
+        </div>
+      )}
       {swipe.swiping && (
         <span
           aria-hidden
@@ -180,7 +226,12 @@ export function Bubble({
       {/* Beside the bubble on its outer side: left of the agent's own messages,
           right of the visitor's. Sized even while hidden, so the row does not
           jump as the pointer moves over it. */}
-      {onReply && fromAgent && <ReplyButton onClick={() => onReply(message)} />}
+      {onReply && fromAgent && (
+        <>
+          {onOpenReactions && <ReactButton onClick={() => onOpenReactions(message.id)} />}
+          <ReplyButton onClick={() => onReply(message)} />
+        </>
+      )}
 
       <div
         className={cn(
@@ -240,10 +291,45 @@ export function Bubble({
             <Stamp message={message} outgoing={fromAgent} />
           </span>
         )}
+
+        {message.reactions.length > 0 && (
+          <button
+            type="button"
+            disabled={!onReact}
+            onClick={() => (mine ? onReact?.(message.id, null) : onOpenReactions?.(message.id))}
+            aria-label={mine ? "Remove your reaction" : "React to this message"}
+            title={mine ? "Click to remove your reaction" : "React"}
+            className="clear-both -mb-3 ml-1 flex translate-y-1 items-center gap-0.5 rounded-full border bg-card px-1.5 py-0.5 text-[13px] leading-none shadow-sm"
+          >
+            {message.reactions.map((reaction) => (
+              <span key={reaction.senderType}>{reaction.emoji}</span>
+            ))}
+          </button>
+        )}
       </div>
 
-      {onReply && !fromAgent && <ReplyButton onClick={() => onReply(message)} />}
+      {onReply && !fromAgent && (
+        <>
+          <ReplyButton onClick={() => onReply(message)} />
+          {onOpenReactions && <ReactButton onClick={() => onOpenReactions(message.id)} />}
+        </>
+      )}
     </div>
+  );
+}
+
+/** The round react control that appears beside a message on hover. */
+function ReactButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="React to this message"
+      title="React"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-chat-meta opacity-0 shadow-sm transition hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+    >
+      <Smile className="size-3.5" aria-hidden />
+    </button>
   );
 }
 
@@ -269,6 +355,7 @@ export function ConversationView({
   pending,
   onSend,
   onSendMedia,
+  onReact,
   onTyping,
   onClose,
 }: ConversationViewProps) {
@@ -278,6 +365,10 @@ export function ConversationView({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   /** Briefly highlighted after jumping to it from a quote. */
   const [flashId, setFlashId] = useState<string | null>(null);
+  /** The message whose reaction bar is open, if any. */
+  const [reactingId, setReactingId] = useState<string | null>(null);
+  /** Set while the emoji panel is picking a reaction rather than typing. */
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
 
@@ -299,6 +390,30 @@ export function ConversationView({
     const timer = setTimeout(() => setFlashId(null), 1200);
     return () => clearTimeout(timer);
   }, [flashId]);
+
+  const closeReactions = useCallback(() => setReactingId(null), []);
+
+  /** "+" on the bar hands the choice to the full emoji panel. */
+  const moreEmoji = useCallback((messageId: string) => {
+    setReactingId(null);
+    setReactionTarget(messageId);
+  }, []);
+
+  // A click anywhere else closes the reaction bar, as a popup should.
+  useEffect(() => {
+    if (!reactingId) return;
+    const close = () => setReactingId(null);
+    // Queued, so the click that opened it does not close it again.
+    const timer = setTimeout(() => {
+      document.addEventListener("pointerdown", close);
+      window.addEventListener("keydown", close);
+    });
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [reactingId]);
 
   const scrollToLatest = useCallback((smooth = false) => {
     endRef.current?.scrollIntoView({ block: "end", ...(smooth ? { behavior: "smooth" } : {}) });
@@ -385,6 +500,11 @@ export function ConversationView({
               names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
               flash={flashId === message.id}
               onReply={isClosed ? undefined : setReplyTo}
+              reacting={reactingId === message.id}
+              onReact={isClosed ? undefined : onReact}
+              onOpenReactions={isClosed ? undefined : setReactingId}
+              onCloseReactions={closeReactions}
+              onMoreEmoji={moreEmoji}
               onJumpTo={jumpTo}
               registerRef={registerRef}
               sender={
@@ -435,6 +555,12 @@ export function ConversationView({
           }}
           connected={connected}
           onActivity={scrollToLatest}
+          reactionTarget={reactionTarget}
+          onReaction={(messageId, emoji) => {
+            onReact?.(messageId, emoji);
+            setReactionTarget(null);
+          }}
+          onReactionCancel={() => setReactionTarget(null)}
           replyTo={replyTo}
           names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
           onCancelReply={() => setReplyTo(null)}
@@ -460,6 +586,9 @@ function Composer({
   onDraftChange,
   connected,
   onActivity,
+  reactionTarget,
+  onReaction,
+  onReactionCancel,
   replyTo,
   names,
   onCancelReply,
@@ -472,6 +601,10 @@ function Composer({
   connected: boolean;
   /** Follow the newest messages: writing pushes them up behind the box. */
   onActivity: (smooth?: boolean) => void;
+  /** Set while the emoji panel is choosing a reaction for this message. */
+  reactionTarget: string | null;
+  onReaction: (messageId: string, emoji: string) => void;
+  onReactionCancel: () => void;
   /** The message this one will quote, or null. */
   replyTo: Message | null;
   names: { agent: string; visitor: string };
@@ -486,6 +619,11 @@ function Composer({
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  // "More emoji" on a reaction bar opens the same panel, in reaction mode.
+  const pickingReaction = reactionTarget !== null;
+  useEffect(() => {
+    if (pickingReaction) setEmojiOpen(true);
+  }, [pickingReaction]);
   /** Where an emoji goes: the caret, remembered while the panel has focus. */
   const caretRef = useRef<number | null>(null);
   const recorder = useVoiceRecorder();
@@ -837,9 +975,17 @@ function Composer({
       {emojiOpen && (
         <div className="absolute bottom-full left-2 z-20 mb-2">
           <EmojiPicker
-            onPick={insertEmoji}
+            onPick={(emoji) => {
+              if (reactionTarget) {
+                onReaction(reactionTarget, emoji);
+                setEmojiOpen(false);
+                return;
+              }
+              insertEmoji(emoji);
+            }}
             onClose={() => {
               setEmojiOpen(false);
+              onReactionCancel();
               boxRef.current?.focus();
             }}
           />

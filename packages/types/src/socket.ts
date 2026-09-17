@@ -1,4 +1,10 @@
-import type { Conversation, ConversationWithAgent, Message, SenderType } from "./domain";
+import type {
+  Conversation,
+  ConversationWithAgent,
+  Message,
+  Reaction,
+  SenderType,
+} from "./domain";
 
 /** Room helpers — the single source of truth for room naming. */
 export const rooms = {
@@ -81,6 +87,12 @@ export const TYPING = {
 /** Events the server emits to clients. */
 export interface ServerToClientEvents {
   "message:new": (message: Message) => void;
+  /** The full set of reactions on a message, after someone changed theirs. */
+  "message:reaction": (payload: {
+    conversationId: string;
+    messageId: string;
+    reactions: Reaction[];
+  }) => void;
   "conversation:assigned": (conversation: ConversationWithAgent) => void;
   "conversation:closed": (conversation: Conversation) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
@@ -99,6 +111,14 @@ export interface ClientToServerEvents {
   "conversation:leave": (payload: { conversationId: string }) => void;
   /** The chat is on screen: everything the other side said so far is read. */
   "conversation:read": (payload: { conversationId: string }) => void;
+  /**
+   * Adds, replaces or removes this side's reaction to a message. `emoji: null`
+   * takes it back, and sending the same emoji again is also a take-back.
+   */
+  "message:react": (
+    payload: { conversationId: string; messageId: string; emoji: string | null },
+    ack?: (result: SocketAck<Reaction[]>) => void,
+  ) => void;
   "message:send": (
     payload: {
       conversationId: string;

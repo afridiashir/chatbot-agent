@@ -349,6 +349,7 @@ function Dashboard({
           pending={inbox.pending}
           onSend={inbox.send}
           onSendMedia={inbox.sendMedia}
+          onReact={inbox.react}
           onTyping={inbox.notifyTyping}
           onClose={inbox.close}
         />

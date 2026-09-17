@@ -74,6 +74,13 @@ export type Visitor = Prisma.VisitorModel
  */
 export type Conversation = Prisma.ConversationModel
 /**
+ * Model Reaction
+ * One emoji reaction on a message. The unique index on (messageId,
+ * senderType) is what makes reacting again replace the previous reaction
+ * rather than pile up, matching how WhatsApp behaves.
+ */
+export type Reaction = Prisma.ReactionModel
+/**
  * Model Message
  * 
  */

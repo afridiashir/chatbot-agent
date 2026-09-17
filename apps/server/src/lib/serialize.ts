@@ -141,6 +141,7 @@ export function toAgentWithLoad(row: AgentRow, activeConversationCount: number):
 /** Every message query includes its attachment, so the payload is complete. */
 export const MESSAGE_INCLUDE = {
   attachment: true,
+  reactions: { orderBy: { createdAt: "asc" } },
   // Just enough of the quoted message to render the reply block.
   replyTo: {
     select: {
@@ -158,7 +159,11 @@ type QuotedRow = Pick<MessageRow, "id" | "senderType" | "content"> & {
 };
 
 export function toMessage(
-  row: MessageRow & { attachment?: AttachmentRow | null; replyTo?: QuotedRow | null },
+  row: MessageRow & {
+    attachment?: AttachmentRow | null;
+    replyTo?: QuotedRow | null;
+    reactions?: Array<{ emoji: string; senderType: MessageRow["senderType"] }>;
+  },
 ): Message {
   const attachment = row.attachment;
   return {
@@ -186,6 +191,10 @@ export function toMessage(
           attachmentKind: row.replyTo.attachment?.kind ?? null,
         }
       : null,
+    reactions: (row.reactions ?? []).map((reaction) => ({
+      emoji: reaction.emoji,
+      senderType: reaction.senderType,
+    })),
     clientId: row.clientId,
     createdAt: row.createdAt.toISOString(),
     deliveredAt: row.deliveredAt?.toISOString() ?? null,

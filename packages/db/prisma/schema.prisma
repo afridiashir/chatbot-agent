@@ -195,6 +195,21 @@ model Conversation {
   @@index([visitorId, status])
 }
 
+/// One emoji reaction on a message. The unique index on (messageId,
+/// senderType) is what makes reacting again replace the previous reaction
+/// rather than pile up, matching how WhatsApp behaves.
+model Reaction {
+  id         String     @id @default(cuid())
+  messageId  String
+  senderType SenderType
+  emoji      String
+  createdAt  DateTime   @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, senderType])
+}
+
 model Message {
   id             String     @id @default(cuid())
   conversationId String
@@ -221,6 +236,8 @@ model Message {
   replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   /// Replies quoting this message. Kept so deleting it clears their quote.
   replies      Message[]    @relation("MessageReplies")
+  /// Emoji reactions, at most one per side.
+  reactions    Reaction[]
 
   @@index([conversationId, createdAt])
   @@index([replyToId])

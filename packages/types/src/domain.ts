@@ -96,6 +96,12 @@ export interface MessageQuote {
   attachmentKind: AttachmentKind | null;
 }
 
+/** One side's emoji reaction to a message; at most one per side. */
+export interface Reaction {
+  emoji: string;
+  senderType: SenderType;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -106,6 +112,8 @@ export interface Message {
   attachment: MessageAttachment | null;
   /** The earlier message this one replies to, or null. */
   replyTo: MessageQuote | null;
+  /** Emoji reactions, newest side last; empty when nobody has reacted. */
+  reactions: Reaction[];
   /** Idempotency key from the sender, when it queued the message. */
   clientId: string | null;
   createdAt: string;

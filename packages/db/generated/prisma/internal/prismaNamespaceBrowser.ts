@@ -59,6 +59,7 @@ export const ModelName = {
   Enquiry: 'Enquiry',
   Visitor: 'Visitor',
   Conversation: 'Conversation',
+  Reaction: 'Reaction',
   Message: 'Message',
   Attachment: 'Attachment'
 } as const
@@ -181,6 +182,17 @@ export const ConversationScalarFieldEnum = {
 } as const
 
 export type ConversationScalarFieldEnum = (typeof ConversationScalarFieldEnum)[keyof typeof ConversationScalarFieldEnum]
+
+
+export const ReactionScalarFieldEnum = {
+  id: 'id',
+  messageId: 'messageId',
+  senderType: 'senderType',
+  emoji: 'emoji',
+  createdAt: 'createdAt'
+} as const
+
+export type ReactionScalarFieldEnum = (typeof ReactionScalarFieldEnum)[keyof typeof ReactionScalarFieldEnum]
 
 
 export const MessageScalarFieldEnum = {

@@ -49,6 +49,8 @@ export interface ChatController {
   agentTyping: boolean;
   startChat: (branchId: string, visitor: VisitorDetails) => Promise<void>;
   sendMessage: (content: string, replyToId?: string) => Promise<void>;
+  /** Adds, replaces or removes this visitor's reaction; null takes it back. */
+  react: (messageId: string, emoji: string | null) => void;
   /** Uploads a photo, video, audio file or voice note, then sends it. */
   sendMedia: (media: VisitorMediaSend) => Promise<void>;
   /** Called on every keystroke; throttled internally. */
@@ -224,6 +226,11 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       if (message.senderType === "AGENT") setAgentTyping(false);
       appendMessage(message);
     });
+    socket.on("message:reaction", ({ messageId, reactions }) => {
+      setMessages((current) =>
+        current.map((message) => (message.id === messageId ? { ...message, reactions } : message)),
+      );
+    });
     socket.on("message:receipt", (receipt) => {
       setMessages((current) => applyReceipt(current, receipt));
     });
@@ -352,6 +359,19 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     [config.apiUrl, conversationId, visitorId, stopTyping],
   );
 
+  const react = useCallback(
+    (messageId: string, emoji: string | null) => {
+      const socket = socketRef.current;
+      if (!socket || !conversationId) return;
+      // The broadcast is what updates the screen, so nothing is done here with
+      // the acknowledgement beyond reporting a refusal.
+      socket.emit("message:react", { conversationId, messageId, emoji }, (result) => {
+        if (!result.ok) setError(result.message);
+      });
+    },
+    [conversationId],
+  );
+
   const startOver = useCallback(() => {
     clearStoredConversationId();
     setConversation(null);
@@ -398,6 +418,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     startChat,
     sendMessage,
     sendMedia,
+    react,
     notifyTyping,
     startOver,
   };

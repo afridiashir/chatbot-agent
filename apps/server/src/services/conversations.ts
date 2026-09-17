@@ -6,6 +6,7 @@ import type {
   ConversationStatus,
   ConversationSummary,
   Message,
+  Reaction,
 } from "@repo/types";
 import type { CreateConversationBody, CreateMessageBody } from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
@@ -241,6 +242,66 @@ export async function addMessage(
     }
     throw error;
   }
+}
+
+/**
+ * Adds, replaces or removes one side's reaction to a message, and returns
+ * whatever the message is left carrying.
+ *
+ * One row per side per message, so reacting again replaces the previous
+ * reaction; sending the emoji already there takes it back, which is what makes
+ * tapping the same one twice undo it. Admins observe and never react.
+ */
+export async function reactToMessage(
+  messageId: string,
+  emoji: string | null,
+  actor: Actor,
+): Promise<{ conversationId: string; reactions: Reaction[] }> {
+  if (actor.type === "ADMIN") throw forbidden("Admins cannot react to messages");
+
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      conversation: {
+        select: { id: true, agentId: true, visitorId: true, status: true, agent: ACCESS_AGENT },
+      },
+    },
+  });
+  if (!message) throw notFound("Message not found");
+
+  const conversation = message.conversation;
+  assertAccess(conversation, actor);
+  if (conversation.status === "CLOSED") throw conflict("This conversation has been closed");
+
+  const senderType = actor.type === "AGENT" ? "AGENT" : "VISITOR";
+  const existing = await prisma.reaction.findUnique({
+    where: { messageId_senderType: { messageId, senderType } },
+    select: { emoji: true },
+  });
+
+  // Same emoji again, or an explicit null: take it back.
+  if (!emoji || existing?.emoji === emoji) {
+    if (existing) {
+      await prisma.reaction.delete({
+        where: { messageId_senderType: { messageId, senderType } },
+      });
+    }
+  } else {
+    await prisma.reaction.upsert({
+      where: { messageId_senderType: { messageId, senderType } },
+      create: { messageId, senderType, emoji },
+      update: { emoji, createdAt: new Date() },
+    });
+  }
+
+  const reactions = await prisma.reaction.findMany({
+    where: { messageId },
+    orderBy: { createdAt: "asc" },
+    select: { emoji: true, senderType: true },
+  });
+
+  return { conversationId: conversation.id, reactions };
 }
 
 /**
