@@ -142,9 +142,9 @@ function MessageBubble({
   return (
     <div
       ref={(element) => registerRef(message.id, element)}
-      className={`group relative flex ${outgoing ? "justify-end" : "justify-start"} ${
-        continued ? "mt-0.5" : "mt-2"
-      } ${flash ? "wa-flash" : ""}`}
+      className={`group relative flex items-center gap-1 ${
+        outgoing ? "justify-end" : "justify-start"
+      } ${continued ? "mt-0.5" : "mt-2"} ${flash ? "wa-flash" : ""}`}
       style={{ touchAction: "pan-y" }}
       {...swipe.handlers}
     >
@@ -159,19 +159,10 @@ function MessageBubble({
         </span>
       )}
 
-      {canReply && (
-        <button
-          type="button"
-          onClick={() => onReply(message)}
-          aria-label="Reply to this message"
-          title="Reply"
-          className={`absolute top-1 z-10 hidden h-7 w-7 items-center justify-center rounded-full bg-white/95 text-wa-icon opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100 sm:flex ${
-            outgoing ? "-left-1" : "-right-1"
-          }`}
-        >
-          <ReplyIcon />
-        </button>
-      )}
+      {/* Beside the bubble on its outer side, so it stays next to a short
+          message instead of drifting to the edge of the panel. Pointer devices
+          only: on a touch screen the swipe does this job. */}
+      {canReply && outgoing && <ReplyButton onClick={() => onReply(message)} />}
 
       <div
         className={[
@@ -230,7 +221,24 @@ function MessageBubble({
           </div>
         )}
       </div>
+
+      {canReply && !outgoing && <ReplyButton onClick={() => onReply(message)} />}
     </div>
+  );
+}
+
+/** The round reply control that appears beside a message on hover. */
+function ReplyButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Reply to this message"
+      title="Reply"
+      className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-wa-icon opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100 sm:flex"
+    >
+      <ReplyIcon />
+    </button>
   );
 }
 

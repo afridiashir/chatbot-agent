@@ -147,7 +147,7 @@ export function Bubble({
     <div
       ref={(element) => registerRef?.(message.id, element)}
       className={cn(
-        "group relative flex",
+        "group relative flex items-center gap-1",
         fromAgent ? "justify-end" : "justify-start",
         flash && "chat-flash",
       )}
@@ -164,20 +164,10 @@ export function Bubble({
         </span>
       )}
 
-      {onReply && (
-        <button
-          type="button"
-          onClick={() => onReply(message)}
-          aria-label="Reply to this message"
-          title="Reply"
-          className={cn(
-            "absolute top-0 z-10 flex size-7 items-center justify-center rounded-full bg-card text-chat-meta opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100",
-            fromAgent ? "-left-1" : "-right-1",
-          )}
-        >
-          <Reply className="size-3.5" aria-hidden />
-        </button>
-      )}
+      {/* Beside the bubble on its outer side: left of the agent's own messages,
+          right of the visitor's. Sized even while hidden, so the row does not
+          jump as the pointer moves over it. */}
+      {onReply && fromAgent && <ReplyButton onClick={() => onReply(message)} />}
 
       <div
         className={cn(
@@ -229,7 +219,24 @@ export function Bubble({
           </span>
         )}
       </div>
+
+      {onReply && !fromAgent && <ReplyButton onClick={() => onReply(message)} />}
     </div>
+  );
+}
+
+/** The round reply control that appears beside a message on hover. */
+function ReplyButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Reply to this message"
+      title="Reply"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-chat-meta opacity-0 shadow-sm transition hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+    >
+      <Reply className="size-3.5" aria-hidden />
+    </button>
   );
 }
 
