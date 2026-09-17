@@ -20,7 +20,9 @@ services:
   # Object storage for chat media (images, video, audio, voice notes). The API
   # keeps the bucket private and hands out short-lived signed URLs.
   minio:
-    image: minio/minio:latest
+    # Official image, pinned: MinIO no longer publishes to Docker Hub
+    # (minio/minio is gone), only to quay.io.
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772
     container_name: mbca-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
