@@ -1,7 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, FileAudio, Film, Mic, Paperclip, Reply, Send, Trash2, X } from "lucide-react";
+import {
+  Clock,
+  FileAudio,
+  Film,
+  Mic,
+  Paperclip,
+  Reply,
+  Send,
+  Smile,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   ATTACHMENT_ACCEPT,
   formatBytes,
@@ -11,12 +22,14 @@ import {
   type Message,
   type MessageQuote,
 } from "@repo/types";
+import { EmojiPicker } from "@/components/EmojiPicker";
 import { MessageMedia } from "@/components/MessageMedia";
 import { LiveWaveform } from "@/components/Waveform";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
+import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
@@ -203,7 +216,16 @@ export function Bubble({
           />
         )}
         {message.content && (
-          <p className={cn("text-sm whitespace-pre-wrap break-words", media && "px-1.5 pt-1")}>
+          <p
+            className={cn(
+              "whitespace-pre-wrap break-words",
+              media && "px-1.5 pt-1",
+              // A message that is nothing but a few emoji is shown large.
+              !media && isJumboEmoji(message.content)
+                ? "py-1 text-[2.25rem] leading-tight"
+                : "text-sm",
+            )}
+          >
             {message.content}
           </p>
         )}
@@ -449,7 +471,26 @@ function Composer({
   const [mediaError, setMediaError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  /** Where an emoji goes: the caret, remembered while the panel has focus. */
+  const caretRef = useRef<number | null>(null);
   const recorder = useVoiceRecorder();
+
+  /** Drops the emoji in at the caret, or at the end when there is none. */
+  function insertEmoji(emoji: string) {
+    const box = boxRef.current;
+    const at = box && box === document.activeElement ? box.selectionStart : caretRef.current;
+    const caret = at ?? draft.length;
+    onDraftChange(draft.slice(0, caret) + emoji + draft.slice(caret));
+
+    const next = caret + emoji.length;
+    caretRef.current = next;
+    // After React has written the new value, put the caret after the emoji.
+    requestAnimationFrame(() => {
+      box?.focus();
+      box?.setSelectionRange(next, next);
+    });
+  }
 
   // One line until the text needs more, then taller up to the CSS max height.
   useEffect(() => {
@@ -458,6 +499,14 @@ function Composer({
     box.style.height = "auto";
     box.style.height = `${box.scrollHeight}px`;
   }, [draft]);
+
+  // Starting a reply puts the caret in the box, ready to type.
+  useEffect(() => {
+    if (!replyTo) return;
+    const box = boxRef.current;
+    box?.focus();
+    box?.setSelectionRange(box.value.length, box.value.length);
+  }, [replyTo]);
 
   // Object URLs hold the file in memory until revoked.
   useEffect(
@@ -685,6 +734,22 @@ function Composer({
           />
           <button
             type="button"
+            onClick={() => {
+              setEmojiOpen((open) => !open);
+              if (emojiOpen) boxRef.current?.focus();
+            }}
+            aria-label={emojiOpen ? "Close emoji" : "Emoji"}
+            aria-expanded={emojiOpen}
+            title="Emoji"
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-full transition hover:bg-accent",
+              emojiOpen ? "text-primary" : "text-chat-meta hover:text-foreground",
+            )}
+          >
+            <Smile className="size-5" />
+          </button>
+          <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={!connected || busy}
             aria-label="Attach a photo, video or audio file"
@@ -698,7 +763,11 @@ function Composer({
             rows={1}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
+            onBlur={(event) => {
+              caretRef.current = event.currentTarget.selectionStart;
+            }}
             onKeyDown={(event) => {
+              if (event.key === "Escape" && emojiOpen) setEmojiOpen(false);
               // Enter sends, Shift+Enter breaks the line. `isComposing` keeps an
               // IME's Enter — picking a character — from sending half a word.
               if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -742,6 +811,16 @@ function Composer({
             </button>
           )}
         </form>
+      )}
+
+      {emojiOpen && (
+        <EmojiPicker
+          onPick={insertEmoji}
+          onClose={() => {
+            setEmojiOpen(false);
+            boxRef.current?.focus();
+          }}
+        />
       )}
     </div>
   );
