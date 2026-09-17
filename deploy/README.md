@@ -87,10 +87,26 @@ add branches and agents.
 ></script>
 ```
 
-Add every client website to `EXTRA_CORS_ORIGINS` in `/opt/chat/.env`, for
-example `https://client.com,https://www.client.com`, then run
-`deploy/deploy.sh deploy` again. Without it the widget loads but cannot reach
-the API. Edit the file with `ssh -t deploy@169.58.95.150 nano /opt/chat/.env`.
+Add `?agent=AGENT_ID` or `?branch=BRANCH_ID` to the `src` to tie the widget to
+one agent or branch. The dashboard copies both out of its chat link dialogs.
+
+A website may only call the API once it is allowed. Edit `/opt/chat/.env` with
+`ssh -t deploy@169.58.95.150 nano /opt/chat/.env` and set either:
+
+- `EXTRA_CORS_ORIGINS=https://client.com,https://www.client.com` — one entry per
+  website, with the scheme and no trailing slash, or
+- `EXTRA_CORS_ORIGINS=*` — any website may embed the widget, with no entry per
+  client. Only the widget's own endpoints open up; the dashboard, sign-in and
+  admin endpoints stay limited to `APP_DOMAIN`.
+
+Then restart the API to pick it up:
+
+```bash
+ssh deploy@169.58.95.150 "docker compose --project-directory /opt/chat/src   --env-file /opt/chat/.env -f /opt/chat/src/docker-compose.prod.yml up -d api"
+```
+
+Shareable chat links (`https://api.yourdomain.com/chat?agent=…`) are served from
+the API's own domain and need no entry at all.
 
 ## Day to day
 

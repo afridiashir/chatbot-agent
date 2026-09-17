@@ -9,7 +9,11 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
-  /** Comma-separated list of allowed browser origins. */
+  /**
+   * Comma-separated list of allowed browser origins. A single `*` entry lets
+   * the widget run on any website; admin and sign-in routes stay restricted to
+   * the named origins either way (see createApp).
+   */
   CORS_ORIGINS: z
     .string()
     .default("http://localhost:3000,http://localhost:3002,http://localhost:3003"),
@@ -36,7 +40,9 @@ export const env = {
   MINIO_PUBLIC_URL: parsed.data.MINIO_PUBLIC_URL ?? parsed.data.MINIO_ENDPOINT,
   corsOrigins: parsed.data.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean),
+    .filter((origin) => origin && origin !== "*"),
+  /** `*` in CORS_ORIGINS: any website may embed the widget. */
+  allowAnyWidgetOrigin: parsed.data.CORS_ORIGINS.split(",").some((o) => o.trim() === "*"),
 };
 
 export const isProduction = env.NODE_ENV === "production";

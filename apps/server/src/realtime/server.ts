@@ -160,7 +160,9 @@ function registerHandlers(socket: AppSocket): void {
 
 export function createSocketServer(httpServer: HttpServer): AppServer {
   const io: AppServer = new Server(httpServer, {
-    cors: { origin: env.corsOrigins, credentials: true },
+    // Visitors chat from the customer's website; the handshake is still
+    // authenticated (agent token, or a visitor id tied to the conversation).
+    cors: { origin: env.allowAnyWidgetOrigin ? true : env.corsOrigins, credentials: true },
     // Defaults (25s interval, 20s timeout) leave a dead connection undetected
     // for up to 45 seconds, which is far too long to keep showing an agent a
     // chat they can no longer receive messages on.
