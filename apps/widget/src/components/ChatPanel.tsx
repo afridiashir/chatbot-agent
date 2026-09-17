@@ -287,7 +287,7 @@ export function ChatPanel({
   const closeViewer = useCallback(() => setViewing(null), []);
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   /** Where an emoji goes: the caret, remembered while the picker has focus. */
   const caretRef = useRef<number | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -299,6 +299,14 @@ export function ChatPanel({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, agentTyping]);
+
+  // One line until the text needs more, then taller up to the CSS max height.
+  useEffect(() => {
+    const box = inputRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${box.scrollHeight}px`;
+  }, [draft]);
 
   const busy = sending || progress !== null;
   const hasText = draft.trim().length > 0;
@@ -700,8 +708,9 @@ export function ChatPanel({
                     </svg>
                   )}
                 </button>
-                <input
+                <textarea
                   ref={inputRef}
+                  rows={1}
                   value={draft}
                   onChange={(event) => {
                     setDraft(event.target.value);
@@ -716,13 +725,26 @@ export function ChatPanel({
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Escape" && emojiOpen) setEmojiOpen(false);
+                    // Enter sends and Shift+Enter breaks the line, as on a desktop
+                    // chat app. On a touch keyboard Enter is the line break: the
+                    // send button is right there. `isComposing` keeps an IME's
+                    // Enter — picking a character — from sending half a word.
+                    if (
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      !touch &&
+                      !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault();
+                      void submit(event);
+                    }
                   }}
                   placeholder={
                     !connected ? "Reconnecting…" : staged ? "Add a caption…" : "Type a message"
                   }
                   disabled={!connected}
                   aria-label={staged ? "Caption" : "Message"}
-                  className="min-w-0 flex-1 bg-transparent py-2.5 text-base text-wa-text placeholder:text-wa-meta sm:text-[15px] focus:outline-none disabled:opacity-60"
+                  className="max-h-32 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-base text-wa-text placeholder:text-wa-meta sm:text-[15px] focus:outline-none disabled:opacity-60"
                 />
                 <button
                   type="button"

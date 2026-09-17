@@ -448,7 +448,16 @@ function Composer({
   const [progress, setProgress] = useState<number | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
   const recorder = useVoiceRecorder();
+
+  // One line until the text needs more, then taller up to the CSS max height.
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${box.scrollHeight}px`;
+  }, [draft]);
 
   // Object URLs hold the file in memory until revoked.
   useEffect(
@@ -684,9 +693,19 @@ function Composer({
           >
             <Paperclip className="size-5" />
           </button>
-          <input
+          <textarea
+            ref={boxRef}
+            rows={1}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
+            onKeyDown={(event) => {
+              // Enter sends, Shift+Enter breaks the line. `isComposing` keeps an
+              // IME's Enter — picking a character — from sending half a word.
+              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                void submit(event);
+              }
+            }}
             placeholder={
               staged
                 ? "Add a caption…"
@@ -695,7 +714,7 @@ function Composer({
                   : "Offline - messages will send on reconnect"
             }
             aria-label={staged ? "Caption" : "Reply"}
-            className="min-w-0 flex-1 rounded-lg border-0 bg-chat-panel px-4 py-2 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            className="max-h-32 min-w-0 flex-1 resize-none rounded-lg border-0 bg-chat-panel px-4 py-2 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           />
           {hasText || staged ? (
             <button
