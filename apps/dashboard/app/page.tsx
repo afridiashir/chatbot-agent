@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, BellOff, Camera, CloudOff, Link2, Search } from "lucide-react";
+import { Bell, BellOff, BellRing, Camera, CloudOff, Link2, Search } from "lucide-react";
 import { ChatLinkDialog } from "@/components/ChatLinkDialog";
 import { isMuted, playChime, setMuted, unlockSound } from "@/lib/sound";
+import { disablePush, enablePush, pushEnabled, pushSupported } from "@/lib/push";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { describeAttachment, type Agent } from "@repo/types";
@@ -50,9 +51,33 @@ function Dashboard({
   const [photoOpen, setPhotoOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [muted, setMutedState] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNote, setPushNote] = useState<string | null>(null);
 
   // Read after mount: localStorage does not exist while rendering on the server.
   useEffect(() => setMutedState(isMuted()), []);
+  useEffect(() => setPushOn(pushSupported() && pushEnabled()), []);
+
+  /** Notifications with the dashboard closed, which the sound cannot cover. */
+  async function togglePush() {
+    setPushNote(null);
+    setPushBusy(true);
+    try {
+      if (pushOn) {
+        await disablePush();
+        setPushOn(false);
+        return;
+      }
+      const result = await enablePush(token);
+      setPushOn(result.ok);
+      if (!result.ok) setPushNote(result.why);
+    } catch {
+      setPushNote("Could not turn notifications on.");
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   // Browsers keep audio silent until the person interacts with the page, so the
   // first click or key press after sign-in is what enables the chimes.
@@ -146,6 +171,25 @@ function Dashboard({
             </p>
           </div>
 
+          {pushSupported() && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => void togglePush()}
+              disabled={pushBusy}
+              aria-pressed={pushOn}
+              aria-label={
+                pushOn ? "Turn off notifications when closed" : "Notify me when the inbox is closed"
+              }
+              title={pushOn ? "Notifications on" : "Notify me when this is closed"}
+            >
+              <BellRing
+                className={pushOn ? "size-4 text-success" : "size-4 text-chat-meta"}
+                aria-hidden
+              />
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -170,6 +214,12 @@ function Dashboard({
             {agent.isOnline ? "Go offline" : "Go online"}
           </Button>
         </div>
+
+        {pushNote && (
+          <p role="status" className="border-b bg-warning-soft px-3 py-2 text-xs text-chat-meta">
+            {pushNote}
+          </p>
+        )}
 
         <div className="border-b px-3 py-2">
           <div className="relative">

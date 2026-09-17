@@ -2,9 +2,14 @@ import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
-import { pushSubscriptionBodySchema, unsubscribeBodySchema } from "@repo/validation";
+import {
+  agentPushSubscriptionBodySchema,
+  pushSubscriptionBodySchema,
+  unsubscribeBodySchema,
+} from "@repo/validation";
 import { env } from "../env.js";
 import { pushConfigured, removeSubscription, saveSubscription } from "../services/push.js";
+import { currentAgent, requireAgent } from "../middleware/require-agent.js";
 
 export const pushRouter: Router = Router();
 
@@ -29,6 +34,20 @@ pushRouter.post(
   asyncHandler(async (req, res) => {
     const body = parseOrThrow(pushSubscriptionBodySchema, req.body, "subscription");
     await saveSubscription(body.subscription, { visitorId: body.visitorId });
+    sendOk(res, { subscribed: true });
+  }),
+);
+
+/**
+ * POST /api/push/agent/subscribe — remembers this browser for the signed-in
+ * agent, so a chat can reach them with the dashboard closed.
+ */
+pushRouter.post(
+  "/agent/subscribe",
+  requireAgent,
+  asyncHandler(async (req, res) => {
+    const body = parseOrThrow(agentPushSubscriptionBodySchema, req.body, "subscription");
+    await saveSubscription(body.subscription, { agentId: currentAgent(req).agentId });
     sendOk(res, { subscribed: true });
   }),
 );

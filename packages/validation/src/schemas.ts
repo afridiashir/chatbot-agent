@@ -303,6 +303,17 @@ export const pushSubscriptionBodySchema = z.object({
   visitorId: visitorIdSchema,
 });
 
+/** The agent's own browser; the agent itself comes from the bearer token. */
+export const agentPushSubscriptionBodySchema = z.object({
+  subscription: z.object({
+    endpoint: z.url("endpoint must be a URL").max(2048),
+    keys: z.object({
+      p256dh: z.string().min(1).max(255),
+      auth: z.string().min(1).max(255),
+    }),
+  }),
+});
+
 export const unsubscribeBodySchema = z.object({
   endpoint: z.url("endpoint must be a URL").max(2048),
 });

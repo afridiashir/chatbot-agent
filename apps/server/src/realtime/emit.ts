@@ -1,7 +1,7 @@
 import { rooms } from "@repo/types";
 import { prisma } from "@repo/db";
 import { markReceipt } from "../services/receipts.js";
-import { pushToVisitor } from "../services/push.js";
+import { pushToAgent, pushToVisitor } from "../services/push.js";
 import type {
   Agent,
   AgentStatusPayload,
@@ -51,6 +51,36 @@ export async function recipientConnected(message: Message): Promise<boolean> {
  * Broadcasts a newly stored message, then, if the other side is connected to
  * the chat, marks it delivered straight away.
  */
+/** True when this agent has no dashboard connected anywhere. */
+async function agentAway(agentId: string): Promise<boolean> {
+  if (!io) return true;
+  const sockets = await io.in(rooms.agent(agentId)).fetchSockets();
+  return sockets.length === 0;
+}
+
+/**
+ * A visitor has written to an agent whose dashboard is shut. The inbox itself
+ * is only reached through the notification, so nothing of the chat is put in
+ * it beyond who is waiting.
+ */
+async function notifyAbsentAgent(message: Message): Promise<void> {
+  try {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: message.conversationId },
+      select: { agentId: true, visitor: { select: { name: true } } },
+    });
+    if (!conversation || !(await agentAway(conversation.agentId))) return;
+    await pushToAgent(
+      conversation.agentId,
+      conversation.visitor.name,
+      message.content || "Sent a message",
+      `chat-${message.conversationId}`,
+    );
+  } catch (error) {
+    console.error("[push] agent notification", error);
+  }
+}
+
 /**
  * The visitor has left the chat page, so the agent's answer goes out as a Web
  * Push notification instead. Best effort: a failure here must never hold up
@@ -74,8 +104,9 @@ export async function announceMessage(message: Message): Promise<void> {
 
   if (!(await recipientConnected(message))) {
     // Nobody is holding the chat open on the other side, so it goes out as a
-    // notification instead. Visitors only for now; agents are next.
+    // notification instead.
     if (message.senderType === "AGENT") void notifyAbsentVisitor(message);
+    else void notifyAbsentAgent(message);
     return;
   }
   const reader = message.senderType === "AGENT" ? "VISITOR" : "AGENT";
@@ -98,6 +129,21 @@ export function emitReaction(
 
 export function emitConversationAssigned(conversation: ConversationWithAgent): void {
   io?.to(rooms.agent(conversation.agentId)).emit("conversation:assigned", conversation);
+
+  // A chat nobody is watching is the one most worth a notification.
+  void (async () => {
+    try {
+      if (!(await agentAway(conversation.agentId))) return;
+      await pushToAgent(
+        conversation.agentId,
+        "New chat",
+        `${conversation.visitor.name} started a conversation`,
+        `chat-${conversation.id}`,
+      );
+    } catch (error) {
+      console.error("[push] new chat notification", error);
+    }
+  })();
 }
 
 export function emitConversationClosed(conversation: Conversation): void {

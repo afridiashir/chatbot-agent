@@ -19,6 +19,7 @@ import { API_URL } from "@/lib/config";
 import { useTypingSignal } from "@/hooks/useTyping";
 import { loadOutbox, newClientId, saveOutbox, type QueuedMessage } from "@/lib/outbox";
 import { playChime } from "@/lib/sound";
+import { notifyInBackground } from "@/lib/push";
 import { TYPING, applyReceipt } from "@repo/types";
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -215,6 +216,11 @@ export function useInbox(
       socket.emit("conversation:join", { conversationId: conversation.id });
       // A visitor is waiting: worth hearing even with the inbox in view.
       playChime("newChat");
+      notifyInBackground(
+        "New chat",
+        `${conversation.visitor.name} started a conversation`,
+        `chat-${conversation.id}`,
+      );
       setConversations((current) =>
         current.some((row) => row.id === conversation.id)
           ? current
@@ -240,6 +246,13 @@ export function useInbox(
         (document.hidden || message.conversationId !== selectedIdRef.current)
       ) {
         playChime("message");
+        // Only fires while the tab is hidden; the server pushes when it is
+        // closed, and the two cannot both happen.
+        notifyInBackground(
+          "New message",
+          message.content || "Sent a message",
+          `chat-${message.conversationId}`,
+        );
       }
 
       // Our own message coming back through the room retires its pending copy.

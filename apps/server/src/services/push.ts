@@ -102,6 +102,19 @@ function preview(message: Message): string {
 }
 
 /**
+ * Someone is waiting on an agent whose dashboard is not connected. The link
+ * opens the inbox, where the conversation is already at the top.
+ */
+export async function pushToAgent(
+  agentId: string,
+  title: string,
+  body: string,
+  tag: string,
+): Promise<void> {
+  await sendTo({ agentId }, { title, body, url: env.PUBLIC_APP_URL, tag });
+}
+
+/**
  * The agent has answered someone who is no longer connected to the chat.
  * The link reopens their conversation on the hosted chat page.
  */

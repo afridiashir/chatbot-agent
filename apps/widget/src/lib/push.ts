@@ -2,6 +2,38 @@ import { apiFetch } from "./api.js";
 
 const ASKED_KEY = "acme-chat-push-asked";
 
+/** Notifications while the page is open, which any site can do. */
+export function notificationsSupported(): boolean {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+/** Asks for permission alone, for sites where a service worker is impossible. */
+export async function enableForegroundNotifications(): Promise<boolean> {
+  if (!notificationsSupported()) return false;
+  return (await Notification.requestPermission()) === "granted";
+}
+
+/**
+ * Shows the agent's reply when the visitor is looking at another tab. Nothing
+ * is shown while the chat is on screen — they can already see it — and this is
+ * all an embedded widget can do, since a service worker would have to be
+ * served by the client's own domain.
+ */
+export function notifyInBackground(title: string, body: string, tag: string): void {
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  if (!document.hidden) return;
+  try {
+    const notification = new Notification(title, { body, tag });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch {
+    // Android Chrome only allows notifications from a service worker, which an
+    // embedded widget has no way to register. The chat still updates itself.
+  }
+}
+
 /** Whether this browser can do Web Push at all. */
 export function pushSupported(): boolean {
   return (

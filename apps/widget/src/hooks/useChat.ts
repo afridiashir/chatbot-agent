@@ -15,6 +15,7 @@ import type { WidgetConfig } from "../config.js";
 import type { VisitorDetails } from "../components/PreChatForm.js";
 import type { VisitorMediaSend } from "../components/ChatPanel.js";
 import { ApiError, apiFetch } from "../lib/api.js";
+import { notifyInBackground } from "../lib/push.js";
 import { uploadVisitorAttachment } from "../lib/media.js";
 import { useTypingIndicator, useTypingSignal } from "./useTyping.js";
 import {
@@ -70,6 +71,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [conversation, setConversation] = useState<ConversationWithAgent | null>(null);
   const [linkAgent, setLinkAgent] = useState<PublicAgentProfile | null>(null);
+  /** Read inside socket handlers, which must not close over changing state. */
+  const agentNameRef = useRef<string | null>(null);
   const [lockedBranch, setLockedBranch] = useState<Branch | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -225,7 +228,16 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     socket.on("disconnect", () => setConnected(false));
     socket.on("message:new", (message) => {
       // Their message arriving means they have stopped typing.
-      if (message.senderType === "AGENT") setAgentTyping(false);
+      if (message.senderType === "AGENT") {
+        setAgentTyping(false);
+        // Only while the visitor is on another tab; on the hosted page a push
+        // covers them once it is closed altogether.
+        notifyInBackground(
+          agentNameRef.current ?? "New message",
+          message.content || "Sent a message",
+          `chat-${message.conversationId}`,
+        );
+      }
       appendMessage(message);
     });
     socket.on("message:reaction", ({ messageId, reactions }) => {
@@ -373,6 +385,10 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     },
     [conversationId],
   );
+
+  useEffect(() => {
+    agentNameRef.current = conversation?.agent.name ?? linkAgent?.name ?? null;
+  }, [conversation, linkAgent]);
 
   const startOver = useCallback(() => {
     clearStoredConversationId();

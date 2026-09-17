@@ -33,6 +33,8 @@ const envSchema = z.object({
   VAPID_SUBJECT: z.string().default("mailto:admin@example.com"),
   /** Where a notification's link opens: the hosted chat page. */
   PUBLIC_CHAT_URL: z.string().default("http://localhost:3002/chat"),
+  /** The agent inbox, opened from an agent's notification. */
+  PUBLIC_APP_URL: z.string().default("http://localhost:3003"),
   MINIO_REGION: z.string().default("us-east-1"),
 });
 

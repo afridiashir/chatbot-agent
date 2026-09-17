@@ -121,12 +121,20 @@ Put the two printed lines into `/opt/chat/.env`, add
 `VAPID_SUBJECT=mailto:you@yourdomain.com`, then `deploy/deploy.sh deploy`.
 Without keys the feature stays off and nothing else changes.
 
-The chat page then offers "Get a notification when we reply?" once the visitor
-has sent something. This works on `https://API_DOMAIN/chat` links, not on the
-widget embedded in a client's website: a browser only accepts a service worker
-served by the site's own domain, and that domain is the client's, not yours.
-On iPhone the visitor must add the page to their Home Screen first; Android and
-desktop Chrome work as they are.
+With keys in place:
+
+- **Agents** get a bell in the inbox header: "Notify me when this is closed".
+  A new chat, or a message with the dashboard shut, arrives as a notification.
+- **The hosted chat page** offers "Get a notification when we reply?" once the
+  visitor has written something.
+- **The widget on a client's website** offers the same, but can only show
+  notifications while the visitor has the page open in another tab. A browser
+  only accepts a service worker served by the site's own domain, and that
+  domain is the client's, not yours, so a closed tab cannot be reached there.
+
+On iPhone, notifications need the page added to the Home Screen first; Android
+and desktop Chrome work as they are. A notification is only sent to someone who
+is not already connected, so nobody is told twice about the same message.
 
 ## Day to day
 

@@ -13,7 +13,13 @@ import { useSwipeReply } from "../hooks/useSwipeReply.js";
 import { useLongPress } from "../hooks/useLongPress.js";
 import { ReactionBar } from "./ReactionBar.js";
 import { quoteText, toQuote } from "../lib/quote.js";
-import { enablePush, pushAsked, pushSupported, rememberAsked } from "../lib/push.js";
+import {
+  enableForegroundNotifications,
+  enablePush,
+  notificationsSupported,
+  pushAsked,
+  rememberAsked,
+} from "../lib/push.js";
 import { formatClock, formatDayLabel, isNewDay } from "../lib/format.js";
 import { isJumboEmoji } from "../lib/emoji.js";
 import { checkVisitorFile } from "../lib/media.js";
@@ -435,16 +441,15 @@ export function ChatPanel({
     if (replyTo) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [replyTo]);
 
-  // Asked only after they have written something, and only on our own hosted
-  // page, where a service worker may be registered. A stranger who has not
+  // Asked only once they have written something: a stranger who has not
   // spoken yet is not asked for permission to notify them.
   const said = messages.some((message) => message.senderType === "VISITOR");
   useEffect(() => {
-    if (!canPush || !said || pushAsked()) return;
+    if (!notificationsSupported() || !said || pushAsked()) return;
     if (Notification.permission !== "default") return;
     const timer = setTimeout(() => setOfferPush(true), 1500);
     return () => clearTimeout(timer);
-  }, [canPush, said]);
+  }, [said]);
 
   const busy = sending || progress !== null;
   const hasText = draft.trim().length > 0;
@@ -734,7 +739,9 @@ export function ChatPanel({
                 onClick={() => {
                   rememberAsked();
                   setOfferPush(false);
-                  void enablePush(apiUrl, visitorId);
+                  // Our own page can be pushed to with the tab closed; on a
+                  // client's site permission alone is all a browser allows.
+                  void (canPush ? enablePush(apiUrl, visitorId) : enableForegroundNotifications());
                 }}
                 className="rounded-full bg-wa-green px-3 py-1 text-xs font-medium text-white transition hover:brightness-95"
               >
