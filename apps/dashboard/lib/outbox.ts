@@ -1,5 +1,7 @@
 "use client";
 
+import type { MessageQuote } from "@repo/types";
+
 /**
  * Messages the agent has sent but the server has not yet confirmed, and drafts
  * they are still writing. Both live in localStorage so a reload, a crash or a
@@ -18,6 +20,8 @@ export interface QueuedMessage {
   content: string;
   /** When the agent hit send, so the pending bubble sits in the right place. */
   createdAt: string;
+  /** Kept with the queued message so an offline reply still quotes correctly. */
+  replyTo?: MessageQuote | null;
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -40,7 +44,8 @@ function write(key: string, value: unknown): void {
 export const loadOutbox = (): QueuedMessage[] => read<QueuedMessage[]>(OUTBOX_KEY, []);
 export const saveOutbox = (queue: QueuedMessage[]): void => write(OUTBOX_KEY, queue);
 
-export const loadDrafts = (): Record<string, string> => read<Record<string, string>>(DRAFTS_KEY, {});
+export const loadDrafts = (): Record<string, string> =>
+  read<Record<string, string>>(DRAFTS_KEY, {});
 
 export function saveDraft(conversationId: string, content: string): void {
   const drafts = loadDrafts();

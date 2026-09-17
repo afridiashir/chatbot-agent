@@ -9,6 +9,7 @@ import type {
   ConversationDetail,
   ConversationSummary,
   Message,
+  MessageQuote,
   ServerToClientEvents,
 } from "@repo/types";
 import type { MediaSend } from "@/components/ConversationView";
@@ -29,7 +30,7 @@ export interface Inbox {
   connected: boolean;
   error: string | null;
   select: (conversationId: string) => void;
-  send: (content: string) => Promise<void>;
+  send: (content: string, replyTo?: MessageQuote | null) => Promise<void>;
   /** Uploads a file or voice note, then sends it. Needs a live connection. */
   sendMedia: (media: MediaSend) => Promise<void>;
   close: (conversationId: string) => Promise<void>;
@@ -165,6 +166,7 @@ export function useInbox(
             conversationId: queued.conversationId,
             content: queued.content,
             clientId: queued.clientId,
+            replyToId: queued.replyTo?.id,
           },
           (result) => {
             if (result.ok) {
@@ -339,7 +341,7 @@ export function useInbox(
    * hits send, so losing the connection — or the tab — cannot lose their words.
    */
   const send = useCallback(
-    (content: string) =>
+    (content: string, replyTo?: MessageQuote | null) =>
       new Promise<void>((resolve) => {
         const conversationId = selectedIdRef.current;
         if (!conversationId) {
@@ -352,6 +354,7 @@ export function useInbox(
           clientId: newClientId(),
           conversationId,
           content,
+          replyTo: replyTo ?? null,
           createdAt: new Date().toISOString(),
         };
         updateOutbox([...outboxRef.current, queued]);
@@ -368,7 +371,7 @@ export function useInbox(
 
         socket.emit(
           "message:send",
-          { conversationId, content, clientId: queued.clientId },
+          { conversationId, content, clientId: queued.clientId, replyToId: replyTo?.id },
           (result) => {
             if (result.ok) {
               updateOutbox(outboxRef.current.filter((m) => m.clientId !== queued.clientId));
@@ -409,6 +412,7 @@ export function useInbox(
           {
             conversationId,
             content: media.caption,
+            replyToId: media.replyToId,
             attachment: {
               uploadToken,
               durationMs: media.durationMs,

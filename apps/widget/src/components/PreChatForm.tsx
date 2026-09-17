@@ -121,23 +121,23 @@ export function PreChatForm({
         </label>
 
         {!lockedBranch && (
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-wa-icon">Branch</span>
-          <select
-            value={form.branchId}
-            onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-            aria-label="Branch"
-            className={field("branchId")}
-          >
-            <option value="">Select your branch</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-          {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
-        </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-wa-icon">Branch</span>
+            <select
+              value={form.branchId}
+              onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+              aria-label="Branch"
+              className={field("branchId")}
+            >
+              <option value="">Select your branch</option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+            {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
+          </label>
         )}
 
         <button

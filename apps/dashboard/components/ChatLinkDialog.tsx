@@ -7,8 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { API_URL, WIDGET_BASE_URL } from "@/lib/config";
 
 export type ChatLinkTarget =
-  | { kind: "agent"; id: string; name: string }
-  | { kind: "branch"; id: string; name: string };
+  { kind: "agent"; id: string; name: string } | { kind: "branch"; id: string; name: string };
 
 /** The hosted chat page for one agent or branch. */
 export function chatLinkFor(target: ChatLinkTarget): string {
@@ -98,7 +97,11 @@ export function ChatLinkDialog({
                 className="min-w-0 flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs"
               />
               <CopyButton value={link} label="Copy chat link" />
-              <Button variant="ghost" size="sm" onClick={() => window.open(link, "_blank", "noopener")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(link, "_blank", "noopener")}
+              >
                 <ExternalLink className="size-3.5" aria-hidden />
                 Open
               </Button>

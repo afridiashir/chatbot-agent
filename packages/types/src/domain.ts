@@ -3,7 +3,7 @@
  * import from `@repo/db` so that browser bundles never pull in Prisma.
  */
 
-import type { MessageAttachment } from "./media";
+import type { AttachmentKind, MessageAttachment } from "./media";
 
 export const ConversationStatus = {
   ACTIVE: "ACTIVE",
@@ -83,6 +83,19 @@ export interface Visitor {
 /** What agents and admins are shown about a visitor. */
 export type VisitorSummary = Pick<Visitor, "id" | "name" | "email" | "phone">;
 
+/**
+ * The message a reply quotes, as shown in the small block above it. Trimmed on
+ * purpose: enough to recognise the message and jump to it, nothing more.
+ */
+export interface MessageQuote {
+  id: string;
+  senderType: SenderType;
+  /** The text, or the caption of a media message. */
+  content: string;
+  /** Set when the quoted message carried media, for the "Photo" style label. */
+  attachmentKind: AttachmentKind | null;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -91,6 +104,8 @@ export interface Message {
   content: string;
   /** Image, video, audio file or voice note sent with the message. */
   attachment: MessageAttachment | null;
+  /** The earlier message this one replies to, or null. */
+  replyTo: MessageQuote | null;
   /** Idempotency key from the sender, when it queued the message. */
   clientId: string | null;
   createdAt: string;

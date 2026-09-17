@@ -158,6 +158,18 @@ export async function addMessage(
     throw conflict("This conversation has been closed");
   }
 
+  // A reply may only quote a message from the same conversation, so a quote
+  // can never leak text from someone else's chat.
+  if (input.replyToId) {
+    const quoted = await prisma.message.findUnique({
+      where: { id: input.replyToId },
+      select: { conversationId: true },
+    });
+    if (!quoted || quoted.conversationId !== conversationId) {
+      throw notFound("The message you replied to no longer exists");
+    }
+  }
+
   // Checked against storage before anything is written, so a message never
   // points at a missing, oversized or mislabelled file.
   const upload = input.attachment
@@ -179,6 +191,7 @@ export async function addMessage(
           conversationId,
           senderType: input.senderType,
           content: input.content,
+          replyToId: input.replyToId ?? null,
           clientId: input.clientId ?? null,
           ...(upload ? { attachment: { create: upload } } : {}),
         },

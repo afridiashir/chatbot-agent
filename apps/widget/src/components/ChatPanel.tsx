@@ -9,6 +9,8 @@ import {
   type Message,
 } from "@repo/types";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "../hooks/useVoiceRecorder.js";
+import { useSwipeReply } from "../hooks/useSwipeReply.js";
+import { quoteText, toQuote } from "../lib/quote.js";
 import { formatClock, formatDayLabel, isNewDay } from "../lib/format.js";
 import { isJumboEmoji } from "../lib/emoji.js";
 import { checkVisitorFile } from "../lib/media.js";
@@ -24,6 +26,8 @@ export interface VisitorMediaSend {
   caption: string;
   durationMs?: number;
   waveform?: number[];
+  /** Set when the media is a reply to an earlier message. */
+  replyToId?: string;
   onProgress: (fraction: number) => void;
 }
 
@@ -39,7 +43,7 @@ interface ChatPanelProps {
   isClosed: boolean;
   agentTyping: boolean;
   error: string | null;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, replyToId?: string) => Promise<void>;
   /** Uploads and sends a file or voice note; rejects with a readable error. */
   onSendMedia: (media: VisitorMediaSend) => Promise<void>;
   onTyping: () => void;
@@ -61,7 +65,8 @@ function TypingDots() {
   );
 }
 
-const TICK = "M11.07.65 5.26 7.74 2.87 5.4a.5.5 0 0 0-.7.72l2.78 2.7a.5.5 0 0 0 .73-.04l6.16-7.5a.5.5 0 0 0-.77-.63z";
+const TICK =
+  "M11.07.65 5.26 7.74 2.87 5.4a.5.5 0 0 0-.7.72l2.78 2.7a.5.5 0 0 0 .73-.04l6.16-7.5a.5.5 0 0 0-.77-.63z";
 
 /**
  * WhatsApp's ticks: one grey once stored, two grey once the agent's inbox has
@@ -70,7 +75,12 @@ const TICK = "M11.07.65 5.26 7.74 2.87 5.4a.5.5 0 0 0-.7.72l2.78 2.7a.5.5 0 0 0 
 function Ticks({ status }: { status: ReceiptStatus }) {
   if (status === "SENT") {
     return (
-      <svg viewBox="0 0 12 11" className="h-[11px] w-3 text-wa-meta" fill="currentColor" aria-label="Sent">
+      <svg
+        viewBox="0 0 12 11"
+        className="h-[11px] w-3 text-wa-meta"
+        fill="currentColor"
+        aria-label="Sent"
+      >
         <path d={TICK} />
       </svg>
     );
@@ -102,24 +112,67 @@ function MessageBubble({
   message,
   agent,
   continued,
+  canReply,
+  flash,
   onView,
+  onReply,
+  onJumpTo,
+  registerRef,
 }: {
   apiUrl: string;
   message: Message;
   agent: { name: string; photo: string | null };
   /** Follows a message from the same side, so it drops the tail. */
   continued: boolean;
+  /** False once the chat is closed or the connection is down. */
+  canReply: boolean;
+  /** Briefly highlighted because a reply's quote pointed here. */
+  flash: boolean;
   onView: (media: ViewedMedia) => void;
+  onReply: (message: Message) => void;
+  onJumpTo: (messageId: string) => void;
+  registerRef: (messageId: string, element: HTMLDivElement | null) => void;
 }) {
   const outgoing = message.senderType === "VISITOR";
   const media = message.attachment;
   const bareVoice = media?.kind === "VOICE" && !message.content;
   const jumbo = !media && isJumboEmoji(message.content);
+  const swipe = useSwipeReply(canReply, () => onReply(message));
 
   return (
     <div
-      className={`flex ${outgoing ? "justify-end" : "justify-start"} ${continued ? "mt-0.5" : "mt-2"}`}
+      ref={(element) => registerRef(message.id, element)}
+      className={`group relative flex ${outgoing ? "justify-end" : "justify-start"} ${
+        continued ? "mt-0.5" : "mt-2"
+      } ${flash ? "wa-flash" : ""}`}
+      style={{ touchAction: "pan-y" }}
+      {...swipe.handlers}
     >
+      {/* Appears from under the bubble as it is dragged aside. */}
+      {swipe.swiping && (
+        <span
+          aria-hidden
+          className="absolute top-1/2 left-1 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/10 text-wa-icon"
+          style={{ opacity: Math.min(1, swipe.offset / 46) }}
+        >
+          <ReplyIcon />
+        </span>
+      )}
+
+      {canReply && (
+        <button
+          type="button"
+          onClick={() => onReply(message)}
+          aria-label="Reply to this message"
+          title="Reply"
+          className={`absolute top-1 z-10 hidden h-7 w-7 items-center justify-center rounded-full bg-white/95 text-wa-icon opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100 sm:flex ${
+            outgoing ? "-left-1" : "-right-1"
+          }`}
+        >
+          <ReplyIcon />
+        </button>
+      )}
+
       <div
         className={[
           "max-w-[82%] text-sm",
@@ -127,7 +180,22 @@ function MessageBubble({
           continued ? "wa-cont" : "",
           media ? "p-1" : "px-2 pt-1.5 pb-1",
         ].join(" ")}
+        style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
       >
+        {message.replyTo && (
+          <button
+            type="button"
+            onClick={() => onJumpTo(message.replyTo!.id)}
+            className={`wa-quote mb-1 block w-full px-2 py-1 text-left ${media ? "mx-0.5 mt-0.5 w-auto" : ""}`}
+          >
+            <span className="block text-xs font-medium text-wa-teal">
+              {message.replyTo.senderType === "VISITOR" ? "You" : agent.name}
+            </span>
+            <span className="block truncate text-xs text-wa-meta">
+              {quoteText(message.replyTo)}
+            </span>
+          </button>
+        )}
         {media && (
           <MessageMedia
             apiUrl={apiUrl}
@@ -166,6 +234,14 @@ function MessageBubble({
   );
 }
 
+function ReplyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" />
+    </svg>
+  );
+}
+
 const roundButton =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wa-green text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50";
 const iconButton =
@@ -195,6 +271,11 @@ export function ChatPanel({
   const [progress, setProgress] = useState<number | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<ViewedMedia | null>(null);
+  /** The message being replied to, shown above the box until sent or dropped. */
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  /** Briefly highlighted after jumping to it from a quote. */
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
   const closeViewer = useCallback(() => setViewing(null), []);
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -216,6 +297,30 @@ export function ChatPanel({
   const canSend = connected && !isClosed && !busy && (hasText || staged !== null);
   const agent = { name: agentName, photo: agentPhoto };
 
+  const registerRef = useCallback((messageId: string, element: HTMLDivElement | null) => {
+    if (element) bubbleRefs.current.set(messageId, element);
+    else bubbleRefs.current.delete(messageId);
+  }, []);
+
+  const startReply = useCallback((message: Message) => {
+    setReplyTo(message);
+    inputRef.current?.focus();
+  }, []);
+
+  /** Tapping a quote scrolls to the original and flashes it. */
+  const jumpTo = useCallback((messageId: string) => {
+    const element = bubbleRefs.current.get(messageId);
+    if (!element) return;
+    element.scrollIntoView({ block: "center", behavior: "smooth" });
+    setFlashId(messageId);
+  }, []);
+
+  useEffect(() => {
+    if (!flashId) return;
+    const timer = setTimeout(() => setFlashId(null), 1200);
+    return () => clearTimeout(timer);
+  }, [flashId]);
+
   function pickFile(file: File | undefined) {
     setMediaError(null);
     if (!file) return;
@@ -230,11 +335,12 @@ export function ChatPanel({
     setStaged({ file, kind });
   }
 
-  async function sendMedia(media: Omit<VisitorMediaSend, "onProgress">) {
+  async function sendMedia(media: Omit<VisitorMediaSend, "onProgress" | "replyToId">) {
     setMediaError(null);
     setProgress(0);
     try {
-      await onSendMedia({ ...media, onProgress: setProgress });
+      await onSendMedia({ ...media, replyToId: replyTo?.id, onProgress: setProgress });
+      setReplyTo(null);
       return true;
     } catch (error) {
       setMediaError(error instanceof Error ? error.message : "Could not send that file");
@@ -263,12 +369,14 @@ export function ChatPanel({
     }
 
     const content = draft.trim();
+    const quoted = replyTo;
     setSending(true);
     // Cleared up front so the input feels responsive; the message itself is
     // rendered only once the server has stored and broadcast it.
     setDraft("");
+    setReplyTo(null);
     try {
-      await onSend(content);
+      await onSend(content, quoted?.id);
     } finally {
       setSending(false);
     }
@@ -279,9 +387,16 @@ export function ChatPanel({
     // With a mouse the box keeps focus, so its live selection is the truth
     // (React's onSelect never fires inside a shadow root). Otherwise use the
     // caret saved when it lost focus.
-    const focused = input !== null && (input.getRootNode() as ShadowRoot | Document).activeElement === input;
-    const start = Math.min((focused ? input.selectionStart : caretRef.current) ?? draft.length, draft.length);
-    const end = Math.max(start, Math.min((focused ? input.selectionEnd : null) ?? start, draft.length));
+    const focused =
+      input !== null && (input.getRootNode() as ShadowRoot | Document).activeElement === input;
+    const start = Math.min(
+      (focused ? input.selectionStart : caretRef.current) ?? draft.length,
+      draft.length,
+    );
+    const end = Math.max(
+      start,
+      Math.min((focused ? input.selectionEnd : null) ?? start, draft.length),
+    );
     const caret = start + emoji.length;
     setDraft(draft.slice(0, start) + emoji + draft.slice(end));
     caretRef.current = caret;
@@ -366,7 +481,12 @@ export function ChatPanel({
                 message={message}
                 agent={agent}
                 continued={!newDay && previous?.senderType === message.senderType}
+                canReply={!isClosed && connected}
+                flash={flashId === message.id}
                 onView={setViewing}
+                onReply={startReply}
+                onJumpTo={jumpTo}
+                registerRef={registerRef}
               />
             </div>
           );
@@ -396,6 +516,33 @@ export function ChatPanel({
       ) : (
         // Clears the iPhone home indicator when full screen.
         <div className="bg-wa-panel pb-[env(safe-area-inset-bottom)]">
+          {replyTo && (
+            <div className="flex items-center gap-2 border-b border-wa-divider bg-white px-3 py-2">
+              <div className="wa-quote min-w-0 flex-1 px-2 py-1">
+                <p className="text-xs font-medium text-wa-teal">
+                  {replyTo.senderType === "VISITOR" ? "You" : agentName}
+                </p>
+                <p className="truncate text-xs text-wa-meta">{quoteText(toQuote(replyTo))}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                aria-label="Cancel reply"
+                className={iconButton}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+          )}
           {staged && !previewing && (
             <div className="flex items-center gap-2 border-b border-wa-divider bg-white px-3 py-2">
               <span
@@ -500,7 +647,7 @@ export function ChatPanel({
                   event.target.value = "";
                 }}
               />
-{/* WhatsApp's pill: emoji left of the text, attach on the right. */}
+              {/* WhatsApp's pill: emoji left of the text, attach on the right. */}
               <div className="flex min-w-0 flex-1 items-center rounded-full bg-white px-1 shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
                 <button
                   type="button"
@@ -510,7 +657,9 @@ export function ChatPanel({
                   aria-label={emojiOpen ? (touch ? "Show keyboard" : "Close emoji") : "Emoji"}
                   aria-expanded={emojiOpen}
                   className={
-                    emojiOpen && !touch ? iconButton.replace("text-wa-icon", "text-wa-green") : iconButton
+                    emojiOpen && !touch
+                      ? iconButton.replace("text-wa-icon", "text-wa-green")
+                      : iconButton
                   }
                 >
                   {emojiOpen && touch ? (

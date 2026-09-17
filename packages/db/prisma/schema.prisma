@@ -117,7 +117,7 @@ model Agent {
 /// Recorded whether or not an agent was free, so the enquiries nobody answered
 /// are exactly the ones that can be followed up.
 model Lead {
-  id     String @id @default(cuid())
+  id        String   @id @default(cuid())
   companyId String
   name      String
   email     String
@@ -144,7 +144,7 @@ model Lead {
 /// history readable over time — when someone got in touch, which branch they
 /// wanted, and whether anyone was there to answer.
 model Enquiry {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
   leadId         String
   branchId       String?
   /// The chat that opened, when one did. Null for unanswered enquiries.
@@ -211,12 +211,19 @@ model Message {
   deliveredAt    DateTime?
   /// When the other side had the chat open on screen. The blue double tick.
   readAt         DateTime?
+  /// The message this one replies to, quoted above it. Always in the same
+  /// conversation; null for an ordinary message.
+  replyToId      String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   /// Media sent with the message. `content` is then an optional caption.
   attachment   Attachment?
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  /// Replies quoting this message. Kept so deleting it clears their quote.
+  replies      Message[]    @relation("MessageReplies")
 
   @@index([conversationId, createdAt])
+  @@index([replyToId])
 }
 
 enum AttachmentKind {

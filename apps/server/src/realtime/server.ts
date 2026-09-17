@@ -131,7 +131,7 @@ function registerHandlers(socket: AppSocket): void {
   socket.on("message:send", (payload, ack) => {
     void (async () => {
       try {
-        const { conversationId, content, clientId, attachment } =
+        const { conversationId, content, clientId, attachment, replyToId } =
           socketMessagePayloadSchema.parse(payload);
         if (actor.type === "ADMIN") {
           // Admin access to conversations is observation only.
@@ -145,10 +145,11 @@ function registerHandlers(socket: AppSocket): void {
         // broadcast only reports what was already durably stored.
         const { message, created } = await addMessage(
           conversationId,
-          { content, senderType, clientId, attachment },
+          { content, senderType, clientId, attachment, replyToId },
           actor,
         );
-        if (created) void announceMessage(message).catch((e: unknown) => console.error("[socket]", e));
+        if (created)
+          void announceMessage(message).catch((e: unknown) => console.error("[socket]", e));
 
         ack?.({ ok: true, data: message });
       } catch (error) {

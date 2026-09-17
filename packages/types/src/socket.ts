@@ -104,6 +104,8 @@ export interface ClientToServerEvents {
       conversationId: string;
       content: string;
       clientId?: string;
+      /** Quotes an earlier message of this conversation. */
+      replyToId?: string;
       /** From an upload ticket; `durationMs` for voice notes and audio. */
       attachment?: { uploadToken: string; durationMs?: number; waveform?: number[] };
     },

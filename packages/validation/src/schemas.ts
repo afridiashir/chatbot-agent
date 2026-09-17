@@ -244,7 +244,12 @@ export const findVisitorConversationQuerySchema = z.object({
 /** A media message references an upload ticket rather than a raw object key. */
 export const messageAttachmentSchema = z.object({
   uploadToken: z.string().min(1).max(4000),
-  durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
+  durationMs: z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60 * 60 * 1000)
+    .optional(),
   /** Voice-note loudness bars, 0-100 each. */
   waveform: z.array(z.number().int().min(0).max(100)).max(128).optional(),
 });
@@ -272,14 +277,16 @@ export const createUploadBodySchema = z.object({
 
 export const createMessageBodySchema = z
   .object({
-  content: z.string().trim().max(4000, "Message is too long").default(""),
-  attachment: messageAttachmentSchema.optional(),
-  senderType: z.enum(["VISITOR", "AGENT"]),
-  /** Required when senderType is VISITOR; agents authenticate with a bearer token. */
-  visitorId: visitorIdSchema.optional(),
-  /** Supplied by clients that queue offline, so a retry cannot duplicate. */
-  clientId: clientIdSchema.optional(),
-})
+    content: z.string().trim().max(4000, "Message is too long").default(""),
+    attachment: messageAttachmentSchema.optional(),
+    senderType: z.enum(["VISITOR", "AGENT"]),
+    /** Required when senderType is VISITOR; agents authenticate with a bearer token. */
+    visitorId: visitorIdSchema.optional(),
+    /** Supplied by clients that queue offline, so a retry cannot duplicate. */
+    clientId: clientIdSchema.optional(),
+    /** Quotes an earlier message of the same conversation. */
+    replyToId: idSchema.optional(),
+  })
   .refine(withContentOrAttachment, EMPTY_MESSAGE);
 
 /* --------------------------------- sockets --------------------------------- */
@@ -298,6 +305,8 @@ export const socketMessagePayloadSchema = z
     content: z.string().trim().max(4000, "Message is too long").default(""),
     clientId: clientIdSchema.optional(),
     attachment: messageAttachmentSchema.optional(),
+    /** Quotes an earlier message of this conversation. */
+    replyToId: idSchema.optional(),
   })
   .refine(withContentOrAttachment, EMPTY_MESSAGE);
 

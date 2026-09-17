@@ -9,7 +9,8 @@ import styles from "./styles.css?inline";
 const MOUNT_ID = "acme-chat-widget";
 
 // Only set while this bundle is first running; null once the page has loaded.
-const ownScript = document.currentScript instanceof HTMLScriptElement ? document.currentScript : null;
+const ownScript =
+  document.currentScript instanceof HTMLScriptElement ? document.currentScript : null;
 
 function mount(): void {
   if (document.getElementById(MOUNT_ID)) return;

@@ -33,6 +33,7 @@ export type MessageMinAggregateOutputType = {
   createdAt: Date | null
   deliveredAt: Date | null
   readAt: Date | null
+  replyToId: string | null
 }
 
 export type MessageMaxAggregateOutputType = {
@@ -44,6 +45,7 @@ export type MessageMaxAggregateOutputType = {
   createdAt: Date | null
   deliveredAt: Date | null
   readAt: Date | null
+  replyToId: string | null
 }
 
 export type MessageCountAggregateOutputType = {
@@ -55,6 +57,7 @@ export type MessageCountAggregateOutputType = {
   createdAt: number
   deliveredAt: number
   readAt: number
+  replyToId: number
   _all: number
 }
 
@@ -68,6 +71,7 @@ export type MessageMinAggregateInputType = {
   createdAt?: true
   deliveredAt?: true
   readAt?: true
+  replyToId?: true
 }
 
 export type MessageMaxAggregateInputType = {
@@ -79,6 +83,7 @@ export type MessageMaxAggregateInputType = {
   createdAt?: true
   deliveredAt?: true
   readAt?: true
+  replyToId?: true
 }
 
 export type MessageCountAggregateInputType = {
@@ -90,6 +95,7 @@ export type MessageCountAggregateInputType = {
   createdAt?: true
   deliveredAt?: true
   readAt?: true
+  replyToId?: true
   _all?: true
 }
 
@@ -174,6 +180,7 @@ export type MessageGroupByOutputType = {
   createdAt: Date
   deliveredAt: Date | null
   readAt: Date | null
+  replyToId: string | null
   _count: MessageCountAggregateOutputType | null
   _min: MessageMinAggregateOutputType | null
   _max: MessageMaxAggregateOutputType | null
@@ -206,8 +213,11 @@ export type MessageWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Message"> | Date | string
   deliveredAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   readAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
+  replyToId?: Prisma.StringNullableFilter<"Message"> | string | null
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   attachment?: Prisma.XOR<Prisma.AttachmentNullableScalarRelationFilter, Prisma.AttachmentWhereInput> | null
+  replyTo?: Prisma.XOR<Prisma.MessageNullableScalarRelationFilter, Prisma.MessageWhereInput> | null
+  replies?: Prisma.MessageListRelationFilter
 }
 
 export type MessageOrderByWithRelationInput = {
@@ -219,8 +229,11 @@ export type MessageOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   readAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  replyToId?: Prisma.SortOrderInput | Prisma.SortOrder
   conversation?: Prisma.ConversationOrderByWithRelationInput
   attachment?: Prisma.AttachmentOrderByWithRelationInput
+  replyTo?: Prisma.MessageOrderByWithRelationInput
+  replies?: Prisma.MessageOrderByRelationAggregateInput
 }
 
 export type MessageWhereUniqueInput = Prisma.AtLeast<{
@@ -235,8 +248,11 @@ export type MessageWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Message"> | Date | string
   deliveredAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   readAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
+  replyToId?: Prisma.StringNullableFilter<"Message"> | string | null
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   attachment?: Prisma.XOR<Prisma.AttachmentNullableScalarRelationFilter, Prisma.AttachmentWhereInput> | null
+  replyTo?: Prisma.XOR<Prisma.MessageNullableScalarRelationFilter, Prisma.MessageWhereInput> | null
+  replies?: Prisma.MessageListRelationFilter
 }, "id" | "clientId">
 
 export type MessageOrderByWithAggregationInput = {
@@ -248,6 +264,7 @@ export type MessageOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   readAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  replyToId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MessageCountOrderByAggregateInput
   _max?: Prisma.MessageMaxOrderByAggregateInput
   _min?: Prisma.MessageMinOrderByAggregateInput
@@ -265,6 +282,7 @@ export type MessageScalarWhereWithAggregatesInput = {
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Message"> | Date | string
   deliveredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Message"> | Date | string | null
   readAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Message"> | Date | string | null
+  replyToId?: Prisma.StringNullableWithAggregatesFilter<"Message"> | string | null
 }
 
 export type MessageCreateInput = {
@@ -277,6 +295,8 @@ export type MessageCreateInput = {
   readAt?: Date | string | null
   conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
   attachment?: Prisma.AttachmentCreateNestedOneWithoutMessageInput
+  replyTo?: Prisma.MessageCreateNestedOneWithoutRepliesInput
+  replies?: Prisma.MessageCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageUncheckedCreateInput = {
@@ -288,7 +308,9 @@ export type MessageUncheckedCreateInput = {
   createdAt?: Date | string
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
+  replyToId?: string | null
   attachment?: Prisma.AttachmentUncheckedCreateNestedOneWithoutMessageInput
+  replies?: Prisma.MessageUncheckedCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageUpdateInput = {
@@ -301,6 +323,8 @@ export type MessageUpdateInput = {
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
   attachment?: Prisma.AttachmentUpdateOneWithoutMessageNestedInput
+  replyTo?: Prisma.MessageUpdateOneWithoutRepliesNestedInput
+  replies?: Prisma.MessageUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageUncheckedUpdateInput = {
@@ -312,7 +336,9 @@ export type MessageUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   attachment?: Prisma.AttachmentUncheckedUpdateOneWithoutMessageNestedInput
+  replies?: Prisma.MessageUncheckedUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageCreateManyInput = {
@@ -324,6 +350,7 @@ export type MessageCreateManyInput = {
   createdAt?: Date | string
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
+  replyToId?: string | null
 }
 
 export type MessageUpdateManyMutationInput = {
@@ -345,6 +372,7 @@ export type MessageUncheckedUpdateManyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type MessageListRelationFilter = {
@@ -357,6 +385,11 @@ export type MessageOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type MessageNullableScalarRelationFilter = {
+  is?: Prisma.MessageWhereInput | null
+  isNot?: Prisma.MessageWhereInput | null
+}
+
 export type MessageCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
@@ -366,6 +399,7 @@ export type MessageCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
+  replyToId?: Prisma.SortOrder
 }
 
 export type MessageMaxOrderByAggregateInput = {
@@ -377,6 +411,7 @@ export type MessageMaxOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
+  replyToId?: Prisma.SortOrder
 }
 
 export type MessageMinOrderByAggregateInput = {
@@ -388,6 +423,7 @@ export type MessageMinOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
+  replyToId?: Prisma.SortOrder
 }
 
 export type MessageScalarRelationFilter = {
@@ -437,8 +473,66 @@ export type MessageUncheckedUpdateManyWithoutConversationNestedInput = {
   deleteMany?: Prisma.MessageScalarWhereInput | Prisma.MessageScalarWhereInput[]
 }
 
+export type MessageCreateNestedOneWithoutRepliesInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutRepliesInput, Prisma.MessageUncheckedCreateWithoutRepliesInput>
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutRepliesInput
+  connect?: Prisma.MessageWhereUniqueInput
+}
+
+export type MessageCreateNestedManyWithoutReplyToInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput> | Prisma.MessageCreateWithoutReplyToInput[] | Prisma.MessageUncheckedCreateWithoutReplyToInput[]
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReplyToInput | Prisma.MessageCreateOrConnectWithoutReplyToInput[]
+  createMany?: Prisma.MessageCreateManyReplyToInputEnvelope
+  connect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+}
+
+export type MessageUncheckedCreateNestedManyWithoutReplyToInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput> | Prisma.MessageCreateWithoutReplyToInput[] | Prisma.MessageUncheckedCreateWithoutReplyToInput[]
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReplyToInput | Prisma.MessageCreateOrConnectWithoutReplyToInput[]
+  createMany?: Prisma.MessageCreateManyReplyToInputEnvelope
+  connect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+}
+
 export type EnumSenderTypeFieldUpdateOperationsInput = {
   set?: $Enums.SenderType
+}
+
+export type MessageUpdateOneWithoutRepliesNestedInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutRepliesInput, Prisma.MessageUncheckedCreateWithoutRepliesInput>
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutRepliesInput
+  upsert?: Prisma.MessageUpsertWithoutRepliesInput
+  disconnect?: Prisma.MessageWhereInput | boolean
+  delete?: Prisma.MessageWhereInput | boolean
+  connect?: Prisma.MessageWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MessageUpdateToOneWithWhereWithoutRepliesInput, Prisma.MessageUpdateWithoutRepliesInput>, Prisma.MessageUncheckedUpdateWithoutRepliesInput>
+}
+
+export type MessageUpdateManyWithoutReplyToNestedInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput> | Prisma.MessageCreateWithoutReplyToInput[] | Prisma.MessageUncheckedCreateWithoutReplyToInput[]
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReplyToInput | Prisma.MessageCreateOrConnectWithoutReplyToInput[]
+  upsert?: Prisma.MessageUpsertWithWhereUniqueWithoutReplyToInput | Prisma.MessageUpsertWithWhereUniqueWithoutReplyToInput[]
+  createMany?: Prisma.MessageCreateManyReplyToInputEnvelope
+  set?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  disconnect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  delete?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  connect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  update?: Prisma.MessageUpdateWithWhereUniqueWithoutReplyToInput | Prisma.MessageUpdateWithWhereUniqueWithoutReplyToInput[]
+  updateMany?: Prisma.MessageUpdateManyWithWhereWithoutReplyToInput | Prisma.MessageUpdateManyWithWhereWithoutReplyToInput[]
+  deleteMany?: Prisma.MessageScalarWhereInput | Prisma.MessageScalarWhereInput[]
+}
+
+export type MessageUncheckedUpdateManyWithoutReplyToNestedInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput> | Prisma.MessageCreateWithoutReplyToInput[] | Prisma.MessageUncheckedCreateWithoutReplyToInput[]
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReplyToInput | Prisma.MessageCreateOrConnectWithoutReplyToInput[]
+  upsert?: Prisma.MessageUpsertWithWhereUniqueWithoutReplyToInput | Prisma.MessageUpsertWithWhereUniqueWithoutReplyToInput[]
+  createMany?: Prisma.MessageCreateManyReplyToInputEnvelope
+  set?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  disconnect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  delete?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  connect?: Prisma.MessageWhereUniqueInput | Prisma.MessageWhereUniqueInput[]
+  update?: Prisma.MessageUpdateWithWhereUniqueWithoutReplyToInput | Prisma.MessageUpdateWithWhereUniqueWithoutReplyToInput[]
+  updateMany?: Prisma.MessageUpdateManyWithWhereWithoutReplyToInput | Prisma.MessageUpdateManyWithWhereWithoutReplyToInput[]
+  deleteMany?: Prisma.MessageScalarWhereInput | Prisma.MessageScalarWhereInput[]
 }
 
 export type MessageCreateNestedOneWithoutAttachmentInput = {
@@ -464,6 +558,8 @@ export type MessageCreateWithoutConversationInput = {
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
   attachment?: Prisma.AttachmentCreateNestedOneWithoutMessageInput
+  replyTo?: Prisma.MessageCreateNestedOneWithoutRepliesInput
+  replies?: Prisma.MessageCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageUncheckedCreateWithoutConversationInput = {
@@ -474,7 +570,9 @@ export type MessageUncheckedCreateWithoutConversationInput = {
   createdAt?: Date | string
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
+  replyToId?: string | null
   attachment?: Prisma.AttachmentUncheckedCreateNestedOneWithoutMessageInput
+  replies?: Prisma.MessageUncheckedCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageCreateOrConnectWithoutConversationInput = {
@@ -515,6 +613,127 @@ export type MessageScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Message"> | Date | string
   deliveredAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   readAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
+  replyToId?: Prisma.StringNullableFilter<"Message"> | string | null
+}
+
+export type MessageCreateWithoutRepliesInput = {
+  id?: string
+  senderType: $Enums.SenderType
+  content: string
+  clientId?: string | null
+  createdAt?: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+  conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
+  attachment?: Prisma.AttachmentCreateNestedOneWithoutMessageInput
+  replyTo?: Prisma.MessageCreateNestedOneWithoutRepliesInput
+}
+
+export type MessageUncheckedCreateWithoutRepliesInput = {
+  id?: string
+  conversationId: string
+  senderType: $Enums.SenderType
+  content: string
+  clientId?: string | null
+  createdAt?: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+  replyToId?: string | null
+  attachment?: Prisma.AttachmentUncheckedCreateNestedOneWithoutMessageInput
+}
+
+export type MessageCreateOrConnectWithoutRepliesInput = {
+  where: Prisma.MessageWhereUniqueInput
+  create: Prisma.XOR<Prisma.MessageCreateWithoutRepliesInput, Prisma.MessageUncheckedCreateWithoutRepliesInput>
+}
+
+export type MessageCreateWithoutReplyToInput = {
+  id?: string
+  senderType: $Enums.SenderType
+  content: string
+  clientId?: string | null
+  createdAt?: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+  conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
+  attachment?: Prisma.AttachmentCreateNestedOneWithoutMessageInput
+  replies?: Prisma.MessageCreateNestedManyWithoutReplyToInput
+}
+
+export type MessageUncheckedCreateWithoutReplyToInput = {
+  id?: string
+  conversationId: string
+  senderType: $Enums.SenderType
+  content: string
+  clientId?: string | null
+  createdAt?: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+  attachment?: Prisma.AttachmentUncheckedCreateNestedOneWithoutMessageInput
+  replies?: Prisma.MessageUncheckedCreateNestedManyWithoutReplyToInput
+}
+
+export type MessageCreateOrConnectWithoutReplyToInput = {
+  where: Prisma.MessageWhereUniqueInput
+  create: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput>
+}
+
+export type MessageCreateManyReplyToInputEnvelope = {
+  data: Prisma.MessageCreateManyReplyToInput | Prisma.MessageCreateManyReplyToInput[]
+  skipDuplicates?: boolean
+}
+
+export type MessageUpsertWithoutRepliesInput = {
+  update: Prisma.XOR<Prisma.MessageUpdateWithoutRepliesInput, Prisma.MessageUncheckedUpdateWithoutRepliesInput>
+  create: Prisma.XOR<Prisma.MessageCreateWithoutRepliesInput, Prisma.MessageUncheckedCreateWithoutRepliesInput>
+  where?: Prisma.MessageWhereInput
+}
+
+export type MessageUpdateToOneWithWhereWithoutRepliesInput = {
+  where?: Prisma.MessageWhereInput
+  data: Prisma.XOR<Prisma.MessageUpdateWithoutRepliesInput, Prisma.MessageUncheckedUpdateWithoutRepliesInput>
+}
+
+export type MessageUpdateWithoutRepliesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  senderType?: Prisma.EnumSenderTypeFieldUpdateOperationsInput | $Enums.SenderType
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
+  attachment?: Prisma.AttachmentUpdateOneWithoutMessageNestedInput
+  replyTo?: Prisma.MessageUpdateOneWithoutRepliesNestedInput
+}
+
+export type MessageUncheckedUpdateWithoutRepliesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderType?: Prisma.EnumSenderTypeFieldUpdateOperationsInput | $Enums.SenderType
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  attachment?: Prisma.AttachmentUncheckedUpdateOneWithoutMessageNestedInput
+}
+
+export type MessageUpsertWithWhereUniqueWithoutReplyToInput = {
+  where: Prisma.MessageWhereUniqueInput
+  update: Prisma.XOR<Prisma.MessageUpdateWithoutReplyToInput, Prisma.MessageUncheckedUpdateWithoutReplyToInput>
+  create: Prisma.XOR<Prisma.MessageCreateWithoutReplyToInput, Prisma.MessageUncheckedCreateWithoutReplyToInput>
+}
+
+export type MessageUpdateWithWhereUniqueWithoutReplyToInput = {
+  where: Prisma.MessageWhereUniqueInput
+  data: Prisma.XOR<Prisma.MessageUpdateWithoutReplyToInput, Prisma.MessageUncheckedUpdateWithoutReplyToInput>
+}
+
+export type MessageUpdateManyWithWhereWithoutReplyToInput = {
+  where: Prisma.MessageScalarWhereInput
+  data: Prisma.XOR<Prisma.MessageUpdateManyMutationInput, Prisma.MessageUncheckedUpdateManyWithoutReplyToInput>
 }
 
 export type MessageCreateWithoutAttachmentInput = {
@@ -526,6 +745,8 @@ export type MessageCreateWithoutAttachmentInput = {
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
   conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
+  replyTo?: Prisma.MessageCreateNestedOneWithoutRepliesInput
+  replies?: Prisma.MessageCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageUncheckedCreateWithoutAttachmentInput = {
@@ -537,6 +758,8 @@ export type MessageUncheckedCreateWithoutAttachmentInput = {
   createdAt?: Date | string
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
+  replyToId?: string | null
+  replies?: Prisma.MessageUncheckedCreateNestedManyWithoutReplyToInput
 }
 
 export type MessageCreateOrConnectWithoutAttachmentInput = {
@@ -564,6 +787,8 @@ export type MessageUpdateWithoutAttachmentInput = {
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
+  replyTo?: Prisma.MessageUpdateOneWithoutRepliesNestedInput
+  replies?: Prisma.MessageUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageUncheckedUpdateWithoutAttachmentInput = {
@@ -575,6 +800,8 @@ export type MessageUncheckedUpdateWithoutAttachmentInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  replies?: Prisma.MessageUncheckedUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageCreateManyConversationInput = {
@@ -585,6 +812,7 @@ export type MessageCreateManyConversationInput = {
   createdAt?: Date | string
   deliveredAt?: Date | string | null
   readAt?: Date | string | null
+  replyToId?: string | null
 }
 
 export type MessageUpdateWithoutConversationInput = {
@@ -596,6 +824,8 @@ export type MessageUpdateWithoutConversationInput = {
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   attachment?: Prisma.AttachmentUpdateOneWithoutMessageNestedInput
+  replyTo?: Prisma.MessageUpdateOneWithoutRepliesNestedInput
+  replies?: Prisma.MessageUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageUncheckedUpdateWithoutConversationInput = {
@@ -606,7 +836,9 @@ export type MessageUncheckedUpdateWithoutConversationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   attachment?: Prisma.AttachmentUncheckedUpdateOneWithoutMessageNestedInput
+  replies?: Prisma.MessageUncheckedUpdateManyWithoutReplyToNestedInput
 }
 
 export type MessageUncheckedUpdateManyWithoutConversationInput = {
@@ -617,8 +849,86 @@ export type MessageUncheckedUpdateManyWithoutConversationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  replyToId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
+export type MessageCreateManyReplyToInput = {
+  id?: string
+  conversationId: string
+  senderType: $Enums.SenderType
+  content: string
+  clientId?: string | null
+  createdAt?: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+}
+
+export type MessageUpdateWithoutReplyToInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  senderType?: Prisma.EnumSenderTypeFieldUpdateOperationsInput | $Enums.SenderType
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
+  attachment?: Prisma.AttachmentUpdateOneWithoutMessageNestedInput
+  replies?: Prisma.MessageUpdateManyWithoutReplyToNestedInput
+}
+
+export type MessageUncheckedUpdateWithoutReplyToInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderType?: Prisma.EnumSenderTypeFieldUpdateOperationsInput | $Enums.SenderType
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  attachment?: Prisma.AttachmentUncheckedUpdateOneWithoutMessageNestedInput
+  replies?: Prisma.MessageUncheckedUpdateManyWithoutReplyToNestedInput
+}
+
+export type MessageUncheckedUpdateManyWithoutReplyToInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderType?: Prisma.EnumSenderTypeFieldUpdateOperationsInput | $Enums.SenderType
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+
+/**
+ * Count Type MessageCountOutputType
+ */
+
+export type MessageCountOutputType = {
+  replies: number
+}
+
+export type MessageCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  replies?: boolean | MessageCountOutputTypeCountRepliesArgs
+}
+
+/**
+ * MessageCountOutputType without action
+ */
+export type MessageCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MessageCountOutputType
+   */
+  select?: Prisma.MessageCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * MessageCountOutputType without action
+ */
+export type MessageCountOutputTypeCountRepliesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.MessageWhereInput
+}
 
 
 export type MessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -630,8 +940,12 @@ export type MessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   deliveredAt?: boolean
   readAt?: boolean
+  replyToId?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   attachment?: boolean | Prisma.Message$attachmentArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
+  replies?: boolean | Prisma.Message$repliesArgs<ExtArgs>
+  _count?: boolean | Prisma.MessageCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["message"]>
 
 export type MessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -643,7 +957,9 @@ export type MessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   createdAt?: boolean
   deliveredAt?: boolean
   readAt?: boolean
+  replyToId?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
 }, ExtArgs["result"]["message"]>
 
 export type MessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -655,7 +971,9 @@ export type MessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   createdAt?: boolean
   deliveredAt?: boolean
   readAt?: boolean
+  replyToId?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
 }, ExtArgs["result"]["message"]>
 
 export type MessageSelectScalar = {
@@ -667,18 +985,24 @@ export type MessageSelectScalar = {
   createdAt?: boolean
   deliveredAt?: boolean
   readAt?: boolean
+  replyToId?: boolean
 }
 
-export type MessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "senderType" | "content" | "clientId" | "createdAt" | "deliveredAt" | "readAt", ExtArgs["result"]["message"]>
+export type MessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "senderType" | "content" | "clientId" | "createdAt" | "deliveredAt" | "readAt" | "replyToId", ExtArgs["result"]["message"]>
 export type MessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   attachment?: boolean | Prisma.Message$attachmentArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
+  replies?: boolean | Prisma.Message$repliesArgs<ExtArgs>
+  _count?: boolean | Prisma.MessageCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MessageIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
 }
 export type MessageIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
+  replyTo?: boolean | Prisma.Message$replyToArgs<ExtArgs>
 }
 
 export type $MessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -689,6 +1013,11 @@ export type $MessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * Media sent with the message. `content` is then an optional caption.
      */
     attachment: Prisma.$AttachmentPayload<ExtArgs> | null
+    replyTo: Prisma.$MessagePayload<ExtArgs> | null
+    /**
+     * Replies quoting this message. Kept so deleting it clears their quote.
+     */
+    replies: Prisma.$MessagePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -712,6 +1041,11 @@ export type $MessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * When the other side had the chat open on screen. The blue double tick.
      */
     readAt: Date | null
+    /**
+     * The message this one replies to, quoted above it. Always in the same
+     * conversation; null for an ordinary message.
+     */
+    replyToId: string | null
   }, ExtArgs["result"]["message"]>
   composites: {}
 }
@@ -1108,6 +1442,8 @@ export interface Prisma__MessageClient<T, Null = never, ExtArgs extends runtime.
   readonly [Symbol.toStringTag]: "PrismaPromise"
   conversation<T extends Prisma.ConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__ConversationClient<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   attachment<T extends Prisma.Message$attachmentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Message$attachmentArgs<ExtArgs>>): Prisma.Prisma__AttachmentClient<runtime.Types.Result.GetResult<Prisma.$AttachmentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  replyTo<T extends Prisma.Message$replyToArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Message$replyToArgs<ExtArgs>>): Prisma.Prisma__MessageClient<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  replies<T extends Prisma.Message$repliesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Message$repliesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1145,6 +1481,7 @@ export interface MessageFieldRefs {
   readonly createdAt: Prisma.FieldRef<"Message", 'DateTime'>
   readonly deliveredAt: Prisma.FieldRef<"Message", 'DateTime'>
   readonly readAt: Prisma.FieldRef<"Message", 'DateTime'>
+  readonly replyToId: Prisma.FieldRef<"Message", 'String'>
 }
     
 
@@ -1562,6 +1899,49 @@ export type Message$attachmentArgs<ExtArgs extends runtime.Types.Extensions.Inte
    */
   include?: Prisma.AttachmentInclude<ExtArgs> | null
   where?: Prisma.AttachmentWhereInput
+}
+
+/**
+ * Message.replyTo
+ */
+export type Message$replyToArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Message
+   */
+  select?: Prisma.MessageSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Message
+   */
+  omit?: Prisma.MessageOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MessageInclude<ExtArgs> | null
+  where?: Prisma.MessageWhereInput
+}
+
+/**
+ * Message.replies
+ */
+export type Message$repliesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Message
+   */
+  select?: Prisma.MessageSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Message
+   */
+  omit?: Prisma.MessageOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MessageInclude<ExtArgs> | null
+  where?: Prisma.MessageWhereInput
+  orderBy?: Prisma.MessageOrderByWithRelationInput | Prisma.MessageOrderByWithRelationInput[]
+  cursor?: Prisma.MessageWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.MessageScalarFieldEnum | Prisma.MessageScalarFieldEnum[]
 }
 
 /**

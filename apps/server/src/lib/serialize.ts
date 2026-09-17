@@ -139,9 +139,27 @@ export function toAgentWithLoad(row: AgentRow, activeConversationCount: number):
 }
 
 /** Every message query includes its attachment, so the payload is complete. */
-export const MESSAGE_INCLUDE = { attachment: true } as const;
+export const MESSAGE_INCLUDE = {
+  attachment: true,
+  // Just enough of the quoted message to render the reply block.
+  replyTo: {
+    select: {
+      id: true,
+      senderType: true,
+      content: true,
+      attachment: { select: { kind: true } },
+    },
+  },
+} as const;
 
-export function toMessage(row: MessageRow & { attachment?: AttachmentRow | null }): Message {
+/** What MESSAGE_INCLUDE loads alongside the message row. */
+type QuotedRow = Pick<MessageRow, "id" | "senderType" | "content"> & {
+  attachment: { kind: AttachmentRow["kind"] } | null;
+};
+
+export function toMessage(
+  row: MessageRow & { attachment?: AttachmentRow | null; replyTo?: QuotedRow | null },
+): Message {
   const attachment = row.attachment;
   return {
     id: row.id,
@@ -158,6 +176,14 @@ export function toMessage(row: MessageRow & { attachment?: AttachmentRow | null 
           durationMs: attachment.durationMs,
           waveform: attachment.waveform,
           url: mediaPath(attachment.id),
+        }
+      : null,
+    replyTo: row.replyTo
+      ? {
+          id: row.replyTo.id,
+          senderType: row.replyTo.senderType,
+          content: row.replyTo.content,
+          attachmentKind: row.replyTo.attachment?.kind ?? null,
         }
       : null,
     clientId: row.clientId,

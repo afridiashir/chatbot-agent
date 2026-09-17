@@ -48,7 +48,7 @@ export interface ChatController {
   /** True while the assigned agent is composing a reply. */
   agentTyping: boolean;
   startChat: (branchId: string, visitor: VisitorDetails) => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, replyToId?: string) => Promise<void>;
   /** Uploads a photo, video, audio file or voice note, then sends it. */
   sendMedia: (media: VisitorMediaSend) => Promise<void>;
   /** Called on every keystroke; throttled internally. */
@@ -296,7 +296,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   );
 
   const sendMessage = useCallback(
-    (content: string) =>
+    (content: string, replyToId?: string) =>
       new Promise<void>((resolve) => {
         const socket = socketRef.current;
         if (!socket || !conversationId) {
@@ -307,7 +307,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
 
         setError(null);
         stopTyping();
-        socket.emit("message:send", { conversationId, content }, (result) => {
+        socket.emit("message:send", { conversationId, content, replyToId }, (result) => {
           if (!result.ok) setError(result.message);
           resolve();
         });
@@ -337,6 +337,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           {
             conversationId,
             content: media.caption,
+            replyToId: media.replyToId,
             attachment: {
               uploadToken,
               durationMs: media.durationMs,

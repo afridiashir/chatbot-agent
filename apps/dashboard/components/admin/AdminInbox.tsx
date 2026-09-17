@@ -194,12 +194,13 @@ export function AdminInbox({
 
     // Admins only watch the ticks change; their own viewing never marks anything read.
     socket.on("message:receipt", (receipt) => {
-      setRows((current) =>
-        current?.map((row) =>
-          row.id === receipt.conversationId && row.lastMessage
-            ? { ...row, lastMessage: applyReceipt([row.lastMessage], receipt)[0]! }
-            : row,
-        ) ?? current,
+      setRows(
+        (current) =>
+          current?.map((row) =>
+            row.id === receipt.conversationId && row.lastMessage
+              ? { ...row, lastMessage: applyReceipt([row.lastMessage], receipt)[0]! }
+              : row,
+          ) ?? current,
       );
       setDetail((current) =>
         current && current.id === receipt.conversationId
@@ -485,6 +486,7 @@ export function AdminInbox({
                           )}
                           <Bubble
                             message={message}
+                            names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
                             sender={
                               message.senderType === "AGENT"
                                 ? {

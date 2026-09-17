@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Clock, FileAudio, Film, Mic, Paperclip, Send, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Clock, FileAudio, Film, Mic, Paperclip, Reply, Send, Trash2, X } from "lucide-react";
 import {
   ATTACHMENT_ACCEPT,
   formatBytes,
@@ -9,12 +9,15 @@ import {
   type AttachmentKind,
   type ConversationDetail,
   type Message,
+  type MessageQuote,
 } from "@repo/types";
 import { MessageMedia } from "@/components/MessageMedia";
 import { LiveWaveform } from "@/components/Waveform";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useSwipeReply } from "@/hooks/useSwipeReply";
+import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
@@ -28,6 +31,8 @@ export interface MediaSend {
   caption: string;
   durationMs?: number;
   waveform?: number[];
+  /** Set when the media is a reply to an earlier message. */
+  replyToId?: string;
   onProgress: (fraction: number) => void;
 }
 
@@ -45,10 +50,24 @@ interface ConversationViewProps {
 }
 
 /** A message the agent has sent that the server has not confirmed yet. */
-function PendingBubble({ message }: { message: QueuedMessage }) {
+function PendingBubble({
+  message,
+  names,
+}: {
+  message: QueuedMessage;
+  names: { agent: string; visitor: string };
+}) {
   return (
     <div className="flex justify-end">
       <div className="chat-bubble-out max-w-[75%] min-w-24 px-2.5 py-1.5 opacity-70 shadow-sm">
+        {message.replyTo && (
+          <div className="chat-quote mb-1 px-2 py-1">
+            <p className="text-xs font-medium text-primary">
+              {message.replyTo.senderType === "AGENT" ? names.agent : names.visitor}
+            </p>
+            <p className="truncate text-xs text-chat-meta">{quoteText(message.replyTo)}</p>
+          </div>
+        )}
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         <span className="float-right mt-0.5 ml-2 flex items-center gap-1 text-[10px] leading-none text-chat-meta">
           <Clock className="h-2.5 w-2.5" aria-hidden="true" />
@@ -98,25 +117,93 @@ function Stamp({ message, outgoing }: { message: Message; outgoing: boolean }) {
 export function Bubble({
   message,
   sender,
+  names,
+  flash,
+  onReply,
+  onJumpTo,
+  registerRef,
 }: {
   message: Message;
   /** Who sent it; voice notes show their photo. */
   sender?: { name: string; seed: string; photo?: string | null };
+  /** Names for the quote header. Omitted in read-only views. */
+  names?: { agent: string; visitor: string };
+  /** Briefly highlighted because a reply's quote pointed here. */
+  flash?: boolean;
+  /** Omitted where replying isn't possible, such as the admin's read-only view. */
+  onReply?: (message: Message) => void;
+  onJumpTo?: (messageId: string) => void;
+  registerRef?: (messageId: string, element: HTMLDivElement | null) => void;
 }) {
   const fromAgent = message.senderType === "AGENT";
   const media = message.attachment;
   // A voice note without a caption owns the whole bubble, footer included.
   const bareVoice = media?.kind === "VOICE" && !message.content;
+  const swipe = useSwipeReply(Boolean(onReply), () => onReply?.(message));
+  const quoteName = (quote: MessageQuote) =>
+    quote.senderType === "AGENT" ? (names?.agent ?? "Agent") : (names?.visitor ?? "Visitor");
 
   return (
-    <div className={fromAgent ? "flex justify-end" : "flex justify-start"}>
+    <div
+      ref={(element) => registerRef?.(message.id, element)}
+      className={cn(
+        "group relative flex",
+        fromAgent ? "justify-end" : "justify-start",
+        flash && "chat-flash",
+      )}
+      style={{ touchAction: "pan-y" }}
+      {...swipe.handlers}
+    >
+      {swipe.swiping && (
+        <span
+          aria-hidden
+          className="absolute top-1/2 left-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/10 text-chat-meta"
+          style={{ opacity: Math.min(1, swipe.offset / 46) }}
+        >
+          <Reply className="size-4" />
+        </span>
+      )}
+
+      {onReply && (
+        <button
+          type="button"
+          onClick={() => onReply(message)}
+          aria-label="Reply to this message"
+          title="Reply"
+          className={cn(
+            "absolute top-0 z-10 flex size-7 items-center justify-center rounded-full bg-card text-chat-meta opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100",
+            fromAgent ? "-left-1" : "-right-1",
+          )}
+        >
+          <Reply className="size-3.5" aria-hidden />
+        </button>
+      )}
+
       <div
         className={cn(
           "max-w-[75%] min-w-24 shadow-sm",
           media ? "p-1" : "px-2.5 py-1.5",
           fromAgent ? "chat-bubble-out" : "chat-bubble-in",
         )}
+        style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
       >
+        {message.replyTo && (
+          <button
+            type="button"
+            onClick={() => onJumpTo?.(message.replyTo!.id)}
+            className={cn(
+              "chat-quote mb-1 block w-full px-2 py-1 text-left",
+              media && "mx-0.5 mt-0.5 w-auto",
+            )}
+          >
+            <span className="block text-xs font-medium text-primary">
+              {quoteName(message.replyTo)}
+            </span>
+            <span className="block truncate text-xs text-chat-meta">
+              {quoteText(message.replyTo)}
+            </span>
+          </button>
+        )}
         {media && (
           <MessageMedia
             attachment={media}
@@ -158,7 +245,31 @@ export function ConversationView({
 }: ConversationViewProps) {
   const [draft, setDraft] = useState("");
   const [closing, setClosing] = useState(false);
+  /** The message being replied to, shown above the box until sent or dropped. */
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  /** Briefly highlighted after jumping to it from a quote. */
+  const [flashId, setFlashId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
+
+  const registerRef = useCallback((messageId: string, element: HTMLDivElement | null) => {
+    if (element) bubbleRefs.current.set(messageId, element);
+    else bubbleRefs.current.delete(messageId);
+  }, []);
+
+  /** Clicking a quote scrolls to the original and flashes it. */
+  const jumpTo = useCallback((messageId: string) => {
+    const element = bubbleRefs.current.get(messageId);
+    if (!element) return;
+    element.scrollIntoView({ block: "center", behavior: "smooth" });
+    setFlashId(messageId);
+  }, []);
+
+  useEffect(() => {
+    if (!flashId) return;
+    const timer = setTimeout(() => setFlashId(null), 1200);
+    return () => clearTimeout(timer);
+  }, [flashId]);
 
   const conversationId = detail?.id ?? null;
 
@@ -166,6 +277,7 @@ export function ConversationView({
   // half-written reply does not throw it away.
   useEffect(() => {
     setDraft(conversationId ? (loadDrafts()[conversationId] ?? "") : "");
+    setReplyTo(null);
   }, [conversationId]);
 
   useEffect(() => {
@@ -231,6 +343,11 @@ export function ConversationView({
             )}
             <Bubble
               message={message}
+              names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+              flash={flashId === message.id}
+              onReply={isClosed ? undefined : setReplyTo}
+              onJumpTo={jumpTo}
+              registerRef={registerRef}
               sender={
                 message.senderType === "AGENT"
                   ? {
@@ -245,7 +362,11 @@ export function ConversationView({
         ))}
 
         {pending.map((message) => (
-          <PendingBubble key={message.clientId} message={message} />
+          <PendingBubble
+            key={message.clientId}
+            message={message}
+            names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+          />
         ))}
 
         {visitorTyping && (
@@ -274,6 +395,9 @@ export function ConversationView({
             onTyping();
           }}
           connected={connected}
+          replyTo={replyTo}
+          names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+          onCancelReply={() => setReplyTo(null)}
           onSend={onSend}
           onSendMedia={onSendMedia}
         />
@@ -295,6 +419,9 @@ function Composer({
   draft,
   onDraftChange,
   connected,
+  replyTo,
+  names,
+  onCancelReply,
   onSend,
   onSendMedia,
 }: {
@@ -302,7 +429,11 @@ function Composer({
   draft: string;
   onDraftChange: (value: string) => void;
   connected: boolean;
-  onSend: (content: string) => Promise<void>;
+  /** The message this one will quote, or null. */
+  replyTo: Message | null;
+  names: { agent: string; visitor: string };
+  onCancelReply: () => void;
+  onSend: (content: string, replyTo?: MessageQuote | null) => Promise<void>;
   onSendMedia: (media: MediaSend) => Promise<void>;
 }) {
   const [sending, setSending] = useState(false);
@@ -352,7 +483,8 @@ function Composer({
     setMediaError(null);
     setProgress(0);
     try {
-      await onSendMedia({ ...media, onProgress: setProgress });
+      await onSendMedia({ ...media, replyToId: replyTo?.id, onProgress: setProgress });
+      onCancelReply();
       return true;
     } catch (error) {
       setMediaError(error instanceof Error ? error.message : "Could not send that file");
@@ -382,10 +514,12 @@ function Composer({
 
     if (!hasText) return;
     const content = draft.trim();
+    const quoted = replyTo ? toQuote(replyTo) : null;
     setSending(true);
     clearDraft();
+    onCancelReply();
     try {
-      await onSend(content);
+      await onSend(content, quoted);
     } finally {
       setSending(false);
     }
@@ -411,6 +545,24 @@ function Composer({
 
   return (
     <div className="border-t bg-chat-header">
+      {replyTo && (
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <div className="chat-quote min-w-0 flex-1 px-2 py-1">
+            <p className="text-xs font-medium text-primary">
+              {replyTo.senderType === "AGENT" ? names.agent : names.visitor}
+            </p>
+            <p className="truncate text-xs text-chat-meta">{quoteText(toQuote(replyTo))}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            aria-label="Cancel reply"
+            className="flex size-8 items-center justify-center rounded-full text-chat-meta hover:bg-accent"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
       {staged && (
         <div className="flex items-center gap-3 border-b px-3 py-2">
           <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-chat-panel">

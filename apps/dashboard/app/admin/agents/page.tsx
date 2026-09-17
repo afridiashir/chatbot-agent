@@ -37,7 +37,9 @@ export default function AdminAgentsPage() {
           token={token}
           branchName={admin.branchName}
           ownBranch={
-            admin.branchId && admin.branchName ? { id: admin.branchId, name: admin.branchName } : null
+            admin.branchId && admin.branchName
+              ? { id: admin.branchId, name: admin.branchName }
+              : null
           }
         />
       )}
@@ -194,27 +196,29 @@ function Agents({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-        {ownBranch && (
+          {ownBranch && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                setChatLink({ kind: "branch", id: ownBranch.id, name: ownBranch.name })
+              }
+            >
+              <Link2 className="size-4" aria-hidden />
+              Branch chat link
+            </Button>
+          )}
           <Button
-            variant="outline"
-            onClick={() => setChatLink({ kind: "branch", id: ownBranch.id, name: ownBranch.name })}
+            onClick={() => setDialog({ kind: "create" })}
+            disabled={branches !== null && activeBranches.length === 0}
+            title={
+              branches !== null && activeBranches.length === 0
+                ? "Add an active branch first"
+                : undefined
+            }
           >
-            <Link2 className="size-4" aria-hidden />
-            Branch chat link
+            <Plus className="size-4" aria-hidden />
+            Add agent
           </Button>
-        )}
-        <Button
-          onClick={() => setDialog({ kind: "create" })}
-          disabled={branches !== null && activeBranches.length === 0}
-          title={
-            branches !== null && activeBranches.length === 0
-              ? "Add an active branch first"
-              : undefined
-          }
-        >
-          <Plus className="size-4" aria-hidden />
-          Add agent
-        </Button>
         </div>
       </div>
 
