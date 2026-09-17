@@ -12,7 +12,7 @@ import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAgent, requireAgent } from "../middleware/require-agent.js";
 import { emitAgentProfile, emitAgentStatus } from "../realtime/emit.js";
-import { setAgentStatus } from "../services/agents.js";
+import { getPublicAgentProfile, setAgentStatus } from "../services/agents.js";
 import {
   createAvatarUpload,
   openConversationIds,
@@ -22,6 +22,19 @@ import {
 import { listAgentConversations } from "../services/conversations.js";
 
 export const agentsRouter: Router = Router();
+
+/**
+ * GET /api/agents/:agentId/public — name, photo, availability and branch, for
+ * the chat widget opened from that agent's personal link. Public by design:
+ * visitors already see all of this once a chat starts. No email.
+ */
+agentsRouter.get(
+  "/:agentId/public",
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    sendOk(res, await getPublicAgentProfile(agentId));
+  }),
+);
 
 /** PATCH /api/agents/:agentId/status — the online/offline toggle. */
 agentsRouter.patch(

@@ -1,9 +1,35 @@
 import { DUMMY_PASSWORD_HASH, prisma, verifyPassword } from "@repo/db";
-import type { Agent, AgentStatusPayload, LoginResult } from "@repo/types";
+import type { Agent, AgentStatusPayload, LoginResult, PublicAgentProfile } from "@repo/types";
 import type { LoginBody } from "@repo/validation";
 import { signAgentToken, type AgentTokenPayload } from "../lib/auth.js";
 import { forbidden, notFound, unauthorized } from "../lib/http.js";
-import { toAgent } from "../lib/serialize.js";
+import { avatarPath, toAgent } from "../lib/serialize.js";
+
+/**
+ * The card a visitor sees when opening an agent's chat link. Deactivated
+ * agents, and agents of a deactivated branch, read as missing.
+ */
+export async function getPublicAgentProfile(agentId: string): Promise<PublicAgentProfile> {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: {
+      id: true,
+      name: true,
+      avatarKey: true,
+      isOnline: true,
+      isActive: true,
+      branch: { select: { id: true, name: true, isActive: true } },
+    },
+  });
+  if (!agent || !agent.isActive || !agent.branch.isActive) throw notFound("Agent not found");
+  return {
+    id: agent.id,
+    name: agent.name,
+    avatarUrl: avatarPath(agent),
+    isOnline: agent.isOnline,
+    branch: { id: agent.branch.id, name: agent.branch.name },
+  };
+}
 
 const BAD_CREDENTIALS = "Incorrect email or password";
 

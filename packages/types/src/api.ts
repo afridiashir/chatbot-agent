@@ -35,6 +35,18 @@ export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
  * Result of `assignAgent(branchId)`. When no agent is online we deliberately
  * return `available: false` rather than creating a conversation nobody owns.
  */
+/**
+ * What a visitor may know about an agent whose personal chat link they opened:
+ * enough to greet them by name and photo, never their email.
+ */
+export interface PublicAgentProfile {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  branch: { id: string; name: string };
+}
+
 export type AssignmentResult =
   | { available: true; conversation: ConversationWithAgent; resumed: boolean }
   | { available: false; message: string };

@@ -30,6 +30,8 @@ export interface VisitorMediaSend {
 interface ChatPanelProps {
   apiUrl: string;
   agentName: string;
+  /** False when the agent is away: the chat still works, they reply later. */
+  agentOnline: boolean;
   /** The agent's profile photo path, or null for the default silhouette. */
   agentPhoto: string | null;
   messages: Message[];
@@ -172,6 +174,7 @@ const iconButton =
 export function ChatPanel({
   apiUrl,
   agentName,
+  agentOnline,
   agentPhoto,
   messages,
   connected,
@@ -341,7 +344,9 @@ export function ChatPanel({
       >
         {messages.length === 0 && (
           <div className="mx-auto my-3 max-w-[85%] rounded-lg bg-[#fff5c4] px-3 py-2 text-center text-xs text-wa-text shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
-            You're chatting with {agentName}. Say hello to get started.
+            {agentOnline
+              ? `You're chatting with ${agentName}. Say hello to get started.`
+              : `${agentName} is away right now. Leave a message and they'll reply here when they're back.`}
           </div>
         )}
         {messages.map((message, index) => {

@@ -17,7 +17,23 @@ export default defineConfig({
     "process.env.NODE_ENV": JSON.stringify("production"),
     "process.emit": "undefined",
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      // The hosted chat page lives at /chat in production (deploy/chat.html,
+      // served by Caddy). Serve the dev copy at the same address.
+      name: "chat-page",
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === "/chat" || req.url?.startsWith("/chat?")) {
+            req.url = req.url.replace("/chat", "/chat.html");
+          }
+          next();
+        });
+      },
+    },
+  ],
   // `index.html` is the standalone development harness for the widget itself;
   // the company site consumes the built bundle instead (see apps/web).
   server: { cors: true },

@@ -12,6 +12,7 @@
     "CORS_ORIGINS",
     "NEXT_PUBLIC_API_URL",
     "NEXT_PUBLIC_WIDGET_URL",
+    "NEXT_PUBLIC_WIDGET_BASE_URL",
     "VITE_API_URL"
   ],
   "tasks": {

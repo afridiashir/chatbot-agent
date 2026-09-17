@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, CloudOff, Search } from "lucide-react";
+import { Camera, CloudOff, Link2, Search } from "lucide-react";
+import { ChatLinkDialog } from "@/components/ChatLinkDialog";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { describeAttachment, type Agent } from "@repo/types";
@@ -46,6 +47,7 @@ function Dashboard({
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [query, setQuery] = useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [tab, setTab] = useState<"ACTIVE" | "CLOSED">("ACTIVE");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
@@ -249,8 +251,12 @@ function Dashboard({
           )}
         </div>
 
-        <div className="border-t px-3 py-2">
-          <Button variant="ghost" size="sm" onClick={onLogout} className="w-full">
+        <div className="flex gap-1 border-t px-3 py-2">
+          <Button variant="ghost" size="sm" onClick={() => setLinkOpen(true)} className="flex-1">
+            <Link2 className="size-3.5" aria-hidden />
+            My chat link
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onLogout} className="flex-1">
             Sign out
           </Button>
         </div>
@@ -286,6 +292,10 @@ function Dashboard({
           onClose={inbox.close}
         />
       </main>
+      <ChatLinkDialog
+        target={linkOpen ? { kind: "agent", id: agent.id, name: agent.name } : null}
+        onClose={() => setLinkOpen(false)}
+      />
       <ProfilePhotoDialog
         open={photoOpen}
         onClose={() => setPhotoOpen(false)}

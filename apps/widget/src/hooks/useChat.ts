@@ -8,6 +8,7 @@ import type {
   ConversationDetail,
   ConversationWithAgent,
   Message,
+  PublicAgentProfile,
   ServerToClientEvents,
 } from "@repo/types";
 import type { WidgetConfig } from "../config.js";
@@ -35,6 +36,10 @@ export interface ChatController {
   phase: ChatPhase;
   branches: Branch[];
   conversation: ConversationWithAgent | null;
+  /** The agent whose personal link this is, once loaded. */
+  linkAgent: PublicAgentProfile | null;
+  /** The branch fixed by an agent or branch link; the visitor isn't asked. */
+  lockedBranch: Branch | null;
   messages: Message[];
   error: string | null;
   /** False while the socket is reconnecting; the composer disables itself. */
@@ -60,6 +65,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const [phase, setPhase] = useState<ChatPhase>("loading");
   const [branches, setBranches] = useState<Branch[]>([]);
   const [conversation, setConversation] = useState<ConversationWithAgent | null>(null);
+  const [linkAgent, setLinkAgent] = useState<PublicAgentProfile | null>(null);
+  const [lockedBranch, setLockedBranch] = useState<Branch | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -114,6 +121,37 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
         if (cancelled) return;
         setBranches(list);
 
+        // A link for one agent or one branch: resolve it up front, so a
+        // deactivated agent or branch says so instead of failing at "Start".
+        let targetAgentId: string | null = null;
+        let targetBranchId: string | null = null;
+        if (config.agentId) {
+          try {
+            const agent = await apiFetch<PublicAgentProfile>(
+              config.apiUrl,
+              `/api/agents/${encodeURIComponent(config.agentId)}/public`,
+            );
+            if (cancelled) return;
+            setLinkAgent(agent);
+            setLockedBranch(list.find((branch) => branch.id === agent.branch.id) ?? null);
+            targetAgentId = agent.id;
+          } catch {
+            if (cancelled) return;
+            setError("This chat link is no longer active.");
+            setPhase("failed");
+            return;
+          }
+        } else if (config.branchId) {
+          const branch = list.find((candidate) => candidate.id === config.branchId);
+          if (!branch) {
+            setError("This chat link is no longer active.");
+            setPhase("failed");
+            return;
+          }
+          setLockedBranch(branch);
+          targetBranchId = branch.id;
+        }
+
         const storedId = getStoredConversationId();
         if (!storedId) {
           setPhase("picking");
@@ -130,6 +168,16 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           if (detail.status === "CLOSED") {
             // A finished chat should not reopen on the next page view.
             clearStoredConversationId();
+            setPhase("picking");
+            return;
+          }
+
+          // An open chat with someone else stays open, but this link is for a
+          // particular agent or branch, so start with that instead.
+          if (
+            (targetAgentId && detail.agent.id !== targetAgentId) ||
+            (targetBranchId && detail.agent.branchId !== targetBranchId)
+          ) {
             setPhase("picking");
             return;
           }
@@ -153,7 +201,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     return () => {
       cancelled = true;
     };
-  }, [config.apiUrl, visitorId]);
+  }, [config.apiUrl, config.agentId, config.branchId, visitorId]);
 
   // One socket per conversation. Keyed on the id so a status change (for
   // example the agent closing the chat) does not force a reconnect.
@@ -217,7 +265,11 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       try {
         const result = await apiFetch<AssignmentResult>(config.apiUrl, "/api/conversations", {
           method: "POST",
-          body: JSON.stringify({ branchId, visitorId, visitor }),
+          body: JSON.stringify({
+            ...(config.agentId ? { agentId: config.agentId } : { branchId }),
+            visitorId,
+            visitor,
+          }),
         });
 
         if (!result.available) {
@@ -240,7 +292,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
         setPhase("failed");
       }
     },
-    [config.apiUrl, visitorId],
+    [config.apiUrl, config.agentId, visitorId],
   );
 
   const sendMessage = useCallback(
@@ -335,6 +387,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     phase,
     branches,
     conversation,
+    linkAgent,
+    lockedBranch,
     messages,
     error,
     connected: connected && networkUp,

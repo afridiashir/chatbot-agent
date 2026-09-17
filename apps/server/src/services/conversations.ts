@@ -23,8 +23,20 @@ import { assignAgent } from "./routing.js";
 /** Oldest first, with `id` as a stable tie-break for identical timestamps. */
 const MESSAGE_ORDER = [{ createdAt: "asc" }, { id: "asc" }] as const;
 
-export function createConversation(input: CreateConversationBody): Promise<AssignmentResult> {
-  return assignAgent(input);
+export async function createConversation(input: CreateConversationBody): Promise<AssignmentResult> {
+  const { agentId, branchId, ...rest } = input;
+  if (!agentId) return assignAgent({ ...rest, branchId: branchId! });
+
+  // An agent link carries the agent; their branch is where the chat belongs.
+  // A deactivated agent's link reads as missing, like any other dead link.
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { branchId: true, isActive: true },
+  });
+  if (!agent || !agent.isActive || (branchId && branchId !== agent.branchId)) {
+    throw notFound("Agent not found");
+  }
+  return assignAgent({ ...rest, branchId: agent.branchId, preferredAgentId: agentId });
 }
 
 function assertAccess(

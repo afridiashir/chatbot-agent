@@ -61,7 +61,8 @@ FROM deps AS dashboard
 COPY . .
 # Baked into the browser bundle at build time, so it is a build argument.
 ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WIDGET_BASE_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL     NEXT_PUBLIC_WIDGET_BASE_URL=$NEXT_PUBLIC_WIDGET_BASE_URL
 RUN pnpm --filter @repo/dashboard build
 ENV NODE_ENV=production
 WORKDIR /app/apps/dashboard
@@ -81,3 +82,4 @@ RUN pnpm --filter @repo/widget build
 FROM caddy:2-alpine AS caddy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=widget-build /app/apps/widget/dist/widget.js /srv/widget/widget.js
+COPY deploy/chat.html /srv/widget/chat.html

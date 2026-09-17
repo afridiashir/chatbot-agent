@@ -7,6 +7,11 @@ export const NO_AGENTS_MESSAGE = "No agents are currently available.";
 
 export interface AssignAgentInput {
   branchId: string;
+  /**
+   * From an agent's personal link: the chat always goes to this agent, online
+   * or not. It waits in their inbox until they're back.
+   */
+  preferredAgentId?: string;
   visitorId: string;
   visitor: { name: string; email: string; phone: string };
   initialMessage?: string;
@@ -125,11 +130,15 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
     // A returning visitor rejoins their open chat instead of opening a second
     // one. Checked before availability so they can still reach an agent who has
     // since gone offline.
+    // From an agent's link, only a chat with that agent counts: someone who
+    // followed a specific person's link expects to talk to them.
     const existing = await tx.conversation.findFirst({
       where: {
         visitorId: input.visitorId,
         status: "ACTIVE",
-        agent: { branchId: input.branchId },
+        ...(input.preferredAgentId
+          ? { agentId: input.preferredAgentId }
+          : { agent: { branchId: input.branchId } }),
       },
       orderBy: { createdAt: "desc" },
       include: { agent: true, visitor: true },
@@ -142,6 +151,32 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
         { answered: true, conversationId: existing.id },
       );
       return { available: true, conversation: toConversationWithAgent(existing), resumed: true };
+    }
+
+    // A personal link skips routing entirely: the visitor chose this agent.
+    // Their availability isn't checked, so an offline agent still gets the
+    // lead and answers when they're back.
+    if (input.preferredAgentId) {
+      const conversation = await tx.conversation.create({
+        data: {
+          agentId: input.preferredAgentId,
+          visitorId: input.visitorId,
+          ...(input.initialMessage
+            ? { messages: { create: [{ senderType: "VISITOR", content: input.initialMessage }] } }
+            : {}),
+        },
+        include: { agent: true, visitor: true },
+      });
+      await recordEnquiry(
+        tx,
+        { ...input, companyId: branch.companyId },
+        { answered: true, conversationId: conversation.id },
+      );
+      return {
+        available: true,
+        conversation: toConversationWithAgent(conversation),
+        resumed: false,
+      };
     }
 
     // Lock the candidate set. Anything not locked here cannot be assigned by

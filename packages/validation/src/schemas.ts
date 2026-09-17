@@ -215,14 +215,22 @@ export const visitorDetailsSchema = z.object({
 
 /* ------------------------------- conversations ------------------------------ */
 
-export const createConversationBodySchema = z.object({
-  branchId: idSchema,
-  visitorId: visitorIdSchema,
-  /** Contact details from the pre-chat form. */
-  visitor: visitorDetailsSchema,
-  /** Optional opening message so the agent sees intent immediately. */
-  initialMessage: messageContentSchema.optional(),
-});
+export const createConversationBodySchema = z
+  .object({
+    /** Required unless `agentId` is given, whose branch is then used. */
+    branchId: idSchema.optional(),
+    /** From an agent's personal chat link: the chat goes to this agent, online or not. */
+    agentId: idSchema.optional(),
+    visitorId: visitorIdSchema,
+    /** Contact details from the pre-chat form. */
+    visitor: visitorDetailsSchema,
+    /** Optional opening message so the agent sees intent immediately. */
+    initialMessage: messageContentSchema.optional(),
+  })
+  .refine((body) => body.branchId || body.agentId, {
+    message: "Choose a branch",
+    path: ["branchId"],
+  });
 
 export const getConversationQuerySchema = z.object({
   /** Visitors must prove ownership of the conversation they are reading. */

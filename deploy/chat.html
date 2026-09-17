@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#008069" />
+    <meta name="robots" content="noindex" />
+    <title>Chat</title>
+  </head>
+  <!-- The shareable chat link: https://API_DOMAIN/chat?agent=ID or ?branch=ID.
+       Served by Caddy next to widget.js, on the API's own domain, so it needs
+       no CORS entry. The widget reads the agent or branch from this address. -->
+  <body style="margin: 0; background: #d1d7db">
+    <script src="/widget.js" data-acme-chat data-mode="page"></script>
+  </body>
+</html>

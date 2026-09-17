@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Building2,
   CircleCheck,
+  Link2,
   MessageCircle,
   Pencil,
   Plus,
@@ -16,6 +17,7 @@ import {
 import Link from "next/link";
 import type { Admin, Branch, BranchWithAgents } from "@repo/types";
 import { AdminShell } from "@/components/AdminShell";
+import { ChatLinkDialog, type ChatLinkTarget } from "@/components/ChatLinkDialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -61,6 +63,7 @@ function Branches({ token }: { token: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [chatLink, setChatLink] = useState<ChatLinkTarget | null>(null);
 
   const refresh = useCallback(async () => {
     const [nextBranches, nextAdmins] = await Promise.all([
@@ -146,6 +149,7 @@ function Branches({ token }: { token: string }) {
               busy={togglingId === branch.id}
               admins={admins.filter((a) => a.isActive && a.branchId === branch.id)}
               onRename={() => setDialog({ kind: "rename", branch })}
+              onChatLink={() => setChatLink({ kind: "branch", id: branch.id, name: branch.name })}
               onDeactivate={() => setDialog({ kind: "deactivate", branch })}
               onReactivate={() => void setActive(branch, true)}
             />
@@ -171,6 +175,8 @@ function Branches({ token }: { token: string }) {
           setNotice(message);
         }}
       />
+
+      <ChatLinkDialog target={chatLink} onClose={() => setChatLink(null)} />
 
       <Dialog
         open={dialog?.kind === "deactivate"}
@@ -206,6 +212,7 @@ function BranchCard({
   busy,
   admins,
   onRename,
+  onChatLink,
   onDeactivate,
   onReactivate,
 }: {
@@ -214,6 +221,7 @@ function BranchCard({
   /** Active branch admins of this branch. */
   admins: Admin[];
   onRename: () => void;
+  onChatLink: () => void;
   onDeactivate: () => void;
   onReactivate: () => void;
 }) {
@@ -312,6 +320,12 @@ function BranchCard({
       </div>
 
       <div className="mt-auto flex items-center justify-end gap-1 border-t px-2 py-2">
+        {branch.isActive && (
+          <Button variant="ghost" size="sm" onClick={onChatLink} className="mr-auto">
+            <Link2 className="size-3.5" aria-hidden />
+            Chat link
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onRename}>
           <Pencil className="size-3.5" aria-hidden />
           Rename

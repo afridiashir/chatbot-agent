@@ -6,6 +6,7 @@ import {
   Camera,
   CircleCheck,
   KeyRound,
+  Link2,
   Mail,
   MessageCircle,
   Pencil,
@@ -20,6 +21,7 @@ import type { Agent, AgentWithLoad, BranchWithAgents, DeactivateAgentResult } fr
 import { AdminShell } from "@/components/AdminShell";
 import { Field, PasswordInput, firstFieldErrors, selectClass } from "@/components/admin/form";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
+import { ChatLinkDialog, type ChatLinkTarget } from "@/components/ChatLinkDialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -30,7 +32,15 @@ import { cn } from "@/lib/utils";
 export default function AdminAgentsPage() {
   return (
     <AdminShell>
-      {({ token, admin }) => <Agents token={token} branchName={admin.branchName} />}
+      {({ token, admin }) => (
+        <Agents
+          token={token}
+          branchName={admin.branchName}
+          ownBranch={
+            admin.branchId && admin.branchName ? { id: admin.branchId, name: admin.branchName } : null
+          }
+        />
+      )}
     </AdminShell>
   );
 }
@@ -58,7 +68,17 @@ type DialogState =
   | { kind: "deactivate"; agent: AgentRow }
   | null;
 
-function Agents({ token, branchName }: { token: string; branchName: string | null }) {
+function Agents({
+  token,
+  branchName,
+  ownBranch,
+}: {
+  token: string;
+  branchName: string | null;
+  /** A branch admin's branch, whose chat link they can share. */
+  ownBranch: { id: string; name: string } | null;
+}) {
+  const [chatLink, setChatLink] = useState<ChatLinkTarget | null>(null);
   const [branches, setBranches] = useState<BranchWithAgents[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -173,6 +193,16 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
               : "Loading agents…"}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {ownBranch && (
+          <Button
+            variant="outline"
+            onClick={() => setChatLink({ kind: "branch", id: ownBranch.id, name: ownBranch.name })}
+          >
+            <Link2 className="size-4" aria-hidden />
+            Branch chat link
+          </Button>
+        )}
         <Button
           onClick={() => setDialog({ kind: "create" })}
           disabled={branches !== null && activeBranches.length === 0}
@@ -185,6 +215,7 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
           <Plus className="size-4" aria-hidden />
           Add agent
         </Button>
+        </div>
       </div>
 
       {/* Filters: one row above everything they scope. */}
@@ -287,6 +318,7 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
               onEdit={() => setDialog({ kind: "edit", agent })}
               onPassword={() => setDialog({ kind: "password", agent })}
               onPhoto={() => setDialog({ kind: "photo", agent })}
+              onChatLink={() => setChatLink({ kind: "agent", id: agent.id, name: agent.name })}
               onDeactivate={() => setDialog({ kind: "deactivate", agent })}
               onReactivate={() => void setActive(agent, true)}
             />
@@ -318,6 +350,8 @@ function Agents({ token, branchName }: { token: string; branchName: string | nul
         onClose={() => setDialog(null)}
         onSaved={onSaved}
       />
+
+      <ChatLinkDialog target={chatLink} onClose={() => setChatLink(null)} />
 
       {dialog?.kind === "photo" && (
         <ProfilePhotoDialog
@@ -390,6 +424,7 @@ function AgentCard({
   onEdit,
   onPassword,
   onPhoto,
+  onChatLink,
   onDeactivate,
   onReactivate,
 }: {
@@ -398,6 +433,7 @@ function AgentCard({
   onEdit: () => void;
   onPassword: () => void;
   onPhoto: () => void;
+  onChatLink: () => void;
   onDeactivate: () => void;
   onReactivate: () => void;
 }) {
@@ -494,6 +530,16 @@ function AgentCard({
       <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t px-2 py-2">
         {agent.isActive ? (
           <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onChatLink}
+              aria-label={`${agent.name}'s chat link`}
+              title="Chat link"
+              className="mr-auto"
+            >
+              <Link2 className="size-3.5" aria-hidden />
+            </Button>
             <Button variant="ghost" size="sm" onClick={onEdit}>
               <Pencil className="size-3.5" aria-hidden />
               Edit

@@ -9,6 +9,10 @@ export interface VisitorDetails {
 
 interface PreChatFormProps {
   branches: Branch[];
+  /** Set by an agent or branch link: no branch question. */
+  lockedBranch?: Branch | null;
+  /** The agent whose personal link this is. */
+  agentName?: string | null;
   submitting: boolean;
   onStart: (branchId: string, visitor: VisitorDetails) => void;
 }
@@ -22,8 +26,14 @@ const EMPTY = { name: "", email: "", phone: "", branchId: "" };
  * Validation here is only for fast feedback — the server validates the same
  * fields again, and is the authority.
  */
-export function PreChatForm({ branches, submitting, onStart }: PreChatFormProps) {
-  const [form, setForm] = useState(EMPTY);
+export function PreChatForm({
+  branches,
+  lockedBranch,
+  agentName,
+  submitting,
+  onStart,
+}: PreChatFormProps) {
+  const [form, setForm] = useState({ ...EMPTY, branchId: lockedBranch?.id ?? "" });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof EMPTY, string>>>({});
 
   function validate(): boolean {
@@ -61,7 +71,11 @@ export function PreChatForm({ branches, submitting, onStart }: PreChatFormProps)
     >
       {/* A greeting bubble, so the form reads as the start of a chat. */}
       <div className="wa-bubble-in max-w-[85%] px-3 py-2 text-sm">
-        👋 Hi! Tell us how to reach you and we'll connect you to an agent.
+        {agentName
+          ? `👋 Hi, I'm ${agentName}! Tell me how to reach you and we can start chatting.`
+          : lockedBranch
+            ? `👋 Hi! Tell us how to reach you and we'll connect you to our ${lockedBranch.name} team.`
+            : "👋 Hi! Tell us how to reach you and we'll connect you to an agent."}
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg bg-white p-3 shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
@@ -106,6 +120,7 @@ export function PreChatForm({ branches, submitting, onStart }: PreChatFormProps)
           {errors.email && <span className="text-xs text-red-600">{errors.email}</span>}
         </label>
 
+        {!lockedBranch && (
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-wa-icon">Branch</span>
           <select
@@ -123,6 +138,7 @@ export function PreChatForm({ branches, submitting, onStart }: PreChatFormProps)
           </select>
           {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
         </label>
+        )}
 
         <button
           type="submit"

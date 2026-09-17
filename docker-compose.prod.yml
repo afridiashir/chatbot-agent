@@ -98,6 +98,8 @@ services:
       target: dashboard
       args:
         NEXT_PUBLIC_API_URL: ${PUBLIC_SCHEME:-https}://${API_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+        # widget.js and the shareable /chat page are served from the API domain.
+        NEXT_PUBLIC_WIDGET_BASE_URL: ${PUBLIC_SCHEME:-https}://${API_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
     restart: unless-stopped
     depends_on:
       - api
