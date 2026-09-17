@@ -1,0 +1,7 @@
+# Files run or read on Linux servers must keep LF endings, even when checked out
+# on Windows with core.autocrlf.
+*.sh text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.yml text eol=lf
+.env.production.example text eol=lf
