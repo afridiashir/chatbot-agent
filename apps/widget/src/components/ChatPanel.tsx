@@ -181,6 +181,10 @@ function MessageBubble({
         swipe.handlers.onTouchCancel?.();
         longPress.onTouchCancel();
       }}
+      onContextMenu={(event) => {
+        // Only on touch: a right-click with a mouse still offers copy.
+        if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault();
+      }}
     >
       {reacting && (
         <div className={`absolute bottom-full z-20 mb-1 ${outgoing ? "right-0" : "left-0"}`}>

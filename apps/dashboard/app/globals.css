@@ -183,7 +183,8 @@
     -webkit-touch-callout: none;
   }
   @media (pointer: coarse) {
-    .chat-hold {
+    .chat-hold,
+    .chat-hold * {
       -webkit-user-select: none;
       user-select: none;
     }

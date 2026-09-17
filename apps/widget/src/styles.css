@@ -93,7 +93,8 @@
     -webkit-touch-callout: none;
   }
   @media (pointer: coarse) {
-    .wa-hold {
+    .wa-hold,
+    .wa-hold * {
       -webkit-user-select: none;
       user-select: none;
     }
