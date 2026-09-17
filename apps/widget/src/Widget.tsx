@@ -5,12 +5,18 @@ import { ChatPanel } from "./components/ChatPanel.js";
 import { Launcher } from "./components/Launcher.js";
 import { PreChatForm } from "./components/PreChatForm.js";
 import { useChat } from "./hooks/useChat.js";
+import { useVisualViewport } from "./hooks/useVisualViewport.js";
 
 export function Widget({ config }: { config: WidgetConfig }) {
   // The hosted chat page is the chat: always open, nothing to close it to.
   const page = config.mode === "page";
   const [isOpen, setIsOpen] = useState(page);
   const chat = useChat(config, isOpen);
+  // With the keyboard open this is the strip of screen left above it.
+  const viewport = useVisualViewport();
+  const fitKeyboard = viewport
+    ? { height: `${viewport.height}px`, top: `${viewport.offsetTop}px`, bottom: "auto" }
+    : undefined;
   const chatting = chat.phase === "chatting" ? chat.conversation?.agent : undefined;
   // Before a chat starts, an agent's link already knows who you'll talk to.
   const agent = chatting ?? chat.linkAgent ?? undefined;
@@ -34,12 +40,13 @@ export function Widget({ config }: { config: WidgetConfig }) {
         page
           ? // The hosted page: the whole screen on phones, a centred card on
             // larger screens, like WhatsApp Web.
-            "relative flex h-[100dvh] w-full flex-col overflow-hidden bg-wa-panel sm:h-[min(calc(100dvh-3rem),46rem)] sm:max-w-md sm:rounded-2xl sm:shadow-[0_12px_40px_rgb(0_0_0/0.18)]"
+            "relative flex h-full max-h-[100dvh] w-full flex-col overflow-hidden bg-wa-panel sm:h-[min(calc(100dvh-3rem),46rem)] sm:max-w-md sm:rounded-2xl sm:shadow-[0_12px_40px_rgb(0_0_0/0.18)]"
           : // Phones: the whole screen, like the WhatsApp app (dvh follows the
             // on-screen keyboard). From 640px up: the floating panel. Positioned
             // either way, so the media viewer can cover it.
             "fixed inset-0 flex h-[100dvh] w-full flex-col overflow-hidden bg-wa-panel sm:relative sm:inset-auto sm:h-[36rem] sm:max-h-[calc(100vh-6rem)] sm:w-[23rem] sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:shadow-[0_12px_40px_rgb(0_0_0/0.25)]"
       }
+      style={page ? undefined : fitKeyboard}
     >
       {/* WhatsApp's teal header: the agent once known, a welcome before. */}
       <header className="flex items-center gap-3 bg-wa-teal px-3 pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 text-white">
@@ -156,7 +163,10 @@ export function Widget({ config }: { config: WidgetConfig }) {
 
   if (page) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#d1d7db] font-sans">
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-[#d1d7db] font-sans"
+        style={fitKeyboard}
+      >
         {panel}
       </div>
     );
