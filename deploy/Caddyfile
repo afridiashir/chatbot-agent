@@ -1,0 +1,36 @@
+# Public entry point. Caddy gets and renews Let's Encrypt certificates on its
+# own for each domain below, as long as its DNS points at this server and ports
+# 80 and 443 are open.
+#
+# PUBLIC_SCHEME is "https" in production. A local smoke test sets it to "http".
+
+# API, live chat (WebSockets) and the embeddable widget script.
+{$PUBLIC_SCHEME}://{$API_DOMAIN} {
+	encode zstd gzip
+
+	handle /widget.js {
+		root * /srv/widget
+		# Short cache: the file name never changes, so a deploy must reach
+		# client sites within minutes.
+		header Cache-Control "public, max-age=300"
+		header Access-Control-Allow-Origin "*"
+		file_server
+	}
+
+	handle {
+		reverse_proxy api:4000
+	}
+}
+
+# Agent inbox and admin dashboard.
+{$PUBLIC_SCHEME}://{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy dashboard:3003
+}
+
+# Chat media storage (MinIO S3 API). Browsers upload here directly with signed
+# forms and download through short-lived signed links. The Host header is passed
+# through unchanged, which those signatures depend on.
+{$PUBLIC_SCHEME}://{$MEDIA_DOMAIN} {
+	reverse_proxy minio:9000
+}
