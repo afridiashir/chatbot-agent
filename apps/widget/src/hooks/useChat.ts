@@ -20,7 +20,10 @@ import { uploadVisitorAttachment } from "../lib/media.js";
 import { useTypingIndicator, useTypingSignal } from "./useTyping.js";
 import {
   clearStoredConversationId,
+  getSavedVisitor,
   getStoredConversationId,
+  storeSavedVisitor,
+  type SavedVisitor,
   getVisitorId,
   storeConversationId,
 } from "../lib/storage.js";
@@ -54,6 +57,8 @@ export interface ChatController {
   react: (messageId: string, emoji: string | null) => void;
   /** This browser's visitor id, which a push subscription is filed under. */
   visitorId: string;
+  /** What they told us last time, so the form is never asked for twice. */
+  savedVisitor: SavedVisitor | null;
   /** Uploads a photo, video, audio file or voice note, then sends it. */
   sendMedia: (media: VisitorMediaSend) => Promise<void>;
   /** Called on every keystroke; throttled internally. */
@@ -71,6 +76,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [conversation, setConversation] = useState<ConversationWithAgent | null>(null);
   const [linkAgent, setLinkAgent] = useState<PublicAgentProfile | null>(null);
+  const [savedVisitor, setSavedVisitor] = useState<SavedVisitor | null>(() => getSavedVisitor());
   /** Read inside socket handlers, which must not close over changing state. */
   const agentNameRef = useRef<string | null>(null);
   const [lockedBranch, setLockedBranch] = useState<Branch | null>(null);
@@ -283,6 +289,12 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       setPhase("starting");
       setError(null);
 
+      // Remembered before the round trip: even a chat that finds nobody
+      // available should not cost them their details a second time.
+      const remembered = { ...visitor, branchId };
+      storeSavedVisitor(remembered);
+      setSavedVisitor(remembered);
+
       try {
         const result = await apiFetch<AssignmentResult>(config.apiUrl, "/api/conversations", {
           method: "POST",
@@ -438,6 +450,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     sendMedia,
     react,
     visitorId,
+    savedVisitor,
     notifyTyping,
     startOver,
   };

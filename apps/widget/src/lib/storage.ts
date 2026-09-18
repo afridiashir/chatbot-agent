@@ -6,6 +6,8 @@
  */
 const VISITOR_KEY = "acme-chat:visitorId";
 const CONVERSATION_KEY = "acme-chat:conversationId";
+/** Their details and the branch they last chose, so we never ask twice. */
+const VISITOR_DETAILS_KEY = "acme-chat:visitor";
 
 const memory = new Map<string, string>();
 
@@ -63,3 +65,35 @@ export function getRecentEmoji(): string[] {
 
 export const storeRecentEmoji = (emoji: string[]): void =>
   write(RECENT_EMOJI_KEY, JSON.stringify(emoji));
+
+export interface SavedVisitor {
+  name: string;
+  email: string;
+  phone: string;
+  /** The branch of their last chat, offered again for the next one. */
+  branchId?: string;
+}
+
+/**
+ * What the visitor told us last time. Kept so that a chat an agent has closed
+ * can be picked up again with one tap instead of the form all over again.
+ */
+export function getSavedVisitor(): SavedVisitor | null {
+  const raw = read(VISITOR_DETAILS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SavedVisitor>;
+    if (!parsed.name || !parsed.email || !parsed.phone) return null;
+    return {
+      name: parsed.name,
+      email: parsed.email,
+      phone: parsed.phone,
+      ...(parsed.branchId ? { branchId: parsed.branchId } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export const storeSavedVisitor = (visitor: SavedVisitor): void =>
+  write(VISITOR_DETAILS_KEY, JSON.stringify(visitor));

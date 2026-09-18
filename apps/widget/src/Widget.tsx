@@ -115,6 +115,7 @@ export function Widget({ config }: { config: WidgetConfig }) {
           branches={chat.branches}
           lockedBranch={chat.lockedBranch}
           agentName={chat.linkAgent?.name ?? null}
+          saved={chat.savedVisitor}
           submitting={chat.phase === "starting"}
           onStart={(branchId, visitor) => void chat.startChat(branchId, visitor)}
         />
