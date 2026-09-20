@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarClock,
+  CircleCheck,
   Headset,
   Info,
   Lock,
@@ -14,6 +15,7 @@ import {
   MessagesSquare,
   Phone,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -24,12 +26,15 @@ import {
   type BranchWithAgents,
   type ClientToServerEvents,
   type ConversationStatus,
+  type DeleteConversationResult,
   type Message,
   type ServerToClientEvents,
 } from "@repo/types";
 import { Bubble, DaySeparator, TypingDots } from "@/components/ConversationView";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/config";
 import { formatListTime, isNewDay } from "@/lib/format";
@@ -82,6 +87,11 @@ export function AdminInbox({
   const [detailError, setDetailError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [typing, setTyping] = useState<Record<string, "AGENT" | "VISITOR" | undefined>>({});
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const socketRef = useRef<AppSocket | null>(null);
   const joinedRef = useRef<Set<string>>(new Set());
@@ -148,6 +158,29 @@ export function AdminInbox({
     const path = selectedId ? `/admin/conversations/${selectedId}` : "/admin/conversations";
     if (window.location.pathname !== path) window.history.replaceState(null, "", path);
   }, [selectedId, loadDetail]);
+
+  // Success messages clear themselves; errors stay until the next attempt.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  /**
+   * Drops a conversation that no longer exists. There is nothing left to
+   * refetch, so the row goes and the pane empties if it was the one open.
+   */
+  const forget = useCallback((conversationId: string) => {
+    setRows((current) => current?.filter((row) => row.id !== conversationId) ?? current);
+    joinedRef.current.delete(conversationId);
+    setTyping((current) => ({ ...current, [conversationId]: undefined }));
+    if (selectedRef.current === conversationId) {
+      setSelectedId(null);
+      setDetail(null);
+      setDetailError(null);
+      setShowInfo(false);
+    }
+  }, []);
 
   /* -------------------------------- realtime ------------------------------ */
 
@@ -236,6 +269,9 @@ export function AdminInbox({
       );
     });
 
+    // Another admin deleted it, or this one did from a second tab.
+    socket.on("conversation:deleted", ({ conversationId }) => forget(conversationId));
+
     const timers = typingTimers.current;
     return () => {
       socket.close();
@@ -243,7 +279,7 @@ export function AdminInbox({
       joined.clear();
       Object.values(timers).forEach(clearTimeout);
     };
-  }, [token, loadList, loadDetail]);
+  }, [token, loadList, loadDetail, forget]);
 
   // Watch every open conversation in the list (for live previews and typing),
   // plus the selected one even if it is closed.
@@ -284,6 +320,33 @@ export function AdminInbox({
         row.agent.name.toLowerCase().includes(needle),
     );
   }, [rows, query]);
+
+  /**
+   * Permanent, and the server says so too. The broadcast that comes back would
+   * clear the row on its own, but it is dropped here as well so the screen does
+   * not wait on the socket.
+   */
+  async function deleteSelected(conversationId: string) {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await api<DeleteConversationResult>(
+        `/api/admin/conversations/${conversationId}`,
+        { method: "DELETE", token },
+      );
+      forget(conversationId);
+      setConfirmDelete(false);
+      setNotice(
+        `Conversation deleted · ${result.deletedMessages} ${
+          result.deletedMessages === 1 ? "message" : "messages"
+        } removed`,
+      );
+    } catch {
+      setDeleteError("Could not delete that conversation. Try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const openCount = rows?.filter((row) => row.status === "ACTIVE").length ?? 0;
   const selectedRow = rows?.find((row) => row.id === selectedId) ?? null;
@@ -358,6 +421,15 @@ export function AdminInbox({
 
         <div className="flex-1 overflow-y-auto">
           {listError && <p className="px-4 py-3 text-sm text-destructive">{listError}</p>}
+          {notice && (
+            <p
+              role="status"
+              className="flex items-center gap-1.5 border-b bg-success-soft px-4 py-2 text-xs text-success"
+            >
+              <CircleCheck className="size-4 shrink-0" aria-hidden />
+              {notice}
+            </p>
+          )}
           {rows && visible.length === 0 && (
             <p className="px-4 py-10 text-center text-sm text-chat-meta">
               {query ? `No conversations match “${query}”` : "No conversations here yet"}
@@ -438,6 +510,17 @@ export function AdminInbox({
                   {detail.status === "ACTIVE" ? "Open" : "Closed"}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError(null);
+                  setConfirmDelete(true);
+                }}
+                aria-label="Delete conversation"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setShowInfo((value) => !value)}
@@ -551,6 +634,39 @@ export function AdminInbox({
           </>
         )}
       </section>
+
+      <Dialog
+        open={confirmDelete && selectedId !== null}
+        onClose={() => (deleting ? undefined : setConfirmDelete(false))}
+        title="Delete this conversation?"
+        description={
+          detail
+            ? `The whole chat between ${detail.visitor.name} and ${detail.agent.name} — ${detail.messages.length} ${detail.messages.length === 1 ? "message" : "messages"}, with any photos, videos and voice notes — is removed for everyone, permanently. The lead and their enquiry history are kept.`
+            : "The whole chat, with any photos, videos and voice notes, is removed for everyone, permanently. The lead and their enquiry history are kept."
+        }
+        icon={<Trash2 className="size-5" aria-hidden />}
+        tone="danger"
+      >
+        <div className="flex flex-col gap-3">
+          {deleteError && (
+            <p role="alert" className="text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" disabled={deleting} onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => selectedId && void deleteSelected(selectedId)}
+            >
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

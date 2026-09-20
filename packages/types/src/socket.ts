@@ -95,6 +95,11 @@ export interface ServerToClientEvents {
   }) => void;
   "conversation:assigned": (conversation: ConversationWithAgent) => void;
   "conversation:closed": (conversation: Conversation) => void;
+  /**
+   * An admin deleted the chat. Nothing of it survives on the server, so every
+   * screen still showing it has to let it go rather than refetch.
+   */
+  "conversation:deleted": (payload: { conversationId: string }) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "agent:profile": (payload: AgentProfilePayload) => void;
   "message:receipt": (payload: ReceiptPayload) => void;

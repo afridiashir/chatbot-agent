@@ -9,6 +9,7 @@ import type {
   Agent,
   Branch,
   DeactivateAgentResult,
+  DeleteConversationResult,
   Lead,
   LeadDetail,
   LeadTablePage,
@@ -38,6 +39,7 @@ import {
 } from "../lib/admin-scope.js";
 import type { AdminTokenPayload } from "../lib/auth.js";
 import { signAdminToken } from "../lib/auth.js";
+import { deleteObject } from "../lib/storage.js";
 import { unreadCounts } from "./conversations.js";
 import {
   toAdmin,
@@ -534,6 +536,56 @@ export async function getAnyConversation(
   return {
     ...toConversationDetail(conversation),
     branch: { id: conversation.agent.branch.id, name: conversation.agent.branch.name },
+  };
+}
+
+/**
+ * Wipes one conversation: its messages, their attachments and any reactions.
+ * Deliberately a hard delete — this is the answer to "remove that chat", so
+ * leaving a hidden copy behind would defeat the point of having the option.
+ *
+ * What survives is the lead's enquiry, whose `conversationId` is nulled rather
+ * than cascaded (see the schema). Removing a transcript must not rewrite the
+ * record that someone got in touch.
+ */
+export async function deleteConversation(
+  conversationId: string,
+  actor: AdminTokenPayload,
+): Promise<DeleteConversationResult & { agentId: string }> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      agentId: true,
+      agent: { select: { branchId: true, branch: { select: { companyId: true } } } },
+      messages: { select: { attachment: { select: { key: true } } } },
+    },
+  });
+
+  // Same scope as reading one, and the same answer when it is out of reach, so
+  // another branch's chats cannot be probed by trying to delete them.
+  if (
+    !conversation ||
+    conversation.agent.branch.companyId !== actor.companyId ||
+    (actor.branchId !== null && conversation.agent.branchId !== actor.branchId)
+  ) {
+    throw notFound("Conversation not found");
+  }
+
+  const keys = conversation.messages.flatMap((message) =>
+    message.attachment ? [message.attachment.key] : [],
+  );
+
+  await prisma.conversation.delete({ where: { id: conversationId } });
+
+  // Only once the rows are gone. An object with no row left is wasted space; a
+  // row pointing at a missing object would be a broken chat on screen.
+  await Promise.all(keys.map((key) => deleteObject(key)));
+
+  return {
+    id: conversationId,
+    agentId: conversation.agentId,
+    deletedMessages: conversation.messages.length,
+    deletedAttachments: keys.length,
   };
 }
 

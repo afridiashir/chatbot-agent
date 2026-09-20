@@ -17,6 +17,7 @@ import type {
   Branch,
   BranchWithAgents,
   DeactivateAgentResult,
+  DeleteConversationResult,
   Lead,
   LeadDetail,
 } from "@repo/types";
@@ -450,6 +451,59 @@ async function main(): Promise<void> {
     (await request(`/api/admin/leads/${leadId}`, { token: agentToken })).status,
     401,
   );
+
+  console.log("\n11h. Deleting a conversation is permanent, and scoped");
+  check(
+    "agents cannot delete a conversation",
+    (
+      await request(`/api/admin/conversations/${conversationId}`, {
+        method: "DELETE",
+        token: agentToken,
+      })
+    ).status,
+    401,
+  );
+
+  const deleted = await request<DeleteConversationResult>(
+    `/api/admin/conversations/${conversationId}`,
+    { method: "DELETE", token },
+  );
+  check("the admin can delete it", deleted.status, 200);
+  check("and is told what went with it", deleted.data?.deletedMessages, 1);
+
+  check(
+    "the transcript is gone",
+    (await request(`/api/admin/conversations/${conversationId}`, { token })).status,
+    404,
+  );
+  check(
+    "deleting it twice reads as not found",
+    (await request(`/api/admin/conversations/${conversationId}`, { method: "DELETE", token }))
+      .status,
+    404,
+  );
+
+  const afterDelete = await request<AdminConversationSummary[]>(
+    `/api/admin/conversations?branchId=${branch.id}`,
+    { token },
+  );
+  check("and the row has left the list", afterDelete.data?.length, 0);
+
+  const visitorLead = await request<Lead[]>(`/api/admin/leads?search=${visitorId}@example.com`, {
+    token,
+  });
+  const visitorLeadId = visitorLead.data?.[0]?.id;
+  check("the lead who started it is kept", typeof visitorLeadId === "string", true);
+  if (visitorLeadId) {
+    const history = await request<LeadDetail>(`/api/admin/leads/${visitorLeadId}`, { token });
+    check("their enquiry is kept too", history.data?.enquiries.length, 1);
+    check(
+      "with its link to the deleted chat cleared",
+      history.data?.enquiries[0]?.conversationId,
+      null,
+    );
+  }
+
 
   console.log("\n12. Stats");
   const stats = (await request<AdminStats>("/api/admin/stats", { token })).data;

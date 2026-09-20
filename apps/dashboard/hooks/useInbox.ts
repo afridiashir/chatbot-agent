@@ -349,6 +349,21 @@ export function useInbox(
       );
     });
 
+    // An admin deleted the chat. Unlike closing, nothing of it is left to read,
+    // so the row goes rather than moving to the Closed tab.
+    socket.on("conversation:deleted", ({ conversationId }) => {
+      setVisitorTyping(conversationId, false);
+      socket.emit("conversation:leave", { conversationId });
+      setConversations((current) => current.filter((row) => row.id !== conversationId));
+      // Anything still queued for it can never be delivered now.
+      updateOutbox(outboxRef.current.filter((m) => m.conversationId !== conversationId));
+      if (conversationId === selectedIdRef.current) {
+        setSelectedId(null);
+        setDetail(null);
+        setError("That conversation was deleted by an administrator.");
+      }
+    });
+
     return () => {
       socket.close();
       socketRef.current = null;

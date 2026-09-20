@@ -276,6 +276,19 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           : current,
       );
     });
+    // An admin removed the chat. Unlike closing it, there is no transcript left
+    // to read, so it is said plainly and the visitor is offered a fresh start.
+    socket.on("conversation:deleted", (deleted) => {
+      if (deleted.conversationId !== conversationId) return;
+      // The stored id has to go with it, or a reload would try to resume a
+      // conversation the server no longer has.
+      clearStoredConversationId();
+      setAgentTyping(false);
+      setConversation(null);
+      setMessages([]);
+      setError("This conversation was removed.");
+      setPhase("failed");
+    });
 
     return () => {
       socket.close();

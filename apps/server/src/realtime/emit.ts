@@ -153,6 +153,16 @@ export function emitConversationClosed(conversation: Conversation): void {
 }
 
 /**
+ * The chat is gone for good. Sent to the room before everyone is dropped from
+ * it, and to the agent's dashboard so the row leaves their inbox.
+ */
+export function emitConversationDeleted(conversation: { id: string; agentId: string }): void {
+  io?.to(rooms.conversation(conversation.id))
+    .to(rooms.agent(conversation.agentId))
+    .emit("conversation:deleted", { conversationId: conversation.id });
+}
+
+/**
  * A new photo reaches visitors mid-chat and the agent's own dashboard, rather
  * than waiting for someone to reload.
  */

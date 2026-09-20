@@ -119,6 +119,7 @@ All endpoints answer with the same envelope:
 | PATCH | `/api/admin/agents/:id` | Rename, move branch, reset password, deactivate |
 | GET | `/api/admin/conversations` | Every agent's chats, filter by branch/agent/status |
 | GET | `/api/admin/conversations/:id` | Read-only transcript |
+| DELETE | `/api/admin/conversations/:id` | Delete a chat and its media, permanently |
 
 ### Status codes on `POST /api/conversations`
 
@@ -286,8 +287,8 @@ written once.
 
 | Room | Members | Carries |
 | --- | --- | --- |
-| `conversation:{id}` | the visitor + assigned agent, after an access check | `message:new`, `conversation:closed` |
-| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed` |
+| `conversation:{id}` | the visitor + assigned agent, after an access check | `message:new`, `conversation:closed`, `conversation:deleted` |
+| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed`, `conversation:deleted` |
 | `branch:{branchId}` | agents of the branch | reserved for branch-wide notices |
 | `admin` | any authenticated agent | `agent:status` |
 

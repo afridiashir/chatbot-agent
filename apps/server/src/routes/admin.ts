@@ -27,7 +27,12 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAdmin, requireAdmin } from "../middleware/require-agent.js";
-import { emitAgentProfile, emitAgentStatus, emitConversationClosed } from "../realtime/emit.js";
+import {
+  emitAgentProfile,
+  emitAgentStatus,
+  emitConversationClosed,
+  emitConversationDeleted,
+} from "../realtime/emit.js";
 import {
   createAvatarUpload,
   openConversationIds,
@@ -38,6 +43,7 @@ import {
   createAdmin,
   createAgent,
   createBranch,
+  deleteConversation,
   listAdmins,
   updateAdmin,
   getAdmin,
@@ -328,5 +334,28 @@ adminRouter.get(
       "conversation id",
     );
     sendOk(res, await getAnyConversation(conversationId, currentAdmin(req)));
+  }),
+);
+
+/**
+ * DELETE /api/admin/conversations/:id — removes the chat and everything in it,
+ * permanently. Scoped like the read above: a branch admin can only delete
+ * chats in their own branch.
+ */
+adminRouter.delete(
+  "/conversations/:conversationId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+
+    const { agentId, ...result } = await deleteConversation(conversationId, currentAdmin(req));
+    // The agent's inbox and any visitor still sitting in the chat both have to
+    // drop it; there is nothing left for them to reload.
+    emitConversationDeleted({ id: result.id, agentId });
+    sendOk(res, result);
   }),
 );

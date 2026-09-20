@@ -70,3 +70,13 @@ export interface DeactivateAgentResult {
 export interface CloseConversationResult {
   conversation: Conversation;
 }
+
+/**
+ * Returned when an admin deletes a conversation. The counts are what actually
+ * went with it, so the confirmation can say so rather than guess.
+ */
+export interface DeleteConversationResult {
+  id: string;
+  deletedMessages: number;
+  deletedAttachments: number;
+}
