@@ -25,6 +25,17 @@ export const SenderType = {
 export type SenderType = (typeof SenderType)[keyof typeof SenderType]
 
 
+export const MaritalStatus = {
+  SINGLE: 'SINGLE',
+  MARRIED: 'MARRIED',
+  DIVORCED: 'DIVORCED',
+  SEPARATED: 'SEPARATED',
+  WIDOWED: 'WIDOWED'
+} as const
+
+export type MaritalStatus = (typeof MaritalStatus)[keyof typeof MaritalStatus]
+
+
 export const AttachmentKind = {
   IMAGE: 'IMAGE',
   VIDEO: 'VIDEO',

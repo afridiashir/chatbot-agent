@@ -4,6 +4,7 @@
  */
 
 import type { AttachmentKind, MessageAttachment } from "./media";
+import type { MaritalStatus } from "./visitor-profile";
 
 export const ConversationStatus = {
   ACTIVE: "ACTIVE",
@@ -28,6 +29,8 @@ export interface Branch {
   id: string;
   companyId: string;
   name: string;
+  /** Where chats land when no agent or branch link named one. One per company. */
+  isMain: boolean;
   /** Soft delete: inactive branches are hidden from visitors and from routing. */
   isActive: boolean;
   createdAt: string;
@@ -74,14 +77,16 @@ export interface AgentWithLoad extends Agent {
 export interface Visitor {
   id: string;
   name: string;
-  email: string;
   phone: string;
+  /** Null on visitors recorded before the form asked for these. */
+  maritalStatus: MaritalStatus | null;
+  city: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 /** What agents and admins are shown about a visitor. */
-export type VisitorSummary = Pick<Visitor, "id" | "name" | "email" | "phone">;
+export type VisitorSummary = Pick<Visitor, "id" | "name" | "phone" | "maritalStatus" | "city">;
 
 /**
  * The message a reply quotes, as shown in the small block above it. Trimmed on
@@ -180,8 +185,10 @@ export interface Lead {
   id: string;
   companyId: string;
   name: string;
-  email: string;
   phone: string;
+  /** Null on leads recorded before the form asked for these. */
+  maritalStatus: MaritalStatus | null;
+  city: string | null;
   branchId: string | null;
   branchName: string | null;
   /** Derived from the enquiry history, never stored, so it cannot drift. */
@@ -242,11 +249,11 @@ export interface AdminSearchResults {
     isActive: boolean;
   }>;
   branches: Array<{ id: string; name: string; isActive: boolean; agentCount: number }>;
-  leads: Array<{ id: string; name: string; email: string; phone: string }>;
+  leads: Array<{ id: string; name: string; phone: string; city: string | null }>;
   conversations: Array<{
     id: string;
     visitorName: string;
-    visitorEmail: string;
+    visitorPhone: string;
     agentName: string;
     status: ConversationStatus;
     updatedAt: string;

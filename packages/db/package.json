@@ -32,6 +32,7 @@
     "tsx": "^4.20.6",
     "typescript": "^7.0.2",
     "dotenv": "^17.2.4",
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "@repo/types": "workspace:*"
   }
 }

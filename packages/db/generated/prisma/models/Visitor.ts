@@ -27,8 +27,9 @@ export type AggregateVisitor = {
 export type VisitorMinAggregateOutputType = {
   id: string | null
   name: string | null
-  email: string | null
   phone: string | null
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -36,8 +37,9 @@ export type VisitorMinAggregateOutputType = {
 export type VisitorMaxAggregateOutputType = {
   id: string | null
   name: string | null
-  email: string | null
   phone: string | null
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -45,8 +47,9 @@ export type VisitorMaxAggregateOutputType = {
 export type VisitorCountAggregateOutputType = {
   id: number
   name: number
-  email: number
   phone: number
+  maritalStatus: number
+  city: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -56,8 +59,9 @@ export type VisitorCountAggregateOutputType = {
 export type VisitorMinAggregateInputType = {
   id?: true
   name?: true
-  email?: true
   phone?: true
+  maritalStatus?: true
+  city?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -65,8 +69,9 @@ export type VisitorMinAggregateInputType = {
 export type VisitorMaxAggregateInputType = {
   id?: true
   name?: true
-  email?: true
   phone?: true
+  maritalStatus?: true
+  city?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -74,8 +79,9 @@ export type VisitorMaxAggregateInputType = {
 export type VisitorCountAggregateInputType = {
   id?: true
   name?: true
-  email?: true
   phone?: true
+  maritalStatus?: true
+  city?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -156,8 +162,9 @@ export type VisitorGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 export type VisitorGroupByOutputType = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   createdAt: Date
   updatedAt: Date
   _count: VisitorCountAggregateOutputType | null
@@ -186,8 +193,9 @@ export type VisitorWhereInput = {
   NOT?: Prisma.VisitorWhereInput | Prisma.VisitorWhereInput[]
   id?: Prisma.StringFilter<"Visitor"> | string
   name?: Prisma.StringFilter<"Visitor"> | string
-  email?: Prisma.StringFilter<"Visitor"> | string
   phone?: Prisma.StringFilter<"Visitor"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Visitor"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableFilter<"Visitor"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
@@ -197,8 +205,9 @@ export type VisitorWhereInput = {
 export type VisitorOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  city?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
@@ -211,8 +220,9 @@ export type VisitorWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.VisitorWhereInput[]
   NOT?: Prisma.VisitorWhereInput | Prisma.VisitorWhereInput[]
   name?: Prisma.StringFilter<"Visitor"> | string
-  email?: Prisma.StringFilter<"Visitor"> | string
   phone?: Prisma.StringFilter<"Visitor"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Visitor"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableFilter<"Visitor"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
@@ -222,8 +232,9 @@ export type VisitorWhereUniqueInput = Prisma.AtLeast<{
 export type VisitorOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  city?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.VisitorCountOrderByAggregateInput
@@ -237,8 +248,9 @@ export type VisitorScalarWhereWithAggregatesInput = {
   NOT?: Prisma.VisitorScalarWhereWithAggregatesInput | Prisma.VisitorScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Visitor"> | string
   name?: Prisma.StringWithAggregatesFilter<"Visitor"> | string
-  email?: Prisma.StringWithAggregatesFilter<"Visitor"> | string
   phone?: Prisma.StringWithAggregatesFilter<"Visitor"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableWithAggregatesFilter<"Visitor"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableWithAggregatesFilter<"Visitor"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Visitor"> | Date | string
 }
@@ -246,8 +258,9 @@ export type VisitorScalarWhereWithAggregatesInput = {
 export type VisitorCreateInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
@@ -257,8 +270,9 @@ export type VisitorCreateInput = {
 export type VisitorUncheckedCreateInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
@@ -268,8 +282,9 @@ export type VisitorUncheckedCreateInput = {
 export type VisitorUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
@@ -279,8 +294,9 @@ export type VisitorUpdateInput = {
 export type VisitorUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
@@ -290,8 +306,9 @@ export type VisitorUncheckedUpdateInput = {
 export type VisitorCreateManyInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -299,8 +316,9 @@ export type VisitorCreateManyInput = {
 export type VisitorUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -308,8 +326,9 @@ export type VisitorUpdateManyMutationInput = {
 export type VisitorUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -317,8 +336,9 @@ export type VisitorUncheckedUpdateManyInput = {
 export type VisitorCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -326,8 +346,9 @@ export type VisitorCountOrderByAggregateInput = {
 export type VisitorMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -335,8 +356,9 @@ export type VisitorMaxOrderByAggregateInput = {
 export type VisitorMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -384,8 +406,9 @@ export type VisitorUpdateOneWithoutPushSubscriptionsNestedInput = {
 export type VisitorCreateWithoutConversationsInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutVisitorInput
@@ -394,8 +417,9 @@ export type VisitorCreateWithoutConversationsInput = {
 export type VisitorUncheckedCreateWithoutConversationsInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutVisitorInput
@@ -420,8 +444,9 @@ export type VisitorUpdateToOneWithWhereWithoutConversationsInput = {
 export type VisitorUpdateWithoutConversationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutVisitorNestedInput
@@ -430,8 +455,9 @@ export type VisitorUpdateWithoutConversationsInput = {
 export type VisitorUncheckedUpdateWithoutConversationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutVisitorNestedInput
@@ -440,8 +466,9 @@ export type VisitorUncheckedUpdateWithoutConversationsInput = {
 export type VisitorCreateWithoutPushSubscriptionsInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
@@ -450,8 +477,9 @@ export type VisitorCreateWithoutPushSubscriptionsInput = {
 export type VisitorUncheckedCreateWithoutPushSubscriptionsInput = {
   id: string
   name: string
-  email: string
   phone: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
@@ -476,8 +504,9 @@ export type VisitorUpdateToOneWithWhereWithoutPushSubscriptionsInput = {
 export type VisitorUpdateWithoutPushSubscriptionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
@@ -486,8 +515,9 @@ export type VisitorUpdateWithoutPushSubscriptionsInput = {
 export type VisitorUncheckedUpdateWithoutPushSubscriptionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
@@ -536,8 +566,9 @@ export type VisitorCountOutputTypeCountPushSubscriptionsArgs<ExtArgs extends run
 export type VisitorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
@@ -548,8 +579,9 @@ export type VisitorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type VisitorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["visitor"]>
@@ -557,8 +589,9 @@ export type VisitorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type VisitorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["visitor"]>
@@ -566,13 +599,14 @@ export type VisitorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type VisitorSelectScalar = {
   id?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type VisitorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "phone" | "createdAt" | "updatedAt", ExtArgs["result"]["visitor"]>
+export type VisitorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "maritalStatus" | "city" | "createdAt" | "updatedAt", ExtArgs["result"]["visitor"]>
 export type VisitorInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
   pushSubscriptions?: boolean | Prisma.Visitor$pushSubscriptionsArgs<ExtArgs>
@@ -590,8 +624,12 @@ export type $VisitorPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    email: string
     phone: string
+    /**
+     * Null on visitors recorded before the pre-chat form asked for these.
+     */
+    maritalStatus: $Enums.MaritalStatus | null
+    city: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["visitor"]>
@@ -1021,8 +1059,9 @@ export interface Prisma__VisitorClient<T, Null = never, ExtArgs extends runtime.
 export interface VisitorFieldRefs {
   readonly id: Prisma.FieldRef<"Visitor", 'String'>
   readonly name: Prisma.FieldRef<"Visitor", 'String'>
-  readonly email: Prisma.FieldRef<"Visitor", 'String'>
   readonly phone: Prisma.FieldRef<"Visitor", 'String'>
+  readonly maritalStatus: Prisma.FieldRef<"Visitor", 'MaritalStatus'>
+  readonly city: Prisma.FieldRef<"Visitor", 'String'>
   readonly createdAt: Prisma.FieldRef<"Visitor", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Visitor", 'DateTime'>
 }

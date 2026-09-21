@@ -14,8 +14,9 @@ export interface SeedMessage {
 export interface SeedVisitor {
   id: string;
   name: string;
-  email: string;
   phone: string;
+  maritalStatus: "SINGLE" | "MARRIED" | "DIVORCED" | "SEPARATED" | "WIDOWED";
+  city: string;
 }
 
 export interface SeedConversation {
@@ -42,9 +43,27 @@ export const COMPANY = { id: "company_acme", name: "Acme Corp" };
 
 
 export const VISITORS: SeedVisitor[] = [
-  { id: "seed-visitor-khi-001", name: "Hina Siddiqui", email: "hina.siddiqui@example.com", phone: "+92 300 1234567" },
-  { id: "seed-visitor-khi-002", name: "Rehan Aslam", email: "rehan.aslam@example.com", phone: "+92 301 2345678" },
-  { id: "seed-visitor-khi-003", name: "Sadia Kamal", email: "sadia.kamal@example.com", phone: "+92 302 3456789" },
+  {
+    id: "seed-visitor-khi-001",
+    name: "Hina Siddiqui",
+    phone: "+92 300 1234567",
+    maritalStatus: "MARRIED",
+    city: "Karachi",
+  },
+  {
+    id: "seed-visitor-khi-002",
+    name: "Rehan Aslam",
+    phone: "+92 301 2345678",
+    maritalStatus: "SINGLE",
+    city: "Hyderabad",
+  },
+  {
+    id: "seed-visitor-khi-003",
+    name: "Sadia Kamal",
+    phone: "+92 302 3456789",
+    maritalStatus: "WIDOWED",
+    city: "Lahore",
+  },
 ];
 
 export const BRANCHES: SeedBranch[] = [
@@ -85,6 +104,45 @@ export const BRANCHES: SeedBranch[] = [
             ],
           },
         ],
+      },
+      // Bilal, Usman and Hamza carry no seeded conversations. `check:routing`
+      // and `check:flow` set each one's load explicitly before asserting who a
+      // visitor is routed to, so any preset load here would fight the tests.
+      {
+        id: "agent_bilal_khan",
+        name: "Bilal Khan",
+        email: "bilal.khan@acme.example",
+        isOnline: true,
+        conversations: [],
+      },
+      {
+        id: "agent_usman_sheikh",
+        name: "Usman Sheikh",
+        email: "usman.sheikh@acme.example",
+        isOnline: false,
+        conversations: [],
+      },
+      {
+        id: "agent_hamza_iqbal",
+        name: "Hamza Iqbal",
+        email: "hamza.iqbal@acme.example",
+        isOnline: true,
+        conversations: [],
+      },
+    ],
+  },
+  {
+    // Seeded entirely offline, on purpose: it is how `check:admin` exercises
+    // the "nobody was available, but record the lead anyway" path.
+    id: "branch_peshawar",
+    name: "Peshawar",
+    agents: [
+      {
+        id: "agent_sana_gul",
+        name: "Sana Gul",
+        email: "sana.gul@acme.example",
+        isOnline: false,
+        conversations: [],
       },
     ],
   },

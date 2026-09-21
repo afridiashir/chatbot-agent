@@ -110,6 +110,7 @@ export const BranchScalarFieldEnum = {
   id: 'id',
   companyId: 'companyId',
   name: 'name',
+  isMain: 'isMain',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -138,8 +139,10 @@ export const LeadScalarFieldEnum = {
   id: 'id',
   companyId: 'companyId',
   name: 'name',
-  email: 'email',
   phone: 'phone',
+  phoneKey: 'phoneKey',
+  maritalStatus: 'maritalStatus',
+  city: 'city',
   branchId: 'branchId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -163,8 +166,9 @@ export type EnquiryScalarFieldEnum = (typeof EnquiryScalarFieldEnum)[keyof typeo
 export const VisitorScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  email: 'email',
   phone: 'phone',
+  maritalStatus: 'maritalStatus',
+  city: 'city',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

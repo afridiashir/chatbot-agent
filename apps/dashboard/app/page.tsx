@@ -131,7 +131,8 @@ function Dashboard({
     return inTab.filter(
       (row) =>
         row.visitor.name.toLowerCase().includes(needle) ||
-        row.visitor.email.toLowerCase().includes(needle) ||
+        (row.visitor.city ?? "").toLowerCase().includes(needle) ||
+        row.visitor.phone.includes(needle) ||
         (row.lastMessage?.content ?? "").toLowerCase().includes(needle),
     );
   }, [inbox.conversations, query, tab]);

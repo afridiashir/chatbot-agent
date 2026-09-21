@@ -19,6 +19,24 @@ export async function listBranches(): Promise<Branch[]> {
 }
 
 /**
+ * Where a chat goes when nothing named a branch — no agent link, no branch
+ * link, and the visitor is no longer asked to pick one.
+ *
+ * Deliberately strict: it must be flagged *and* active. Falling back to "some
+ * other branch" would silently send a company's walk-in traffic somewhere
+ * nobody expects, which is worse than saying the chat cannot start. The flag is
+ * hard to lose by accident — the first branch a company creates gets it, an
+ * admin can only move it to another branch rather than clear it, and the main
+ * branch cannot be deactivated while it holds the flag.
+ */
+export async function mainBranch(): Promise<{ id: string } | null> {
+  return prisma.branch.findFirst({
+    where: { isMain: true, isActive: true },
+    select: { id: true },
+  });
+}
+
+/**
  * Every branch with its agents and live workload — the admin overview.
  *
  * Includes deactivated rows: an admin needs to see what they switched off in

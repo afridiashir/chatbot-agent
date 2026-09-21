@@ -15,7 +15,8 @@ import {
   Contact,
   Download,
   FilterX,
-  Mail,
+  Heart,
+  MapPin,
   MessageCircle,
   Phone,
   Repeat,
@@ -24,6 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import type { BranchWithAgents, LeadDetail, LeadTablePage, LeadTableRow } from "@repo/types";
+import { MARITAL_STATUS_LABELS } from "@repo/types";
 import { AdminShell } from "@/components/AdminShell";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,14 @@ export default function AdminLeadsPage() {
 /* --------------------------------- filters --------------------------------- */
 
 type Sort =
-  "name" | "email" | "branch" | "enquiries" | "missed" | "firstEnquiryAt" | "lastEnquiryAt";
+  | "name"
+  | "phone"
+  | "city"
+  | "branch"
+  | "enquiries"
+  | "missed"
+  | "firstEnquiryAt"
+  | "lastEnquiryAt";
 
 type DatePreset = "" | "today" | "7" | "30" | "90" | "custom";
 
@@ -161,7 +170,7 @@ function filtersFromUrl(): Filters {
     toDay: q.get("toDay") ?? "",
     sort: pick(
       "sort",
-      ["name", "email", "branch", "enquiries", "missed", "firstEnquiryAt", "lastEnquiryAt"],
+      ["name", "phone", "city", "branch", "enquiries", "missed", "firstEnquiryAt", "lastEnquiryAt"],
       DEFAULTS.sort,
     ),
     dir: pick("dir", ["asc", "desc"], DEFAULTS.dir),
@@ -301,7 +310,10 @@ function Leads({ token }: { token: string }) {
     else
       update({
         sort: column,
-        dir: column === "name" || column === "email" || column === "branch" ? "asc" : "desc",
+        dir:
+          column === "name" || column === "city" || column === "branch" || column === "phone"
+            ? "asc"
+            : "desc",
       });
   }
 
@@ -322,6 +334,8 @@ function Leads({ token }: { token: string }) {
         "Name",
         "Email",
         "Phone",
+        "City",
+        "Marital status",
         "Branch",
         "Enquiries",
         "Missed",
@@ -339,8 +353,9 @@ function Leads({ token }: { token: string }) {
       const lines = all.map((row) =>
         [
           row.name,
-          row.email,
           row.phone,
+          row.city ?? "",
+          row.maritalStatus ? MARITAL_STATUS_LABELS[row.maritalStatus] : "",
           row.branchName ?? "",
           row.enquiryCount,
           row.missedCount,
@@ -511,7 +526,7 @@ function Leads({ token }: { token: string }) {
             <Input
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
-              placeholder="Search name, email or phone"
+              placeholder="Search name, phone or city"
               aria-label="Search leads"
               className="pl-9"
             />
@@ -695,9 +710,7 @@ function Leads({ token }: { token: string }) {
               <tr>
                 <th scope="col" className="w-12" />
                 <SortHeader label="Lead" column="name" filters={filters} onSort={toggleSort} />
-                <th scope="col" className="px-3 py-3 text-left font-semibold">
-                  Phone
-                </th>
+                <SortHeader label="Phone" column="phone" filters={filters} onSort={toggleSort} />
                 <SortHeader label="Branch" column="branch" filters={filters} onSort={toggleSort} />
                 <SortHeader
                   label="Enquiries"
@@ -804,8 +817,12 @@ function Leads({ token }: { token: string }) {
                           <div className="min-w-0">
                             <p className="truncate font-semibold">{lead.name}</p>
                             <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                              <Mail className="size-3 shrink-0" aria-hidden />
-                              <span className="truncate">{lead.email}</span>
+                              <MapPin className="size-3 shrink-0" aria-hidden />
+                              <span className="truncate">
+                                {lead.city ?? "City not given"}
+                                {lead.maritalStatus &&
+                                  ` · ${MARITAL_STATUS_LABELS[lead.maritalStatus]}`}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -975,9 +992,10 @@ function Leads({ token }: { token: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Every conversation is a lead. People are deduplicated by email, so the same person getting
-        in touch twice updates one row, while every individual enquiry is kept in their history.
-        &quot;Missed&quot; counts enquiries that arrived when nobody in that branch was online.
+        Every conversation is a lead. People are deduplicated by phone number, so the same person
+        getting in touch twice updates one row, while every individual enquiry is kept in their
+        history. &quot;Missed&quot; counts enquiries that arrived when nobody in that branch was
+        online.
       </p>
     </div>
   );
@@ -1100,19 +1118,22 @@ function LeadHistory({ lead, history }: { lead: LeadTableRow; history: LeadDetai
       <div className="flex shrink-0 flex-col gap-2 md:w-60">
         <p className="text-xs font-semibold">Contact</p>
         <a
-          href={`mailto:${lead.email}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-success-soft/60 px-3 py-2 text-xs font-medium text-success transition-colors hover:bg-success-soft"
-        >
-          <Mail className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">{lead.email}</span>
-        </a>
-        <a
           href={`tel:${lead.phone}`}
           className="inline-flex items-center gap-2 rounded-lg bg-success-soft/60 px-3 py-2 text-xs font-medium text-success transition-colors hover:bg-success-soft"
         >
           <Phone className="size-3.5 shrink-0" aria-hidden />
           {lead.phone}
         </a>
+        <p className="inline-flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{lead.city ?? "City not given"}</span>
+        </p>
+        <p className="inline-flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <Heart className="size-3.5 shrink-0" aria-hidden />
+          {lead.maritalStatus
+            ? MARITAL_STATUS_LABELS[lead.maritalStatus]
+            : "Marital status not given"}
+        </p>
       </div>
     </div>
   );

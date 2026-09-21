@@ -13,10 +13,10 @@
     "clean": "rimraf .turbo node_modules"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@repo/types": "workspace:*"
   },
   "devDependencies": {
-    "@repo/types": "workspace:*",
     "rimraf": "^6.0.1",
     "typescript": "^7.0.2"
   }

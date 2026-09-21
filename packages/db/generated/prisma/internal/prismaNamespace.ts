@@ -1384,6 +1384,7 @@ export const BranchScalarFieldEnum = {
   id: 'id',
   companyId: 'companyId',
   name: 'name',
+  isMain: 'isMain',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1412,8 +1413,10 @@ export const LeadScalarFieldEnum = {
   id: 'id',
   companyId: 'companyId',
   name: 'name',
-  email: 'email',
   phone: 'phone',
+  phoneKey: 'phoneKey',
+  maritalStatus: 'maritalStatus',
+  city: 'city',
   branchId: 'branchId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1437,8 +1440,9 @@ export type EnquiryScalarFieldEnum = (typeof EnquiryScalarFieldEnum)[keyof typeo
 export const VisitorScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  email: 'email',
   phone: 'phone',
+  maritalStatus: 'maritalStatus',
+  city: 'city',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1577,6 +1581,20 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
  * Reference to a field of type 'Boolean'
  */
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
+ * Reference to a field of type 'MaritalStatus'
+ */
+export type EnumMaritalStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'MaritalStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'MaritalStatus[]'
+ */
+export type ListEnumMaritalStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'MaritalStatus[]'>
     
 
 

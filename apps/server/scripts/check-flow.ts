@@ -114,8 +114,10 @@ const nextVisitorId = () => `flow-${Date.now()}-${++visitorSeq}`;
 /** Stand-in pre-chat form details, required by POST /api/conversations. */
 const visitorDetails = (visitorId: string) => ({
   name: `Test Visitor ${visitorId.slice(-5)}`,
-  email: `${visitorId}@example.com`,
-  phone: "+92 300 0000000",
+  // Distinct per visitor: the phone is what identifies a lead now.
+  phone: `+92 300 ${String(1000000 + visitorSeq).slice(-7)}`,
+  maritalStatus: "SINGLE" as const,
+  city: "Karachi",
 });
 
 const startChat = async (visitorId = nextVisitorId()) =>

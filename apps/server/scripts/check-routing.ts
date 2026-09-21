@@ -45,8 +45,11 @@ const nextVisitorId = () => `check-visitor-${Date.now()}-${++visitorSeq}`;
 /** Stand-in pre-chat form details, so assignAgent has a visitor to record. */
 const details = (visitorId: string) => ({
   name: `Test Visitor ${visitorSeq}`,
-  email: `${visitorId}@example.com`,
-  phone: "+92 300 0000000",
+  // A distinct number per visitor: leads are deduplicated on the phone now, so
+  // a shared one would collapse every test visitor into a single person.
+  phone: `+92 300 ${String(1000000 + visitorSeq).slice(-7)}`,
+  maritalStatus: "SINGLE" as const,
+  city: "Karachi",
 });
 
 /** Opens a chat the way the widget does. */

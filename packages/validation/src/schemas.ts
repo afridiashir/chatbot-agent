@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MARITAL_STATUSES, PAKISTAN_CITIES } from "@repo/types";
 import {
   clientIdSchema,
   conversationStatusSchema,
@@ -71,10 +72,21 @@ export const adminSearchQuerySchema = z.object({
 });
 
 export const updateBranchBodySchema = z
-  .object({ name: nameSchema.optional(), isActive: z.boolean().optional() })
-  .refine((body) => body.name !== undefined || body.isActive !== undefined, {
-    message: "Provide something to change",
-  });
+  .object({
+    name: nameSchema.optional(),
+    isActive: z.boolean().optional(),
+    /**
+     * Only ever `true`. There is no "unset the main branch": a company must
+     * always have somewhere to route to, so you make a *different* branch main
+     * instead, which moves the flag. Typing it as a literal makes the invalid
+     * request unrepresentable rather than something the service has to refuse.
+     */
+    isMain: z.literal(true).optional(),
+  })
+  .refine(
+    (body) => body.name !== undefined || body.isActive !== undefined || body.isMain !== undefined,
+    { message: "Provide something to change" },
+  );
 
 export const createAgentBodySchema = z.object({
   branchId: idSchema,
@@ -116,7 +128,8 @@ export const listLeadsQuerySchema = z.object({
 /** Columns the leads table can be ordered by. */
 export const LEAD_SORTS = [
   "name",
-  "email",
+  "phone",
+  "city",
   "branch",
   "enquiries",
   "missed",
@@ -136,6 +149,9 @@ export const leadsTableQuerySchema = z
     conversation: z.enum(["open", "closed", "none"]).optional(),
     /** `new`: got in touch once. `returning`: more than once. */
     visits: z.enum(["new", "returning"]).optional(),
+    /** Both from the pre-chat form, so both are filterable in the table. */
+    city: z.enum(PAKISTAN_CITIES as [string, ...string[]]).optional(),
+    maritalStatus: z.enum(MARITAL_STATUSES).optional(),
     /** Only leads with an enquiry inside [from, to). ISO timestamps. */
     from: z.iso.datetime().optional(),
     to: z.iso.datetime().optional(),
@@ -201,36 +217,43 @@ export const listAgentConversationsQuerySchema = z.object({
  * Collected by the widget's pre-chat form. Phone numbers vary far too much
  * between countries to validate strictly, so this only rejects input that is
  * obviously not a phone number.
+ *
+ * Marital status and city are closed sets rather than free text: they exist to
+ * be filtered and grouped in the admin, which only works if everyone picking
+ * "Lahore" writes it the same way. The lists live in `@repo/types` so the
+ * widget renders exactly what the server will accept.
  */
 export const visitorDetailsSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80, "That name is too long"),
-  email: z.email("Enter a valid email address"),
   phone: z
     .string()
     .trim()
     .min(7, "That number looks too short")
     .max(24, "That number looks too long")
     .regex(/^[0-9+()\-.\s]+$/, "Use digits, spaces and + ( ) - only"),
+  maritalStatus: z.enum(MARITAL_STATUSES, { message: "Choose your marital status" }),
+  city: z.enum(PAKISTAN_CITIES as [string, ...string[]], { message: "Choose your city" }),
 });
 
 /* ------------------------------- conversations ------------------------------ */
 
-export const createConversationBodySchema = z
-  .object({
-    /** Required unless `agentId` is given, whose branch is then used. */
-    branchId: idSchema.optional(),
-    /** From an agent's personal chat link: the chat goes to this agent, online or not. */
-    agentId: idSchema.optional(),
-    visitorId: visitorIdSchema,
-    /** Contact details from the pre-chat form. */
-    visitor: visitorDetailsSchema,
-    /** Optional opening message so the agent sees intent immediately. */
-    initialMessage: messageContentSchema.optional(),
-  })
-  .refine((body) => body.branchId || body.agentId, {
-    message: "Choose a branch",
-    path: ["branchId"],
-  });
+/**
+ * Neither target is required. The visitor is no longer asked to choose a
+ * branch, so a plain widget sends neither and the server routes to the
+ * company's main branch; a branch link sends `branchId`, and an agent link
+ * sends `agentId`.
+ */
+export const createConversationBodySchema = z.object({
+  /** From a branch's chat link or embed. */
+  branchId: idSchema.optional(),
+  /** From an agent's personal chat link: the chat goes to this agent, online or not. */
+  agentId: idSchema.optional(),
+  visitorId: visitorIdSchema,
+  /** Contact details from the pre-chat form. */
+  visitor: visitorDetailsSchema,
+  /** Optional opening message so the agent sees intent immediately. */
+  initialMessage: messageContentSchema.optional(),
+});
 
 export const getConversationQuerySchema = z.object({
   /** Visitors must prove ownership of the conversation they are reading. */

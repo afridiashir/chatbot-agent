@@ -1,8 +1,8 @@
 # Multi-Branch Chat Agent
 
-Real-time customer support chat. A visitor picks a branch, the backend assigns
-the online agent in that branch with the fewest active conversations, and the
-two talk over a Socket.IO room backed by PostgreSQL.
+Real-time customer support chat. A visitor leaves their details, the backend
+picks the branch and assigns the online agent there with the fewest active
+conversations, and the two talk over a Socket.IO room backed by PostgreSQL.
 
 ## Structure
 
@@ -86,7 +86,7 @@ All endpoints answer with the same envelope:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/health` | Liveness |
-| GET | `/api/branches` | Branch picker for the widget |
+| GET | `/api/branches` | Active branches; the widget uses it to resolve a branch link |
 | GET | `/api/branches/:branchId/agents` | Agents with live counts **(agent auth)** |
 | GET | `/api/branches/overview` | Every branch with its agents **(agent auth)** |
 | POST | `/api/auth/login` | Email + shared password, returns a 7-day bearer token |
@@ -114,7 +114,7 @@ All endpoints answer with the same envelope:
 | GET | `/api/admin/analytics` | Overview charts: `?days=1\|7\|14\|30\|90&tz=Asia/Karachi` |
 | GET | `/api/admin/branches` | Every branch with agents, **including inactive** |
 | POST | `/api/admin/branches` | Create a branch |
-| PATCH | `/api/admin/branches/:id` | Rename / activate / deactivate |
+| PATCH | `/api/admin/branches/:id` | Rename / activate / deactivate / make main |
 | POST | `/api/admin/agents` | Create an agent with an initial password |
 | PATCH | `/api/admin/agents/:id` | Rename, move branch, reset password, deactivate |
 | GET | `/api/admin/conversations` | Every agent's chats, filter by branch/agent/status |
@@ -340,12 +340,15 @@ Every pre-chat form submission is recorded as a `Lead`, **whether or not an
 agent was available** — an enquiry that reached nobody is exactly the one worth
 following up, so losing it is the worst outcome.
 
-Leads are deduplicated on **email within a company**. `Lead` is deliberately a
+Leads are deduplicated on **phone number within a company**, against a
+normalised `phoneKey` rather than the raw text: `+92 300 1234567`, `0300
+1234567` and `03001234567` are one person, not three. `Lead` is deliberately a
 separate table from `Visitor`: a Visitor is one *browser* (its id is the value
 in localStorage, and conversations are owned by it), while a Lead is a *person*,
 who may reach you from several devices over time. Enquiring again from a new
-phone updates the one lead row rather than creating a second, and the most
-recent name and number win, because people correct their own typos.
+device updates the one lead row rather than creating a second, and the most
+recent name, city and marital status win, because people correct their own
+typos — and their circumstances change.
 
 ### The history, kept over time
 
@@ -362,7 +365,7 @@ every enquiry, so a lead with hundreds of approaches still costs two queries.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/admin/leads` | Filter by branch, `missedOnly`, or a name/email/phone search |
+| GET | `/api/admin/leads` | Filter by branch, `missedOnly`, or a name/phone/city search |
 | GET | `/api/admin/leads/table` | Paginated table: `search`, `branchId`, `agentId`, `outcome`, `conversation`, `visits`, `from`/`to`, `sort`/`dir`, `page`/`pageSize` |
 | GET | `/api/admin/leads/:leadId` | One lead with its full enquiry history |
 
@@ -460,10 +463,25 @@ it later. The response reports how many were closed.
 
 ### Pre-chat form
 
-The widget opens with a short form — **name, phone number, email and branch** —
-and only assigns an agent once it validates. Whoever picks the chat up therefore
-knows who they are talking to, and can still reach them by phone or email if the
-connection drops.
+The widget opens with a short form — **name, phone number, marital status and
+city** — and only assigns an agent once it validates. Whoever picks the chat up
+therefore knows who they are talking to, and can still reach them by phone if
+the connection drops.
+
+The visitor is **not** asked which branch they want. A chat goes to the agent's
+branch when it arrives through an agent link, to the named branch when it
+arrives through a branch link, and otherwise to the company's **main branch**.
+Exactly one branch per company carries that flag — a partial unique index makes
+more than one impossible — and a company admin moves it from the Branches page.
+The flag is hard to lose: the first branch a company creates gets it, it can
+only be moved to another branch rather than cleared, and the branch holding it
+cannot be deactivated until it is moved.
+
+Marital status and city are closed sets, not free text, so the admin can filter
+and group by them: a free-text city field fills up with "lahore", "Lahore " and
+"LHR" and stops being answerable. Both lists live in `@repo/types`, so the
+widget renders exactly what the server accepts. The city list covers every
+province and territory, with an **Other** option so nobody is stuck.
 
 Those details live in their own `Visitor` table keyed by the id the widget keeps
 in localStorage, not as columns on `Conversation`. A returning visitor has one
@@ -549,7 +567,7 @@ further messages refused, and a new chat can start.
 - [x] Step 9 — Agent dashboard + admin view
 - [x] Step 10 — Full flow test
 - [x] Admin dashboard — branch/agent management, company-wide conversation visibility
-- [x] Pre-chat form — visitor name/phone/email/branch captured before assignment
+- [x] Pre-chat form — visitor name/phone/marital status/city captured before assignment
 - [x] Typing indicators — both directions, self-clearing, never persisted
 - [x] Chat-client styling for the agent inbox, with generated avatars
 - [x] Offline resilience — persisted drafts, queued sends, reconnect resync

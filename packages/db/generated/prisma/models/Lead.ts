@@ -18,7 +18,7 @@ import type * as Prisma from "../internal/prismaNamespace"
  * keeps in localStorage, with the contact details they give in the pre-chat
  * form. Kept separate from Conversation so a returning visitor has one set of
  * details rather than a copy per chat.
- * Everyone who has ever submitted the pre-chat form, deduplicated by email.
+ * Everyone who has ever submitted the pre-chat form, deduplicated by phone.
  * 
  * Deliberately separate from Visitor: a Visitor is one browser (its id is the
  * value in localStorage, and conversations are owned by it), whereas a Lead is
@@ -38,8 +38,10 @@ export type LeadMinAggregateOutputType = {
   id: string | null
   companyId: string | null
   name: string | null
-  email: string | null
   phone: string | null
+  phoneKey: string | null
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   branchId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -49,8 +51,10 @@ export type LeadMaxAggregateOutputType = {
   id: string | null
   companyId: string | null
   name: string | null
-  email: string | null
   phone: string | null
+  phoneKey: string | null
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   branchId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -60,8 +64,10 @@ export type LeadCountAggregateOutputType = {
   id: number
   companyId: number
   name: number
-  email: number
   phone: number
+  phoneKey: number
+  maritalStatus: number
+  city: number
   branchId: number
   createdAt: number
   updatedAt: number
@@ -73,8 +79,10 @@ export type LeadMinAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
-  email?: true
   phone?: true
+  phoneKey?: true
+  maritalStatus?: true
+  city?: true
   branchId?: true
   createdAt?: true
   updatedAt?: true
@@ -84,8 +92,10 @@ export type LeadMaxAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
-  email?: true
   phone?: true
+  phoneKey?: true
+  maritalStatus?: true
+  city?: true
   branchId?: true
   createdAt?: true
   updatedAt?: true
@@ -95,8 +105,10 @@ export type LeadCountAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
-  email?: true
   phone?: true
+  phoneKey?: true
+  maritalStatus?: true
+  city?: true
   branchId?: true
   createdAt?: true
   updatedAt?: true
@@ -179,8 +191,10 @@ export type LeadGroupByOutputType = {
   id: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus: $Enums.MaritalStatus | null
+  city: string | null
   branchId: string | null
   createdAt: Date
   updatedAt: Date
@@ -211,8 +225,10 @@ export type LeadWhereInput = {
   id?: Prisma.StringFilter<"Lead"> | string
   companyId?: Prisma.StringFilter<"Lead"> | string
   name?: Prisma.StringFilter<"Lead"> | string
-  email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
+  phoneKey?: Prisma.StringFilter<"Lead"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Lead"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableFilter<"Lead"> | string | null
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
@@ -225,8 +241,10 @@ export type LeadOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  phoneKey?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  city?: Prisma.SortOrderInput | Prisma.SortOrder
   branchId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -237,28 +255,32 @@ export type LeadOrderByWithRelationInput = {
 
 export type LeadWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  companyId_email?: Prisma.LeadCompanyIdEmailCompoundUniqueInput
+  companyId_phoneKey?: Prisma.LeadCompanyIdPhoneKeyCompoundUniqueInput
   AND?: Prisma.LeadWhereInput | Prisma.LeadWhereInput[]
   OR?: Prisma.LeadWhereInput[]
   NOT?: Prisma.LeadWhereInput | Prisma.LeadWhereInput[]
   companyId?: Prisma.StringFilter<"Lead"> | string
   name?: Prisma.StringFilter<"Lead"> | string
-  email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
+  phoneKey?: Prisma.StringFilter<"Lead"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Lead"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableFilter<"Lead"> | string | null
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
   enquiries?: Prisma.EnquiryListRelationFilter
-}, "id" | "companyId_email">
+}, "id" | "companyId_phoneKey">
 
 export type LeadOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  phoneKey?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  city?: Prisma.SortOrderInput | Prisma.SortOrder
   branchId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -274,8 +296,10 @@ export type LeadScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Lead"> | string
   companyId?: Prisma.StringWithAggregatesFilter<"Lead"> | string
   name?: Prisma.StringWithAggregatesFilter<"Lead"> | string
-  email?: Prisma.StringWithAggregatesFilter<"Lead"> | string
   phone?: Prisma.StringWithAggregatesFilter<"Lead"> | string
+  phoneKey?: Prisma.StringWithAggregatesFilter<"Lead"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableWithAggregatesFilter<"Lead"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableWithAggregatesFilter<"Lead"> | string | null
   branchId?: Prisma.StringNullableWithAggregatesFilter<"Lead"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Lead"> | Date | string
@@ -284,8 +308,10 @@ export type LeadScalarWhereWithAggregatesInput = {
 export type LeadCreateInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
@@ -297,8 +323,10 @@ export type LeadUncheckedCreateInput = {
   id?: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   branchId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -308,8 +336,10 @@ export type LeadUncheckedCreateInput = {
 export type LeadUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
@@ -321,8 +351,10 @@ export type LeadUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -333,8 +365,10 @@ export type LeadCreateManyInput = {
   id?: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   branchId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -343,8 +377,10 @@ export type LeadCreateManyInput = {
 export type LeadUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -353,8 +389,10 @@ export type LeadUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -370,17 +408,19 @@ export type LeadOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
-export type LeadCompanyIdEmailCompoundUniqueInput = {
+export type LeadCompanyIdPhoneKeyCompoundUniqueInput = {
   companyId: string
-  email: string
+  phoneKey: string
 }
 
 export type LeadCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  phoneKey?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -390,8 +430,10 @@ export type LeadMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  phoneKey?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -401,8 +443,10 @@ export type LeadMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  email?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  phoneKey?: Prisma.SortOrder
+  maritalStatus?: Prisma.SortOrder
+  city?: Prisma.SortOrder
   branchId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -497,6 +541,10 @@ export type LeadUncheckedUpdateManyWithoutBranchNestedInput = {
   deleteMany?: Prisma.LeadScalarWhereInput | Prisma.LeadScalarWhereInput[]
 }
 
+export type NullableEnumMaritalStatusFieldUpdateOperationsInput = {
+  set?: $Enums.MaritalStatus | null
+}
+
 export type LeadCreateNestedOneWithoutEnquiriesInput = {
   create?: Prisma.XOR<Prisma.LeadCreateWithoutEnquiriesInput, Prisma.LeadUncheckedCreateWithoutEnquiriesInput>
   connectOrCreate?: Prisma.LeadCreateOrConnectWithoutEnquiriesInput
@@ -514,8 +562,10 @@ export type LeadUpdateOneRequiredWithoutEnquiriesNestedInput = {
 export type LeadCreateWithoutCompanyInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   branch?: Prisma.BranchCreateNestedOneWithoutLeadsInput
@@ -525,8 +575,10 @@ export type LeadCreateWithoutCompanyInput = {
 export type LeadUncheckedCreateWithoutCompanyInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   branchId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -566,8 +618,10 @@ export type LeadScalarWhereInput = {
   id?: Prisma.StringFilter<"Lead"> | string
   companyId?: Prisma.StringFilter<"Lead"> | string
   name?: Prisma.StringFilter<"Lead"> | string
-  email?: Prisma.StringFilter<"Lead"> | string
   phone?: Prisma.StringFilter<"Lead"> | string
+  phoneKey?: Prisma.StringFilter<"Lead"> | string
+  maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Lead"> | $Enums.MaritalStatus | null
+  city?: Prisma.StringNullableFilter<"Lead"> | string | null
   branchId?: Prisma.StringNullableFilter<"Lead"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Lead"> | Date | string
@@ -576,8 +630,10 @@ export type LeadScalarWhereInput = {
 export type LeadCreateWithoutBranchInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
@@ -588,8 +644,10 @@ export type LeadUncheckedCreateWithoutBranchInput = {
   id?: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   enquiries?: Prisma.EnquiryUncheckedCreateNestedManyWithoutLeadInput
@@ -624,8 +682,10 @@ export type LeadUpdateManyWithWhereWithoutBranchInput = {
 export type LeadCreateWithoutEnquiriesInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutLeadsInput
@@ -636,8 +696,10 @@ export type LeadUncheckedCreateWithoutEnquiriesInput = {
   id?: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   branchId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -662,8 +724,10 @@ export type LeadUpdateToOneWithWhereWithoutEnquiriesInput = {
 export type LeadUpdateWithoutEnquiriesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
@@ -674,8 +738,10 @@ export type LeadUncheckedUpdateWithoutEnquiriesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -684,8 +750,10 @@ export type LeadUncheckedUpdateWithoutEnquiriesInput = {
 export type LeadCreateManyCompanyInput = {
   id?: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   branchId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -694,8 +762,10 @@ export type LeadCreateManyCompanyInput = {
 export type LeadUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branch?: Prisma.BranchUpdateOneWithoutLeadsNestedInput
@@ -705,8 +775,10 @@ export type LeadUpdateWithoutCompanyInput = {
 export type LeadUncheckedUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -716,8 +788,10 @@ export type LeadUncheckedUpdateWithoutCompanyInput = {
 export type LeadUncheckedUpdateManyWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -727,8 +801,10 @@ export type LeadCreateManyBranchInput = {
   id?: string
   companyId: string
   name: string
-  email: string
   phone: string
+  phoneKey: string
+  maritalStatus?: $Enums.MaritalStatus | null
+  city?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -736,8 +812,10 @@ export type LeadCreateManyBranchInput = {
 export type LeadUpdateWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutLeadsNestedInput
@@ -748,8 +826,10 @@ export type LeadUncheckedUpdateWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   enquiries?: Prisma.EnquiryUncheckedUpdateManyWithoutLeadNestedInput
@@ -759,8 +839,10 @@ export type LeadUncheckedUpdateManyWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneKey?: Prisma.StringFieldUpdateOperationsInput | string
+  maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -800,8 +882,10 @@ export type LeadSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   companyId?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  phoneKey?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   branchId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -815,8 +899,10 @@ export type LeadSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   companyId?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  phoneKey?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   branchId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -828,8 +914,10 @@ export type LeadSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   companyId?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  phoneKey?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   branchId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -841,14 +929,16 @@ export type LeadSelectScalar = {
   id?: boolean
   companyId?: boolean
   name?: boolean
-  email?: boolean
   phone?: boolean
+  phoneKey?: boolean
+  maritalStatus?: boolean
+  city?: boolean
   branchId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type LeadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "email" | "phone" | "branchId" | "createdAt" | "updatedAt", ExtArgs["result"]["lead"]>
+export type LeadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "phone" | "phoneKey" | "maritalStatus" | "city" | "branchId" | "createdAt" | "updatedAt", ExtArgs["result"]["lead"]>
 export type LeadInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   branch?: boolean | Prisma.Lead$branchArgs<ExtArgs>
@@ -879,8 +969,21 @@ export type $LeadPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     companyId: string
     name: string
-    email: string
+    /**
+     * As the visitor typed it, which is what the admin dials.
+     */
     phone: string
+    /**
+     * The same number reduced to digits with a country code, which is what
+     * actually identifies the person. `+92 300 1234567` and `03001234567` are
+     * one lead, not two.
+     */
+    phoneKey: string
+    /**
+     * Null on leads recorded before the pre-chat form asked for these.
+     */
+    maritalStatus: $Enums.MaritalStatus | null
+    city: string | null
     /**
      * Branch chosen most recently. Kept nullable so removing a branch does not
      * destroy the lead.
@@ -1317,8 +1420,10 @@ export interface LeadFieldRefs {
   readonly id: Prisma.FieldRef<"Lead", 'String'>
   readonly companyId: Prisma.FieldRef<"Lead", 'String'>
   readonly name: Prisma.FieldRef<"Lead", 'String'>
-  readonly email: Prisma.FieldRef<"Lead", 'String'>
   readonly phone: Prisma.FieldRef<"Lead", 'String'>
+  readonly phoneKey: Prisma.FieldRef<"Lead", 'String'>
+  readonly maritalStatus: Prisma.FieldRef<"Lead", 'MaritalStatus'>
+  readonly city: Prisma.FieldRef<"Lead", 'String'>
   readonly branchId: Prisma.FieldRef<"Lead", 'String'>
   readonly createdAt: Prisma.FieldRef<"Lead", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Lead", 'DateTime'>

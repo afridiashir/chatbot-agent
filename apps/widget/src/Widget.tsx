@@ -112,24 +112,19 @@ export function Widget({ config }: { config: WidgetConfig }) {
 
       {(chat.phase === "picking" || chat.phase === "starting") && (
         <PreChatForm
-          branches={chat.branches}
           lockedBranch={chat.lockedBranch}
           agentName={chat.linkAgent?.name ?? null}
           saved={chat.savedVisitor}
           submitting={chat.phase === "starting"}
-          onStart={(branchId, visitor) => void chat.startChat(branchId, visitor)}
+          onStart={(visitor) => void chat.startChat(visitor)}
         />
       )}
 
       {chat.phase === "unavailable" && (
         <Notice
           text={chat.error ?? "No agents are currently available."}
-          hint={
-            chat.lockedBranch
-              ? "Please check back soon."
-              : "Please try another branch or check back soon."
-          }
-          action={chat.lockedBranch ? "Try again" : "Choose another branch"}
+          hint="Please check back soon."
+          action="Try again"
           onAction={chat.startOver}
         />
       )}

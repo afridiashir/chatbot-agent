@@ -17,6 +17,7 @@ import {
   ATTACHMENT_ACCEPT,
   formatBytes,
   kindForFile,
+  MARITAL_STATUS_LABELS,
   type AttachmentKind,
   type ConversationDetail,
   type Message,
@@ -483,13 +484,12 @@ export function ConversationView({
             <p className="text-xs font-medium text-success">typing...</p>
           ) : (
             <p className="truncate text-xs text-chat-meta">
-              <a href={`mailto:${detail.visitor.email}`} className="hover:underline">
-                {detail.visitor.email}
-              </a>
-              {" · "}
               <a href={`tel:${detail.visitor.phone}`} className="hover:underline">
                 {detail.visitor.phone}
               </a>
+              {detail.visitor.city && ` · ${detail.visitor.city}`}
+              {detail.visitor.maritalStatus &&
+                ` · ${MARITAL_STATUS_LABELS[detail.visitor.maritalStatus]}`}
             </p>
           )}
         </div>

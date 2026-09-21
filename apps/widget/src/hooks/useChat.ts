@@ -51,7 +51,7 @@ export interface ChatController {
   isClosed: boolean;
   /** True while the assigned agent is composing a reply. */
   agentTyping: boolean;
-  startChat: (branchId: string, visitor: VisitorDetails) => Promise<void>;
+  startChat: (visitor: VisitorDetails) => Promise<void>;
   sendMessage: (content: string, replyToId?: string) => Promise<void>;
   /** Adds, replaces or removes this visitor's reaction; null takes it back. */
   react: (messageId: string, emoji: string | null) => void;
@@ -298,21 +298,26 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   }, [conversationId, config.apiUrl, visitorId, appendMessage, setAgentTyping]);
 
   const startChat = useCallback(
-    async (branchId: string, visitor: VisitorDetails) => {
+    async (visitor: VisitorDetails) => {
       setPhase("starting");
       setError(null);
 
       // Remembered before the round trip: even a chat that finds nobody
       // available should not cost them their details a second time.
-      const remembered = { ...visitor, branchId };
-      storeSavedVisitor(remembered);
-      setSavedVisitor(remembered);
+      storeSavedVisitor(visitor);
+      setSavedVisitor(visitor);
 
       try {
         const result = await apiFetch<AssignmentResult>(config.apiUrl, "/api/conversations", {
           method: "POST",
           body: JSON.stringify({
-            ...(config.agentId ? { agentId: config.agentId } : { branchId }),
+            // An agent link wins, then a branch link. A plain widget sends
+            // neither and the server routes to the company's main branch.
+            ...(config.agentId
+              ? { agentId: config.agentId }
+              : config.branchId
+                ? { branchId: config.branchId }
+                : {}),
             visitorId,
             visitor,
           }),
@@ -338,7 +343,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
         setPhase("failed");
       }
     },
-    [config.apiUrl, config.agentId, visitorId],
+    [config.apiUrl, config.agentId, config.branchId, visitorId],
   );
 
   const sendMessage = useCallback(

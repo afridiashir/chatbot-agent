@@ -1,26 +1,34 @@
 import { useState } from "react";
-import type { Branch } from "@repo/types";
+import type { Branch, MaritalStatus } from "@repo/types";
+import {
+  MARITAL_STATUSES,
+  MARITAL_STATUS_LABELS,
+  OTHER_CITY,
+  PAKISTAN_CITIES,
+  PAKISTAN_CITY_GROUPS,
+} from "@repo/types";
 import type { SavedVisitor } from "../lib/storage.js";
 
 export interface VisitorDetails {
   name: string;
-  email: string;
   phone: string;
+  maritalStatus: MaritalStatus;
+  city: string;
 }
 
 interface PreChatFormProps {
-  branches: Branch[];
-  /** Set by an agent or branch link: no branch question. */
+  /** Named by an agent or branch link, and shown in the greeting. Without one
+   *  the chat goes to the company's main branch; the visitor is never asked. */
   lockedBranch?: Branch | null;
   /** The agent whose personal link this is. */
   agentName?: string | null;
   /** What this visitor told us before, on this device. */
   saved?: SavedVisitor | null;
   submitting: boolean;
-  onStart: (branchId: string, visitor: VisitorDetails) => void;
+  onStart: (visitor: VisitorDetails) => void;
 }
 
-const EMPTY = { name: "", email: "", phone: "", branchId: "" };
+const EMPTY = { name: "", phone: "", maritalStatus: "", city: "" };
 
 /**
  * Collected before an agent is assigned, so whoever picks the chat up already
@@ -30,33 +38,32 @@ const EMPTY = { name: "", email: "", phone: "", branchId: "" };
  * fields again, and is the authority.
  */
 export function PreChatForm({
-  branches,
   lockedBranch,
   agentName,
   saved,
   submitting,
   onStart,
 }: PreChatFormProps) {
-  // The branch this visitor used last still has to exist and be open; a link
-  // overrides it either way.
-  const rememberedBranch =
-    lockedBranch ?? branches.find((branch) => branch.id === saved?.branchId) ?? null;
   const [form, setForm] = useState({
     name: saved?.name ?? "",
-    email: saved?.email ?? "",
     phone: saved?.phone ?? "",
-    branchId: rememberedBranch?.id ?? "",
+    maritalStatus: saved?.maritalStatus ?? "",
+    city: saved?.city ?? "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof EMPTY, string>>>({});
   // Someone we already know starts with one tap; the form is one link away.
-  const [editing, setEditing] = useState(!saved || (!rememberedBranch && branches.length > 1));
+  const [editing, setEditing] = useState(!saved);
 
   function validate(): boolean {
     const next: typeof errors = {};
     if (form.name.trim().length < 2) next.name = "Please enter your name";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) next.email = "Enter a valid email";
     if (!/^[0-9+()\-.\s]{7,24}$/.test(form.phone.trim())) next.phone = "Enter a valid number";
-    if (!form.branchId) next.branchId = "Choose a branch";
+    // Checked against the same lists the server validates against, so a value
+    // that passes here cannot be rejected there.
+    if (!MARITAL_STATUSES.includes(form.maritalStatus as MaritalStatus)) {
+      next.maritalStatus = "Choose your marital status";
+    }
+    if (!PAKISTAN_CITIES.includes(form.city)) next.city = "Choose your city";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -64,19 +71,23 @@ export function PreChatForm({
 
   function startWithSaved() {
     if (submitting || !saved) return;
-    const branchId = rememberedBranch?.id ?? branches[0]?.id;
-    if (!branchId) return;
-    onStart(branchId, { name: saved.name, email: saved.email, phone: saved.phone });
+    onStart({
+      name: saved.name,
+      phone: saved.phone,
+      maritalStatus: saved.maritalStatus,
+      city: saved.city,
+    });
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (submitting || !validate()) return;
 
-    onStart(form.branchId, {
+    onStart({
       name: form.name.trim(),
-      email: form.email.trim(),
       phone: form.phone.trim(),
+      maritalStatus: form.maritalStatus as MaritalStatus,
+      city: form.city,
     });
   }
 
@@ -108,11 +119,10 @@ export function PreChatForm({
         <div className="flex flex-col gap-3 rounded-lg bg-white p-3 shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
           <div>
             <p className="text-sm font-medium text-wa-text">{saved.name}</p>
-            <p className="truncate text-xs text-wa-meta">{saved.email}</p>
             <p className="truncate text-xs text-wa-meta">{saved.phone}</p>
-            {rememberedBranch && !lockedBranch && (
-              <p className="mt-1 text-xs text-wa-meta">Branch: {rememberedBranch.name}</p>
-            )}
+            <p className="truncate text-xs text-wa-meta">
+              {MARITAL_STATUS_LABELS[saved.maritalStatus]} · {saved.city}
+            </p>
           </div>
 
           <button
@@ -162,38 +172,52 @@ export function PreChatForm({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-wa-icon">Email</span>
-            <input
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="you@example.com"
-              aria-label="Email"
-              autoComplete="email"
-              inputMode="email"
-              className={field("email")}
-            />
-            {errors.email && <span className="text-xs text-red-600">{errors.email}</span>}
+            <span className="text-xs font-medium text-wa-icon">Marital status</span>
+            <select
+              value={form.maritalStatus}
+              onChange={(e) => setForm({ ...form, maritalStatus: e.target.value })}
+              aria-label="Marital status"
+              className={field("maritalStatus")}
+            >
+              <option value="">Select your marital status</option>
+              {MARITAL_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {MARITAL_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            {errors.maritalStatus && (
+              <span className="text-xs text-red-600">{errors.maritalStatus}</span>
+            )}
           </label>
 
-          {!lockedBranch && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-wa-icon">Branch</span>
-              <select
-                value={form.branchId}
-                onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-                aria-label="Branch"
-                className={field("branchId")}
-              >
-                <option value="">Select your branch</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-              {errors.branchId && <span className="text-xs text-red-600">{errors.branchId}</span>}
-            </label>
-          )}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-wa-icon">City</span>
+            {/*
+              Grouped by province: over two hundred options in one flat list is
+              unreadable, and a native <select> gives the phone's own picker,
+              which is easier to scroll than anything drawn here.
+            */}
+            <select
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+              aria-label="City"
+              className={field("city")}
+            >
+              <option value="">Select your city</option>
+              {PAKISTAN_CITY_GROUPS.map((group) => (
+                <optgroup key={group.province} label={group.province}>
+                  {group.cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value={OTHER_CITY}>{OTHER_CITY}</option>
+            </select>
+            {errors.city && <span className="text-xs text-red-600">{errors.city}</span>}
+          </label>
 
           <button
             type="submit"

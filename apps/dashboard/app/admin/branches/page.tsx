@@ -10,6 +10,7 @@ import {
   Plus,
   Power,
   PowerOff,
+  Star,
   Users,
   Wifi,
   ShieldCheck,
@@ -104,6 +105,24 @@ function Branches({ token }: { token: string }) {
     }
   }
 
+  async function makeMain(branch: BranchWithAgents) {
+    setTogglingId(branch.id);
+    setError(null);
+    try {
+      await api<Branch>(`/api/admin/branches/${branch.id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ isMain: true }),
+      });
+      await refresh();
+      setNotice(`${branch.name} is now the main branch`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong");
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   const counts = useMemo(() => {
     const list = branches ?? [];
     return { active: list.filter((b) => b.isActive).length, total: list.length };
@@ -116,7 +135,7 @@ function Branches({ token }: { token: string }) {
           <h1 className="text-xl font-semibold tracking-tight">Branches</h1>
           <p className="text-sm text-muted-foreground">
             {branches
-              ? `${counts.active} active of ${counts.total}. Visitors choose one of the active branches before chatting.`
+              ? `${counts.active} active of ${counts.total}. Chats that arrive without an agent or branch link go to the main branch.`
               : "Loading branches…"}
           </p>
         </div>
@@ -152,6 +171,7 @@ function Branches({ token }: { token: string }) {
               onChatLink={() => setChatLink({ kind: "branch", id: branch.id, name: branch.name })}
               onDeactivate={() => setDialog({ kind: "deactivate", branch })}
               onReactivate={() => void setActive(branch, true)}
+              onMakeMain={() => void makeMain(branch)}
             />
           ))}
           {branches && <AddTile onAdd={() => setDialog({ kind: "create" })} />}
@@ -161,7 +181,9 @@ function Branches({ token }: { token: string }) {
       <p className="text-xs text-muted-foreground">
         Deactivating hides a branch from the chat widget and stops new chats being routed there.
         Existing conversations continue so nobody is cut off mid-chat, and the branch can be
-        reactivated at any time.
+        reactivated at any time. The main branch cannot be deactivated — make another branch the
+        main branch first, which moves the flag rather than leaving walk-in chats with nowhere to
+        go.
       </p>
 
       <BranchNameDialog
@@ -215,6 +237,7 @@ function BranchCard({
   onChatLink,
   onDeactivate,
   onReactivate,
+  onMakeMain,
 }: {
   branch: BranchWithAgents;
   busy: boolean;
@@ -224,6 +247,7 @@ function BranchCard({
   onChatLink: () => void;
   onDeactivate: () => void;
   onReactivate: () => void;
+  onMakeMain: () => void;
 }) {
   const active = branch.agents.filter((a) => a.isActive);
   const online = active.filter((a) => a.isOnline);
@@ -258,14 +282,25 @@ function BranchCard({
             })}
           </p>
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-            branch.isActive ? "bg-success-soft text-success" : "bg-muted text-muted-foreground",
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              branch.isActive ? "bg-success-soft text-success" : "bg-muted text-muted-foreground",
+            )}
+          >
+            {branch.isActive ? "Active" : "Inactive"}
+          </span>
+          {branch.isMain && (
+            <span
+              className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+              title="Chats with no agent or branch link go here"
+            >
+              <Star className="size-3" aria-hidden />
+              Main
+            </span>
           )}
-        >
-          {branch.isActive ? "Active" : "Inactive"}
-        </span>
+        </div>
       </div>
 
       <dl className="mx-4 grid grid-cols-3 divide-x rounded-lg bg-muted/60 py-2.5 text-center">
@@ -330,16 +365,26 @@ function BranchCard({
           <Pencil className="size-3.5" aria-hidden />
           Rename
         </Button>
-        {branch.isActive ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={onDeactivate}
-          >
-            <PowerOff className="size-3.5" aria-hidden />
-            Deactivate
+        {branch.isActive && !branch.isMain && (
+          <Button variant="ghost" size="sm" disabled={busy} onClick={onMakeMain}>
+            <Star className="size-3.5" aria-hidden />
+            Make main
           </Button>
+        )}
+        {branch.isActive ? (
+          // The main branch has no Deactivate: the server refuses it, and
+          // offering a button that always fails is worse than not offering one.
+          !branch.isMain && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDeactivate}
+            >
+              <PowerOff className="size-3.5" aria-hidden />
+              Deactivate
+            </Button>
+          )
         ) : (
           <Button
             variant="ghost"

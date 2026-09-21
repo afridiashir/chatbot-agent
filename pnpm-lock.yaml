@@ -238,6 +238,9 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0
     devDependencies:
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../types
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -268,13 +271,13 @@ importers:
 
   packages/validation:
     dependencies:
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../types
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@repo/types':
-        specifier: workspace:*
-        version: link:../types
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3

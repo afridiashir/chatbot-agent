@@ -1,3 +1,6 @@
+import type { MaritalStatus } from "@repo/types";
+import { MARITAL_STATUSES } from "@repo/types";
+
 /**
  * The widget runs on someone else's page, where localStorage can be blocked
  * outright (private mode, blocked third-party storage). Every access is guarded
@@ -6,7 +9,7 @@
  */
 const VISITOR_KEY = "acme-chat:visitorId";
 const CONVERSATION_KEY = "acme-chat:conversationId";
-/** Their details and the branch they last chose, so we never ask twice. */
+/** What they told us about themselves, so we never ask twice. */
 const VISITOR_DETAILS_KEY = "acme-chat:visitor";
 
 const memory = new Map<string, string>();
@@ -68,10 +71,9 @@ export const storeRecentEmoji = (emoji: string[]): void =>
 
 export interface SavedVisitor {
   name: string;
-  email: string;
   phone: string;
-  /** The branch of their last chat, offered again for the next one. */
-  branchId?: string;
+  maritalStatus: MaritalStatus;
+  city: string;
 }
 
 /**
@@ -83,12 +85,16 @@ export function getSavedVisitor(): SavedVisitor | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<SavedVisitor>;
-    if (!parsed.name || !parsed.email || !parsed.phone) return null;
+    // A record written before the form asked for city and marital status is
+    // incomplete, not merely old: treat it as absent so the visitor is asked
+    // once rather than sent to a server that will reject the submission.
+    if (!parsed.name || !parsed.phone || !parsed.city) return null;
+    if (!parsed.maritalStatus || !MARITAL_STATUSES.includes(parsed.maritalStatus)) return null;
     return {
       name: parsed.name,
-      email: parsed.email,
       phone: parsed.phone,
-      ...(parsed.branchId ? { branchId: parsed.branchId } : {}),
+      maritalStatus: parsed.maritalStatus,
+      city: parsed.city,
     };
   } catch {
     return null;

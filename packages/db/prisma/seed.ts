@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
+import { normalizePhone } from "@repo/types";
 import { hashPassword } from "../src/password.js";
 import { BRANCHES, COMPANY, VISITORS, type SeedConversation } from "./seed-data.js";
 
@@ -69,18 +70,26 @@ async function seedConversation(
   const visitor = VISITORS.find((v) => v.id === conversation.visitorId);
   if (!visitor)
     throw new Error(`Seed conversation references unknown visitor ${conversation.visitorId}`);
-  const email = visitor.email.toLowerCase();
+  const phoneKey = normalizePhone(visitor.phone);
   const lead = await prisma.lead.upsert({
-    where: { companyId_email: { companyId: COMPANY.id, email } },
+    where: { companyId_phoneKey: { companyId: COMPANY.id, phoneKey } },
     create: {
       companyId: COMPANY.id,
-      email,
+      phoneKey,
       name: visitor.name,
       phone: visitor.phone,
+      maritalStatus: visitor.maritalStatus,
+      city: visitor.city,
       branchId,
       createdAt,
     },
-    update: { name: visitor.name, phone: visitor.phone, branchId },
+    update: {
+      name: visitor.name,
+      phone: visitor.phone,
+      maritalStatus: visitor.maritalStatus,
+      city: visitor.city,
+      branchId,
+    },
     select: { id: true },
   });
   await prisma.enquiry.create({
@@ -103,7 +112,10 @@ async function main(): Promise<void> {
   // The demo visitors' own leads are rebuilt with their conversations, so a
   // reseed does not stack a fresh enquiry onto the same fake person each time.
   await prisma.lead.deleteMany({
-    where: { companyId: COMPANY.id, email: { in: VISITORS.map((v) => v.email.toLowerCase()) } },
+    where: {
+      companyId: COMPANY.id,
+      phoneKey: { in: VISITORS.map((v) => normalizePhone(v.phone)) },
+    },
   });
 
   // Every other lead and its enquiry history is deliberately NOT cleared. They are a
@@ -149,11 +161,19 @@ async function main(): Promise<void> {
   let agentCount = 0;
   let conversationCount = 0;
 
+  // Cleared before the loop below re-sets it. Only one branch per company may
+  // be main, so assigning it while a different branch still holds the flag
+  // would trip the unique index.
+  await prisma.branch.updateMany({ where: { companyId: COMPANY.id }, data: { isMain: false } });
+
   for (const branch of BRANCHES) {
+    // The first seeded branch is the main one, so a freshly seeded database can
+    // take a walk-in chat (no agent link, no branch link) straight away.
+    const isMain = branch.id === BRANCHES[0]!.id;
     await prisma.branch.upsert({
       where: { id: branch.id },
-      create: { id: branch.id, name: branch.name, companyId: COMPANY.id, isActive: true },
-      update: { name: branch.name, companyId: COMPANY.id, isActive: true },
+      create: { id: branch.id, name: branch.name, companyId: COMPANY.id, isActive: true, isMain },
+      update: { name: branch.name, companyId: COMPANY.id, isActive: true, isMain },
     });
 
     for (const agent of branch.agents) {

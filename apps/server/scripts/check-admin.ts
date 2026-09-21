@@ -65,6 +65,8 @@ async function request<T>(
 }
 
 const suffix = Date.now().toString(36);
+/** Digits, for building phone numbers unique to this run. Leads key on phone. */
+const digits = String(Date.now()).slice(-7);
 
 async function main(): Promise<void> {
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !AGENT_PASSWORD) {
@@ -137,6 +139,67 @@ async function main(): Promise<void> {
     true,
   );
 
+  console.log("\n3b. The main branch is where unlinked chats land");
+  check("a newly added branch is not the main one", branch.isMain, false);
+
+  const mainBefore = (await request<BranchWithAgents[]>("/api/admin/branches", { token })).data
+    ?.filter((b) => b.isMain)
+    .map((b) => b.id);
+  check("exactly one branch is main", mainBefore?.length, 1);
+
+  const takeMain = await request<Branch>(`/api/admin/branches/${branch.id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ isMain: true }),
+  });
+  check("an admin can make a branch the main one", takeMain.data?.isMain, true);
+
+  const afterMove = (await request<BranchWithAgents[]>("/api/admin/branches", { token })).data;
+  check("the flag moved rather than being copied", afterMove?.filter((b) => b.isMain).length, 1);
+
+  check(
+    "the main branch cannot be deactivated",
+    (
+      await request(`/api/admin/branches/${branch.id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ isActive: false }),
+      })
+    ).status,
+    409,
+  );
+
+  // Put it back, so the rest of the suite can deactivate this branch freely.
+  await request(`/api/admin/branches/${mainBefore![0]!}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ isMain: true }),
+  });
+
+  // The whole point of the flag: the widget no longer asks for a branch, so a
+  // chat arriving with neither an agent link nor a branch link must still land
+  // somewhere sensible.
+  const walkIn = await request<{ available: boolean; conversation?: { agentId: string } }>(
+    "/api/conversations",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        visitorId: `walkin-${suffix}`,
+        visitor: {
+          name: "No Link Visitor",
+          phone: `+92 305 ${digits}`,
+          maritalStatus: "SINGLE",
+          city: "Quetta",
+        },
+      }),
+    },
+  );
+  check("a chat with no branch and no agent link is accepted", walkIn.data?.available, true);
+  const walkInBranch = (
+    await request<AdminConversationSummary[]>("/api/admin/conversations?limit=200", { token })
+  ).data?.find((c) => c.agent.id === walkIn.data?.conversation?.agentId);
+  check("and it landed in the main branch", walkInBranch?.branch.id, mainBefore![0]);
+
   console.log("\n4. Creating agents in it");
   const agentEmail = `zoya.hassan.${suffix}@acme.example`;
   const agentCreated = await request<Agent>("/api/admin/agents", {
@@ -202,7 +265,12 @@ async function main(): Promise<void> {
       body: JSON.stringify({
         branchId: branch.id,
         visitorId,
-        visitor: { name: "Admin Check Visitor", email: `${visitorId}@example.com`, phone: "+92 300 0000000" },
+        visitor: {
+          name: "Admin Check Visitor",
+          phone: `+92 300 ${digits}`,
+          maritalStatus: "MARRIED",
+          city: "Lahore",
+        },
       }),
     },
   );
@@ -280,7 +348,12 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       branchId: branch.id,
       visitorId: `admin-check-2-${suffix}`,
-      visitor: { name: "Second Visitor", email: `second.${suffix}@example.com`, phone: "+92 300 0000001" },
+      visitor: {
+        name: "Second Visitor",
+        phone: `+92 301 ${digits}`,
+        maritalStatus: "SINGLE",
+        city: "Karachi",
+      },
     }),
   });
   check("nobody is routed to a deactivated agent", noRoute.data?.available, false);
@@ -313,7 +386,12 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       branchId: branch.id,
       visitorId: `admin-check-3-${suffix}`,
-      visitor: { name: "Third Visitor", email: `third.${suffix}@example.com`, phone: "+92 300 0000002" },
+      visitor: {
+        name: "Third Visitor",
+        phone: `+92 302 ${digits}`,
+        maritalStatus: "DIVORCED",
+        city: "Multan",
+      },
     }),
   });
   check("and cannot be routed to", hiddenRoute.status, 404);
@@ -342,62 +420,86 @@ async function main(): Promise<void> {
 
   console.log("\n11b. Leads are captured even when nobody answers");
   // Peshawar is seeded entirely offline, so this enquiry reaches no agent.
-  const leadEmail = `walkin.${suffix}@example.com`;
+  // Written two different ways across 11b and 11c, on purpose: the point of the
+  // dedup test is now that normalisation makes them one person.
+  const leadDigits = `777${digits.slice(-4)}`;
   const missedChat = await request<{ available: boolean }>("/api/conversations", {
     method: "POST",
     body: JSON.stringify({
       branchId: "branch_peshawar",
       visitorId: `lead-a-${suffix}`,
-      visitor: { name: "Walkin Person", email: leadEmail, phone: "+92 300 7778888" },
+      visitor: {
+        name: "Walkin Person",
+        phone: `+92 300 ${leadDigits}`,
+        maritalStatus: "SINGLE",
+        city: "Peshawar",
+      },
     }),
   });
   check("no agent was available", missedChat.data?.available, false);
 
-  const afterMiss = await request<Lead[]>(`/api/admin/leads?search=${leadEmail}`, { token });
+  const afterMiss = await request<Lead[]>(`/api/admin/leads?search=${leadDigits}`, { token });
   check("the lead was still saved", afterMiss.data?.length, 1);
   check("flagged as a missed enquiry", afterMiss.data?.[0]?.missedCount, 1);
   check("counted as one enquiry", afterMiss.data?.[0]?.enquiryCount, 1);
 
   console.log("\n11c. The same person enquiring again is not duplicated");
-  // A different browser: new visitor id, same person.
+  // A different browser, and the number written in local form this time:
+  // `+92 300 777xxxx` and `0300777xxxx` are one person, not two.
   await request("/api/conversations", {
     method: "POST",
     body: JSON.stringify({
       branchId: "branch_peshawar",
       visitorId: `lead-b-${suffix}`,
-      visitor: { name: "Walkin Person Jr", email: leadEmail, phone: "+92 300 7778899" },
+      visitor: {
+        name: "Walkin Person Jr",
+        phone: `0300${leadDigits}`,
+        maritalStatus: "MARRIED",
+        city: "Peshawar",
+      },
     }),
   });
 
-  const afterSecond = await request<Lead[]>(`/api/admin/leads?search=${leadEmail}`, { token });
+  const afterSecond = await request<Lead[]>(`/api/admin/leads?search=${leadDigits}`, { token });
   check("still one row, not two", afterSecond.data?.length, 1);
   check("enquiries accumulated", afterSecond.data?.[0]?.enquiryCount, 2);
   check("misses accumulated", afterSecond.data?.[0]?.missedCount, 2);
   check("latest details win", afterSecond.data?.[0]?.name, "Walkin Person Jr");
+  check(
+    "including the newly given marital status",
+    afterSecond.data?.[0]?.maritalStatus,
+    "MARRIED",
+  );
+  check("and the city", afterSecond.data?.[0]?.city, "Peshawar");
 
   console.log("\n11d. Leads from answered chats are recorded too");
-  const servedEmail = `served.${suffix}@example.com`;
+  const servedDigits = `123${digits.slice(-4)}`;
   await request("/api/conversations", {
     method: "POST",
     body: JSON.stringify({
       branchId: "branch_karachi",
       visitorId: `lead-c-${suffix}`,
-      visitor: { name: "Served Person", email: servedEmail, phone: "+92 300 1231234" },
+      visitor: {
+        name: "Served Person",
+        phone: `+92 300 ${servedDigits}`,
+        maritalStatus: "WIDOWED",
+        city: "Karachi",
+      },
     }),
   });
-  const served = await request<Lead[]>(`/api/admin/leads?search=${servedEmail}`, { token });
+  const served = await request<Lead[]>(`/api/admin/leads?search=${servedDigits}`, { token });
   check("recorded", served.data?.length, 1);
   check("with no missed enquiries", served.data?.[0]?.missedCount, 0);
 
   const missedOnly = await request<Lead[]>("/api/admin/leads?missedOnly=true", { token });
   check(
     "the missed-only filter excludes them",
-    missedOnly.data?.some((l) => l.email === servedEmail),
+    missedOnly.data?.some((l) => l.phone.includes(servedDigits)),
     false,
   );
   check(
     "and includes the unanswered one",
-    missedOnly.data?.some((l) => l.email === leadEmail),
+    missedOnly.data?.some((l) => l.phone.includes(leadDigits)),
     true,
   );
 
@@ -430,7 +532,7 @@ async function main(): Promise<void> {
   check("the branch is remembered per enquiry", detail.data?.enquiries[0]?.branchName, "Peshawar");
 
   console.log("\n11f. An answered enquiry links back to its conversation");
-  const servedLead = await request<Lead[]>(`/api/admin/leads?search=${servedEmail}`, { token });
+  const servedLead = await request<Lead[]>(`/api/admin/leads?search=${servedDigits}`, { token });
   const servedId = servedLead.data?.[0]?.id;
   if (!servedId) throw new Error("Expected the served lead");
   const servedDetail = await request<LeadDetail>(`/api/admin/leads/${servedId}`, { token });
@@ -489,9 +591,7 @@ async function main(): Promise<void> {
   );
   check("and the row has left the list", afterDelete.data?.length, 0);
 
-  const visitorLead = await request<Lead[]>(`/api/admin/leads?search=${visitorId}@example.com`, {
-    token,
-  });
+  const visitorLead = await request<Lead[]>(`/api/admin/leads?search=${digits}`, { token });
   const visitorLeadId = visitorLead.data?.[0]?.id;
   check("the lead who started it is kept", typeof visitorLeadId === "string", true);
   if (visitorLeadId) {

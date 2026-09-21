@@ -202,8 +202,9 @@ async function main(): Promise<void> {
         visitorId,
         visitor: {
           name: "Realtime Test Visitor",
-          email: `${visitorId}@example.com`,
-          phone: "+92 300 0000000",
+          phone: `+92 300 ${String(Date.now()).slice(-7)}`,
+          maritalStatus: "SINGLE",
+          city: "Karachi",
         },
       }),
     },

@@ -8,9 +8,10 @@ import {
   CalendarClock,
   CircleCheck,
   Headset,
+  Heart,
   Info,
   Lock,
-  Mail,
+  MapPin,
   MessageCircle,
   MessagesSquare,
   Phone,
@@ -27,6 +28,7 @@ import {
   type ClientToServerEvents,
   type ConversationStatus,
   type DeleteConversationResult,
+  MARITAL_STATUS_LABELS,
   type Message,
   type ServerToClientEvents,
 } from "@repo/types";
@@ -315,7 +317,7 @@ export function AdminInbox({
     return rows.filter(
       (row) =>
         row.visitor.name.toLowerCase().includes(needle) ||
-        row.visitor.email.toLowerCase().includes(needle) ||
+        (row.visitor.city ?? "").toLowerCase().includes(needle) ||
         row.visitor.phone.includes(needle) ||
         row.agent.name.toLowerCase().includes(needle),
     );
@@ -783,15 +785,20 @@ function ContactInfo({
         </div>
 
         <InfoSection title="Contact">
-          <InfoRow icon={Mail} label="Email">
-            <a href={`mailto:${detail.visitor.email}`} className="text-success hover:underline">
-              {detail.visitor.email}
-            </a>
-          </InfoRow>
           <InfoRow icon={Phone} label="Phone">
             <a href={`tel:${detail.visitor.phone}`} className="text-success hover:underline">
               {detail.visitor.phone}
             </a>
+          </InfoRow>
+          <InfoRow icon={MapPin} label="City">
+            {detail.visitor.city ?? <span className="text-chat-meta">Not given</span>}
+          </InfoRow>
+          <InfoRow icon={Heart} label="Marital status">
+            {detail.visitor.maritalStatus ? (
+              MARITAL_STATUS_LABELS[detail.visitor.maritalStatus]
+            ) : (
+              <span className="text-chat-meta">Not given</span>
+            )}
           </InfoRow>
         </InfoSection>
 
@@ -842,7 +849,7 @@ function InfoRow({
   label,
   children,
 }: {
-  icon: typeof Mail;
+  icon: typeof Phone;
   label: string;
   children: React.ReactNode;
 }) {

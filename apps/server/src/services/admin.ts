@@ -13,6 +13,7 @@ import type {
   Lead,
   LeadDetail,
   LeadTablePage,
+  MaritalStatus,
 } from "@repo/types";
 import type {
   AdminSearchQuery,
@@ -263,7 +264,7 @@ export async function searchAdmin(
         companyId: actor.companyId,
         // A branch admin finds only people who got in touch with their branch.
         ...(actor.branchId ? { enquiries: { some: { branchId: actor.branchId } } } : {}),
-        OR: [{ name: contains }, { email: contains }, { phone: { contains: query.q } }],
+        OR: [{ name: contains }, { city: contains }, { phone: { contains: query.q } }],
       },
       orderBy: { updatedAt: "desc" },
       take: SEARCH_LIMIT,
@@ -272,11 +273,11 @@ export async function searchAdmin(
       where: {
         agent: { branch: companyBranch },
         visitor: {
-          OR: [{ name: contains }, { email: contains }, { phone: { contains: query.q } }],
+          OR: [{ name: contains }, { city: contains }, { phone: { contains: query.q } }],
         },
       },
       include: {
-        visitor: { select: { name: true, email: true } },
+        visitor: { select: { name: true, phone: true } },
         agent: { select: { name: true } },
       },
       orderBy: { updatedAt: "desc" },
@@ -302,13 +303,13 @@ export async function searchAdmin(
     leads: leads.map((lead) => ({
       id: lead.id,
       name: lead.name,
-      email: lead.email,
       phone: lead.phone,
+      city: lead.city,
     })),
     conversations: conversations.map((conversation) => ({
       id: conversation.id,
       visitorName: conversation.visitor.name,
-      visitorEmail: conversation.visitor.email,
+      visitorPhone: conversation.visitor.phone,
       agentName: conversation.agent.name,
       status: conversation.status,
       updatedAt: conversation.updatedAt.toISOString(),
@@ -329,8 +330,14 @@ export async function createBranch(
   });
   if (duplicate) throw conflict("A branch with that name already exists");
 
+  // The first branch a company ever creates becomes its main branch. Without
+  // this a fresh company would have nowhere to route walk-in chats to until
+  // someone remembered to set it, and the failure would only show up when a
+  // real visitor tried to start a chat.
+  const existing = await prisma.branch.count({ where: { companyId: actor.companyId } });
+
   const branch = await prisma.branch.create({
-    data: { companyId: actor.companyId, name: input.name },
+    data: { companyId: actor.companyId, name: input.name, isMain: existing === 0 },
   });
   return toBranch(branch);
 }
@@ -357,12 +364,35 @@ export async function updateBranch(
     if (duplicate) throw conflict("A branch with that name already exists");
   }
 
-  const updated = await prisma.branch.update({
-    where: { id: branchId },
-    data: {
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-    },
+  // Deactivating the main branch would leave every chat that arrives without a
+  // link with nowhere to go, so it is refused rather than silently breaking the
+  // widget. Making another branch main first moves the flag and clears the way.
+  if (input.isActive === false && branch.isMain) {
+    throw conflict("This is the main branch. Make another branch the main branch first.");
+  }
+  // A deactivated branch is invisible to visitors, so pointing walk-in traffic
+  // at one would route every such chat into a branch nobody is watching.
+  if (input.isMain && !(input.isActive ?? branch.isActive)) {
+    throw conflict("Reactivate this branch before making it the main branch");
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (input.isMain) {
+      // Cleared first: the partial unique index allows only one main branch per
+      // company, so setting the new one before clearing the old would fail.
+      await tx.branch.updateMany({
+        where: { companyId: actor.companyId, isMain: true, id: { not: branchId } },
+        data: { isMain: false },
+      });
+    }
+    return tx.branch.update({
+      where: { id: branchId },
+      data: {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.isMain !== undefined ? { isMain: input.isMain } : {}),
+      },
+    });
   });
   return toBranch(updated);
 }
@@ -618,7 +648,7 @@ export async function listLeads(query: ListLeadsQuery, actor: AdminTokenPayload)
         ? {
             OR: [
               { name: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { city: { contains: search, mode: "insensitive" } },
               { phone: { contains: search } },
             ],
           }
@@ -674,7 +704,8 @@ export async function listLeads(query: ListLeadsQuery, actor: AdminTokenPayload)
  */
 const LEAD_ORDER: Record<LeadsTableQuery["sort"], Prisma.Sql> = {
   name: Prisma.sql`lower(l."name")`,
-  email: Prisma.sql`l."email"`,
+  phone: Prisma.sql`l."phoneKey"`,
+  city: Prisma.sql`lower(l."city")`,
   branch: Prisma.sql`lower(b."name")`,
   enquiries: Prisma.sql`s.enquiry_count`,
   missed: Prisma.sql`s.missed_count`,
@@ -700,7 +731,7 @@ export async function listLeadsTable(
   if (search) {
     const pattern = likePattern(search);
     where.push(
-      Prisma.sql`(l."name" ILIKE ${pattern} OR l."email" ILIKE ${pattern} OR l."phone" LIKE ${pattern})`,
+      Prisma.sql`(l."name" ILIKE ${pattern} OR l."city" ILIKE ${pattern} OR l."phone" LIKE ${pattern})`,
     );
   }
   if (query.branchId) where.push(Prisma.sql`l."branchId" = ${query.branchId}`);
@@ -714,6 +745,10 @@ export async function listLeadsTable(
   }
   if (query.visits === "new") where.push(Prisma.sql`s.enquiry_count = 1`);
   if (query.visits === "returning") where.push(Prisma.sql`s.enquiry_count > 1`);
+  if (query.city) where.push(Prisma.sql`l."city" = ${query.city}`);
+  if (query.maritalStatus) {
+    where.push(Prisma.sql`l."maritalStatus" = ${query.maritalStatus}::"MaritalStatus"`);
+  }
   if (query.conversation === "open") where.push(Prisma.sql`latest.status = 'ACTIVE'`);
   if (query.conversation === "closed") where.push(Prisma.sql`latest.status = 'CLOSED'`);
   if (query.conversation === "none") where.push(Prisma.sql`latest.conversation_id IS NULL`);
@@ -741,8 +776,10 @@ export async function listLeadsTable(
       id: string;
       companyId: string;
       name: string;
-      email: string;
       phone: string;
+      phoneKey: string;
+      maritalStatus: MaritalStatus | null;
+      city: string | null;
       branchId: string | null;
       branchName: string | null;
       createdAt: Date;
@@ -786,7 +823,8 @@ export async function listLeadsTable(
       ORDER BY e."leadId", e."createdAt" DESC, e."id" DESC
     )
     SELECT
-      l."id", l."companyId", l."name", l."email", l."phone", l."branchId",
+      l."id", l."companyId", l."name", l."phone", l."phoneKey",
+      l."maritalStatus", l."city", l."branchId",
       b."name" AS "branchName", l."createdAt", l."updatedAt",
       s.enquiry_count, s.missed_count, s.first_at, s.last_at,
       latest.conversation_id, latest.status AS conversation_status,

@@ -35,6 +35,7 @@ export function toBranch(row: BranchRow): Branch {
     id: row.id,
     companyId: row.companyId,
     name: row.name,
+    isMain: row.isMain,
     isActive: row.isActive,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -74,8 +75,9 @@ export function toLead(
     id: row.id,
     companyId: row.companyId,
     name: row.name,
-    email: row.email,
     phone: row.phone,
+    maritalStatus: row.maritalStatus,
+    city: row.city,
     branchId: row.branchId,
     branchName: row.branch?.name ?? null,
     ...stats,
@@ -203,7 +205,13 @@ export function toMessage(
 }
 
 export function toVisitorSummary(row: VisitorRow): VisitorSummary {
-  return { id: row.id, name: row.name, email: row.email, phone: row.phone };
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    maritalStatus: row.maritalStatus,
+    city: row.city,
+  };
 }
 
 export function toConversation(row: ConversationRow): Conversation {

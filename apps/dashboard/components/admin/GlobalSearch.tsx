@@ -37,10 +37,10 @@ function toHits(results: AdminSearchResults): Hit[] {
     })),
     ...results.leads.map((l) => ({
       key: `lead:${l.id}`,
-      href: `/admin/leads?${new URLSearchParams({ lead: l.id, search: l.email })}`,
+      href: `/admin/leads?${new URLSearchParams({ lead: l.id, search: l.phone })}`,
       group: "Leads",
       title: l.name,
-      subtitle: `${l.email} · ${l.phone}`,
+      subtitle: l.city ? `${l.phone} · ${l.city}` : l.phone,
       leading: <Avatar name={l.name} seed={l.id} size="sm" />,
     })),
     ...results.agents.map((a) => ({

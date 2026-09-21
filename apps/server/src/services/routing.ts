@@ -1,5 +1,6 @@
 import { prisma } from "@repo/db";
-import type { AssignmentResult } from "@repo/types";
+import type { AssignmentResult, MaritalStatus } from "@repo/types";
+import { normalizePhone } from "@repo/types";
 import { notFound } from "../lib/http.js";
 import { toConversationWithAgent } from "../lib/serialize.js";
 
@@ -13,15 +14,16 @@ export interface AssignAgentInput {
    */
   preferredAgentId?: string;
   visitorId: string;
-  visitor: { name: string; email: string; phone: string };
+  visitor: { name: string; phone: string; maritalStatus: MaritalStatus; city: string };
   initialMessage?: string;
 }
 
 /**
  * Records one approach from one person.
  *
- * The Lead row is deduplicated on email within the company, so the same person
- * reaching us from a second device updates it rather than creating a twin. The
+ * The Lead row is deduplicated on their normalised phone number within the
+ * company, so the same person reaching us from a second device — or writing
+ * their number a different way — updates it rather than creating a twin. The
  * Enquiry row is always new, which is what builds the history: every time they
  * got in touch, which branch they wanted, and whether anyone answered.
  *
@@ -34,21 +36,26 @@ async function recordEnquiry(
   input: AssignAgentInput & { companyId: string },
   outcome: { answered: boolean; conversationId?: string },
 ): Promise<void> {
-  const email = input.visitor.email.trim().toLowerCase();
+  const phoneKey = normalizePhone(input.visitor.phone);
 
   const lead = await tx.lead.upsert({
-    where: { companyId_email: { companyId: input.companyId, email } },
+    where: { companyId_phoneKey: { companyId: input.companyId, phoneKey } },
     create: {
       companyId: input.companyId,
-      email,
+      phoneKey,
       name: input.visitor.name,
       phone: input.visitor.phone,
+      maritalStatus: input.visitor.maritalStatus,
+      city: input.visitor.city,
       branchId: input.branchId,
     },
     update: {
-      // Latest details win: people correct their own typos.
+      // Latest details win: people correct their own typos, and their city or
+      // marital status may genuinely have changed since they last wrote in.
       name: input.visitor.name,
       phone: input.visitor.phone,
+      maritalStatus: input.visitor.maritalStatus,
+      city: input.visitor.city,
       branchId: input.branchId,
     },
     select: { id: true },
@@ -117,13 +124,15 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
       create: {
         id: input.visitorId,
         name: input.visitor.name,
-        email: input.visitor.email,
         phone: input.visitor.phone,
+        maritalStatus: input.visitor.maritalStatus,
+        city: input.visitor.city,
       },
       update: {
         name: input.visitor.name,
-        email: input.visitor.email,
         phone: input.visitor.phone,
+        maritalStatus: input.visitor.maritalStatus,
+        city: input.visitor.city,
       },
     });
 

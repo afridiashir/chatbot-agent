@@ -20,13 +20,22 @@ import {
   toMessage,
 } from "../lib/serialize.js";
 import { assignAgent } from "./routing.js";
+import { mainBranch } from "./branches.js";
 
 /** Oldest first, with `id` as a stable tie-break for identical timestamps. */
 const MESSAGE_ORDER = [{ createdAt: "asc" }, { id: "asc" }] as const;
 
 export async function createConversation(input: CreateConversationBody): Promise<AssignmentResult> {
   const { agentId, branchId, ...rest } = input;
-  if (!agentId) return assignAgent({ ...rest, branchId: branchId! });
+
+  if (!agentId) {
+    // No agent link. A branch link names its branch; anything else — the plain
+    // widget on a website — goes to the company's main branch, because the
+    // pre-chat form no longer asks the visitor to choose.
+    const target = branchId ?? (await mainBranch())?.id;
+    if (!target) throw notFound("No branch is available to take this chat");
+    return assignAgent({ ...rest, branchId: target });
+  }
 
   // An agent link carries the agent; their branch is where the chat belongs.
   // A deactivated agent's link reads as missing, like any other dead link.

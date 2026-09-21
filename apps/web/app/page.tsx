@@ -22,8 +22,8 @@ export default function HomePage() {
       </div>
 
       <p className="text-sm text-neutral-500">
-        Need help? Open the chat in the bottom-right corner, leave your details and pick your
-        branch — we will connect you to whoever is free.
+        Need help? Open the chat in the bottom-right corner and leave your details — we will connect
+        you to whoever is free.
       </p>
     </main>
   );

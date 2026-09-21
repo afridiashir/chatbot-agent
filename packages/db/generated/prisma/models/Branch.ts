@@ -28,6 +28,7 @@ export type BranchMinAggregateOutputType = {
   id: string | null
   companyId: string | null
   name: string | null
+  isMain: boolean | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -37,6 +38,7 @@ export type BranchMaxAggregateOutputType = {
   id: string | null
   companyId: string | null
   name: string | null
+  isMain: boolean | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -46,6 +48,7 @@ export type BranchCountAggregateOutputType = {
   id: number
   companyId: number
   name: number
+  isMain: number
   isActive: number
   createdAt: number
   updatedAt: number
@@ -57,6 +60,7 @@ export type BranchMinAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
+  isMain?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -66,6 +70,7 @@ export type BranchMaxAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
+  isMain?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -75,6 +80,7 @@ export type BranchCountAggregateInputType = {
   id?: true
   companyId?: true
   name?: true
+  isMain?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -157,6 +163,7 @@ export type BranchGroupByOutputType = {
   id: string
   companyId: string
   name: string
+  isMain: boolean
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -187,6 +194,7 @@ export type BranchWhereInput = {
   id?: Prisma.StringFilter<"Branch"> | string
   companyId?: Prisma.StringFilter<"Branch"> | string
   name?: Prisma.StringFilter<"Branch"> | string
+  isMain?: Prisma.BoolFilter<"Branch"> | boolean
   isActive?: Prisma.BoolFilter<"Branch"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
@@ -201,6 +209,7 @@ export type BranchOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  isMain?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -219,6 +228,7 @@ export type BranchWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.BranchWhereInput | Prisma.BranchWhereInput[]
   companyId?: Prisma.StringFilter<"Branch"> | string
   name?: Prisma.StringFilter<"Branch"> | string
+  isMain?: Prisma.BoolFilter<"Branch"> | boolean
   isActive?: Prisma.BoolFilter<"Branch"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
@@ -233,6 +243,7 @@ export type BranchOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  isMain?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -248,6 +259,7 @@ export type BranchScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Branch"> | string
   companyId?: Prisma.StringWithAggregatesFilter<"Branch"> | string
   name?: Prisma.StringWithAggregatesFilter<"Branch"> | string
+  isMain?: Prisma.BoolWithAggregatesFilter<"Branch"> | boolean
   isActive?: Prisma.BoolWithAggregatesFilter<"Branch"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Branch"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Branch"> | Date | string
@@ -256,6 +268,7 @@ export type BranchScalarWhereWithAggregatesInput = {
 export type BranchCreateInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -270,6 +283,7 @@ export type BranchUncheckedCreateInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -282,6 +296,7 @@ export type BranchUncheckedCreateInput = {
 export type BranchUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -296,6 +311,7 @@ export type BranchUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -309,6 +325,7 @@ export type BranchCreateManyInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -317,6 +334,7 @@ export type BranchCreateManyInput = {
 export type BranchUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -326,6 +344,7 @@ export type BranchUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -355,6 +374,7 @@ export type BranchCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  isMain?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -364,6 +384,7 @@ export type BranchMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  isMain?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -373,6 +394,7 @@ export type BranchMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  isMain?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -490,6 +512,7 @@ export type BranchUpdateOneWithoutEnquiriesNestedInput = {
 export type BranchCreateWithoutCompanyInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -502,6 +525,7 @@ export type BranchCreateWithoutCompanyInput = {
 export type BranchUncheckedCreateWithoutCompanyInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -544,6 +568,7 @@ export type BranchScalarWhereInput = {
   id?: Prisma.StringFilter<"Branch"> | string
   companyId?: Prisma.StringFilter<"Branch"> | string
   name?: Prisma.StringFilter<"Branch"> | string
+  isMain?: Prisma.BoolFilter<"Branch"> | boolean
   isActive?: Prisma.BoolFilter<"Branch"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Branch"> | Date | string
@@ -552,6 +577,7 @@ export type BranchScalarWhereInput = {
 export type BranchCreateWithoutAdminsInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -565,6 +591,7 @@ export type BranchUncheckedCreateWithoutAdminsInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -592,6 +619,7 @@ export type BranchUpdateToOneWithWhereWithoutAdminsInput = {
 export type BranchUpdateWithoutAdminsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -605,6 +633,7 @@ export type BranchUncheckedUpdateWithoutAdminsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -616,6 +645,7 @@ export type BranchUncheckedUpdateWithoutAdminsInput = {
 export type BranchCreateWithoutAgentsInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -629,6 +659,7 @@ export type BranchUncheckedCreateWithoutAgentsInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -656,6 +687,7 @@ export type BranchUpdateToOneWithWhereWithoutAgentsInput = {
 export type BranchUpdateWithoutAgentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -669,6 +701,7 @@ export type BranchUncheckedUpdateWithoutAgentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -680,6 +713,7 @@ export type BranchUncheckedUpdateWithoutAgentsInput = {
 export type BranchCreateWithoutLeadsInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -693,6 +727,7 @@ export type BranchUncheckedCreateWithoutLeadsInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -720,6 +755,7 @@ export type BranchUpdateToOneWithWhereWithoutLeadsInput = {
 export type BranchUpdateWithoutLeadsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -733,6 +769,7 @@ export type BranchUncheckedUpdateWithoutLeadsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -744,6 +781,7 @@ export type BranchUncheckedUpdateWithoutLeadsInput = {
 export type BranchCreateWithoutEnquiriesInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -757,6 +795,7 @@ export type BranchUncheckedCreateWithoutEnquiriesInput = {
   id?: string
   companyId: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -784,6 +823,7 @@ export type BranchUpdateToOneWithWhereWithoutEnquiriesInput = {
 export type BranchUpdateWithoutEnquiriesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -797,6 +837,7 @@ export type BranchUncheckedUpdateWithoutEnquiriesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   companyId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -808,6 +849,7 @@ export type BranchUncheckedUpdateWithoutEnquiriesInput = {
 export type BranchCreateManyCompanyInput = {
   id?: string
   name: string
+  isMain?: boolean
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -816,6 +858,7 @@ export type BranchCreateManyCompanyInput = {
 export type BranchUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -828,6 +871,7 @@ export type BranchUpdateWithoutCompanyInput = {
 export type BranchUncheckedUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -840,6 +884,7 @@ export type BranchUncheckedUpdateWithoutCompanyInput = {
 export type BranchUncheckedUpdateManyWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  isMain?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -907,6 +952,7 @@ export type BranchSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   id?: boolean
   companyId?: boolean
   name?: boolean
+  isMain?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -922,6 +968,7 @@ export type BranchSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   id?: boolean
   companyId?: boolean
   name?: boolean
+  isMain?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -932,6 +979,7 @@ export type BranchSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   id?: boolean
   companyId?: boolean
   name?: boolean
+  isMain?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -942,12 +990,13 @@ export type BranchSelectScalar = {
   id?: boolean
   companyId?: boolean
   name?: boolean
+  isMain?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type BranchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["branch"]>
+export type BranchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "name" | "isMain" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["branch"]>
 export type BranchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   agents?: boolean | Prisma.Branch$agentsArgs<ExtArgs>
@@ -976,6 +1025,13 @@ export type $BranchPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     id: string
     companyId: string
     name: string
+    /**
+     * Where a chat goes when nothing named a branch: no agent link, no branch
+     * link, and the visitor is no longer asked. At most one per company, which
+     * a partial unique index enforces (see the `main_branch` migration) because
+     * Prisma cannot express `UNIQUE ... WHERE` on its own.
+     */
+    isMain: boolean
     /**
      * Soft delete. An inactive branch is hidden from the widget and skipped by
      * routing, but its history is preserved.
@@ -1414,6 +1470,7 @@ export interface BranchFieldRefs {
   readonly id: Prisma.FieldRef<"Branch", 'String'>
   readonly companyId: Prisma.FieldRef<"Branch", 'String'>
   readonly name: Prisma.FieldRef<"Branch", 'String'>
+  readonly isMain: Prisma.FieldRef<"Branch", 'Boolean'>
   readonly isActive: Prisma.FieldRef<"Branch", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Branch", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Branch", 'DateTime'>

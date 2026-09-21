@@ -26,6 +26,14 @@ enum SenderType {
   AGENT
 }
 
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  SEPARATED
+  WIDOWED
+}
+
 model Company {
   id        String   @id @default(cuid())
   name      String
@@ -68,6 +76,11 @@ model Branch {
   id        String   @id @default(cuid())
   companyId String
   name      String
+  /// Where a chat goes when nothing named a branch: no agent link, no branch
+  /// link, and the visitor is no longer asked. At most one per company, which
+  /// a partial unique index enforces (see the `main_branch` migration) because
+  /// Prisma cannot express `UNIQUE ... WHERE` on its own.
+  isMain    Boolean  @default(false)
   /// Soft delete. An inactive branch is hidden from the widget and skipped by
   /// routing, but its history is preserved.
   isActive  Boolean  @default(true)
@@ -111,7 +124,7 @@ model Agent {
 /// keeps in localStorage, with the contact details they give in the pre-chat
 /// form. Kept separate from Conversation so a returning visitor has one set of
 /// details rather than a copy per chat.
-/// Everyone who has ever submitted the pre-chat form, deduplicated by email.
+/// Everyone who has ever submitted the pre-chat form, deduplicated by phone.
 ///
 /// Deliberately separate from Visitor: a Visitor is one browser (its id is the
 /// value in localStorage, and conversations are owned by it), whereas a Lead is
@@ -119,16 +132,23 @@ model Agent {
 /// Recorded whether or not an agent was free, so the enquiries nobody answered
 /// are exactly the ones that can be followed up.
 model Lead {
-  id        String   @id @default(cuid())
-  companyId String
-  name      String
-  email     String
-  phone     String
+  id            String         @id @default(cuid())
+  companyId     String
+  name          String
+  /// As the visitor typed it, which is what the admin dials.
+  phone         String
+  /// The same number reduced to digits with a country code, which is what
+  /// actually identifies the person. `+92 300 1234567` and `03001234567` are
+  /// one lead, not two.
+  phoneKey      String
+  /// Null on leads recorded before the pre-chat form asked for these.
+  maritalStatus MaritalStatus?
+  city          String?
   /// Branch chosen most recently. Kept nullable so removing a branch does not
   /// destroy the lead.
-  branchId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  branchId      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
@@ -136,8 +156,9 @@ model Lead {
   /// than denormalised onto the lead, so they cannot drift.
   enquiries Enquiry[]
 
-  @@unique([companyId, email])
+  @@unique([companyId, phoneKey])
   @@index([companyId, updatedAt])
+  @@index([companyId, city])
 }
 
 /// A single approach from a lead: one submission of the pre-chat form.
@@ -165,18 +186,20 @@ model Enquiry {
 }
 
 model Visitor {
-  id        String   @id
-  name      String
-  email     String
-  phone     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id
+  name          String
+  phone         String
+  /// Null on visitors recorded before the pre-chat form asked for these.
+  maritalStatus MaritalStatus?
+  city          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   conversations Conversation[]
 
   pushSubscriptions PushSubscription[]
 
-  @@index([email])
+  @@index([phone])
 }
 
 model Conversation {

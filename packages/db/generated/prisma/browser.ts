@@ -45,7 +45,7 @@ export type Agent = Prisma.AgentModel
  * keeps in localStorage, with the contact details they give in the pre-chat
  * form. Kept separate from Conversation so a returning visitor has one set of
  * details rather than a copy per chat.
- * Everyone who has ever submitted the pre-chat form, deduplicated by email.
+ * Everyone who has ever submitted the pre-chat form, deduplicated by phone.
  * 
  * Deliberately separate from Visitor: a Visitor is one browser (its id is the
  * value in localStorage, and conversations are owned by it), whereas a Lead is
