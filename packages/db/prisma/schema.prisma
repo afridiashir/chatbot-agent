@@ -64,10 +64,12 @@ model Admin {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   /// Cascade, not SetNull: nulling the branch would silently promote a branch
   /// admin to company admin. Branches are only ever soft-deleted anyway.
-  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  /// Messages this admin sent in an agent's place.
+  sentMessages Message[]
 
   @@index([companyId])
   @@index([branchId])
@@ -315,11 +317,19 @@ model Message {
   /// The message this one replies to, quoted above it. Always in the same
   /// conversation; null for an ordinary message.
   replyToId      String?
+  /// Set when an admin stepped in and sent this in the agent's place. The
+  /// message still goes out as `AGENT` — the visitor sees the agent they have
+  /// been talking to — and this is the record of who actually typed it.
+  /// Never serialised to a visitor.
+  sentByAdminId  String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   /// Media sent with the message. `content` is then an optional caption.
   attachment   Attachment?
   replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  /// SetNull, not Cascade: removing an admin must not delete the messages they
+  /// sent in an agent's place, only the record of who typed them.
+  sentByAdmin  Admin?       @relation(fields: [sentByAdminId], references: [id], onDelete: SetNull)
   /// Replies quoting this message. Kept so deleting it clears their quote.
   replies      Message[]    @relation("MessageReplies")
   /// Emoji reactions, at most one per side.
@@ -327,6 +337,7 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@index([replyToId])
+  @@index([sentByAdminId])
 }
 
 enum AttachmentKind {

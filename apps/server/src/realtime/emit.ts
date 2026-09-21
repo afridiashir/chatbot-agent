@@ -10,6 +10,7 @@ import type {
   ConversationWithAgent,
   LabelRef,
   Message,
+  MessageAuthor,
   Reaction,
 } from "@repo/types";
 import type { AppServer } from "./types.js";
@@ -171,13 +172,31 @@ export function emitConversationDeleted(conversation: { id: string; agentId: str
  * them is none of their business.
  */
 export function emitConversationLabels(
-  conversation: { id: string; agentId: string; branchId: string; companyId: string },
+  target: { conversationId: string; agentId: string; branchId: string; companyId: string },
   labels: LabelRef[],
 ): void {
-  io?.to(rooms.agent(conversation.agentId))
-    .to(rooms.adminCompany(conversation.companyId))
-    .to(rooms.adminBranch(conversation.branchId))
-    .emit("conversation:labels", { conversationId: conversation.id, labels });
+  io?.to(rooms.agent(target.agentId))
+    .to(rooms.adminCompany(target.companyId))
+    .to(rooms.adminBranch(target.branchId))
+    .emit("conversation:labels", { conversationId: target.conversationId, labels });
+}
+
+/**
+ * Tells the staff side that an admin, not the agent, typed a message.
+ *
+ * Sent after the message itself, and deliberately not to the conversation room:
+ * the visitor is in there, and the whole point of replying on the agent's
+ * behalf is that the visitor keeps seeing one person.
+ */
+export function emitMessageAuthor(
+  target: { conversationId: string; agentId: string; branchId: string; companyId: string },
+  messageId: string,
+  author: MessageAuthor,
+): void {
+  io?.to(rooms.agent(target.agentId))
+    .to(rooms.adminCompany(target.companyId))
+    .to(rooms.adminBranch(target.branchId))
+    .emit("message:authored", { conversationId: target.conversationId, messageId, author });
 }
 
 /**

@@ -20,6 +20,7 @@ import type {
   DeleteConversationResult,
   LabelWithUsage,
   Lead,
+  Message,
   LeadDetail,
 } from "@repo/types";
 
@@ -320,13 +321,51 @@ async function main(): Promise<void> {
   check("full transcript is readable", transcript.data?.messages.length, 1);
   check("transcript names the branch", transcript.data?.branch.name, branchName);
 
-  console.log("\n7. Admin visibility is read-only");
-  const tryToSend = await request(`/api/conversations/${conversationId}/messages`, {
+  console.log("\n7. An admin can step in and reply for the agent");
+  const intervened = await request<Message>(`/api/conversations/${conversationId}/messages`, {
     method: "POST",
     token,
-    body: JSON.stringify({ senderType: "AGENT", content: "admin butting in" }),
+    body: JSON.stringify({ senderType: "AGENT", content: "Admin stepping in." }),
   });
-  check("admins cannot post into a conversation", tryToSend.status, 403);
+  check("an admin can post into a conversation", intervened.status, 201);
+  check("and it is stored as the agent, not as an admin", intervened.data?.senderType, "AGENT");
+
+  check(
+    "an admin still cannot speak as the visitor",
+    (
+      await request(`/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ senderType: "VISITOR", content: "pretending to be them" }),
+      })
+    ).status,
+    403,
+  );
+
+  const withAuthor = await request<AdminConversationDetail>(
+    `/api/admin/conversations/${conversationId}`,
+    { token },
+  );
+  check(
+    "the admin transcript names who really typed it",
+    withAuthor.data?.adminAuthored?.[intervened.data!.id]?.adminName !== undefined,
+    true,
+  );
+
+  // The whole point of "on behalf of": the visitor sees their agent throughout.
+  const asVisitor = await request<Record<string, unknown>>(
+    `/api/conversations/${conversationId}?visitorId=${visitorId}`,
+  );
+  check(
+    "the visitor's copy carries no attribution at all",
+    "adminAuthored" in (asVisitor.data ?? {}),
+    false,
+  );
+  check(
+    "and no admin name appears anywhere in it",
+    JSON.stringify(asVisitor.data ?? {}).includes("Administrator"),
+    false,
+  );
 
   console.log("\n8. Deactivating an agent (soft delete)");
   const deactivated = await request<DeactivateAgentResult>(`/api/admin/agents/${agent.id}`, {
@@ -364,7 +403,8 @@ async function main(): Promise<void> {
     `/api/admin/conversations/${conversationId}`,
     { token },
   );
-  check("the transcript is still readable", stillThere.data?.messages.length, 1);
+  // Two: the visitor's opening message, and the admin's intervention in step 7.
+  check("the transcript is still readable", stillThere.data?.messages.length, 2);
   check("and is now closed", stillThere.data?.status, "CLOSED");
 
   console.log("\n10. Deactivating a branch");
@@ -572,7 +612,8 @@ async function main(): Promise<void> {
     { method: "DELETE", token },
   );
   check("the admin can delete it", deleted.status, 200);
-  check("and is told what went with it", deleted.data?.deletedMessages, 1);
+  // Same two messages this conversation accumulated above.
+  check("and is told what went with it", deleted.data?.deletedMessages, 2);
 
   check(
     "the transcript is gone",

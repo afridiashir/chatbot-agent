@@ -218,6 +218,7 @@ export type AdminWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
+  sentMessages?: Prisma.MessageListRelationFilter
 }
 
 export type AdminOrderByWithRelationInput = {
@@ -232,6 +233,7 @@ export type AdminOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
   branch?: Prisma.BranchOrderByWithRelationInput
+  sentMessages?: Prisma.MessageOrderByRelationAggregateInput
 }
 
 export type AdminWhereUniqueInput = Prisma.AtLeast<{
@@ -249,6 +251,7 @@ export type AdminWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Admin"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   branch?: Prisma.XOR<Prisma.BranchNullableScalarRelationFilter, Prisma.BranchWhereInput> | null
+  sentMessages?: Prisma.MessageListRelationFilter
 }, "id" | "email">
 
 export type AdminOrderByWithAggregationInput = {
@@ -291,6 +294,7 @@ export type AdminCreateInput = {
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAdminsInput
   branch?: Prisma.BranchCreateNestedOneWithoutAdminsInput
+  sentMessages?: Prisma.MessageCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminUncheckedCreateInput = {
@@ -303,6 +307,7 @@ export type AdminUncheckedCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  sentMessages?: Prisma.MessageUncheckedCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminUpdateInput = {
@@ -315,6 +320,7 @@ export type AdminUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAdminsNestedInput
   branch?: Prisma.BranchUpdateOneWithoutAdminsNestedInput
+  sentMessages?: Prisma.MessageUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminUncheckedUpdateInput = {
@@ -327,6 +333,7 @@ export type AdminUncheckedUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sentMessages?: Prisma.MessageUncheckedUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminCreateManyInput = {
@@ -407,6 +414,11 @@ export type AdminMinOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type AdminNullableScalarRelationFilter = {
+  is?: Prisma.AdminWhereInput | null
+  isNot?: Prisma.AdminWhereInput | null
 }
 
 export type AdminCreateNestedManyWithoutCompanyInput = {
@@ -501,6 +513,22 @@ export type AdminUncheckedUpdateManyWithoutBranchNestedInput = {
   deleteMany?: Prisma.AdminScalarWhereInput | Prisma.AdminScalarWhereInput[]
 }
 
+export type AdminCreateNestedOneWithoutSentMessagesInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutSentMessagesInput, Prisma.AdminUncheckedCreateWithoutSentMessagesInput>
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutSentMessagesInput
+  connect?: Prisma.AdminWhereUniqueInput
+}
+
+export type AdminUpdateOneWithoutSentMessagesNestedInput = {
+  create?: Prisma.XOR<Prisma.AdminCreateWithoutSentMessagesInput, Prisma.AdminUncheckedCreateWithoutSentMessagesInput>
+  connectOrCreate?: Prisma.AdminCreateOrConnectWithoutSentMessagesInput
+  upsert?: Prisma.AdminUpsertWithoutSentMessagesInput
+  disconnect?: Prisma.AdminWhereInput | boolean
+  delete?: Prisma.AdminWhereInput | boolean
+  connect?: Prisma.AdminWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AdminUpdateToOneWithWhereWithoutSentMessagesInput, Prisma.AdminUpdateWithoutSentMessagesInput>, Prisma.AdminUncheckedUpdateWithoutSentMessagesInput>
+}
+
 export type AdminCreateWithoutCompanyInput = {
   id?: string
   name: string
@@ -510,6 +538,7 @@ export type AdminCreateWithoutCompanyInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   branch?: Prisma.BranchCreateNestedOneWithoutAdminsInput
+  sentMessages?: Prisma.MessageCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminUncheckedCreateWithoutCompanyInput = {
@@ -521,6 +550,7 @@ export type AdminUncheckedCreateWithoutCompanyInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  sentMessages?: Prisma.MessageUncheckedCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminCreateOrConnectWithoutCompanyInput = {
@@ -573,6 +603,7 @@ export type AdminCreateWithoutBranchInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAdminsInput
+  sentMessages?: Prisma.MessageCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminUncheckedCreateWithoutBranchInput = {
@@ -584,6 +615,7 @@ export type AdminUncheckedCreateWithoutBranchInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  sentMessages?: Prisma.MessageUncheckedCreateNestedManyWithoutSentByAdminInput
 }
 
 export type AdminCreateOrConnectWithoutBranchInput = {
@@ -612,6 +644,70 @@ export type AdminUpdateManyWithWhereWithoutBranchInput = {
   data: Prisma.XOR<Prisma.AdminUpdateManyMutationInput, Prisma.AdminUncheckedUpdateManyWithoutBranchInput>
 }
 
+export type AdminCreateWithoutSentMessagesInput = {
+  id?: string
+  name: string
+  email: string
+  passwordHash: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAdminsInput
+  branch?: Prisma.BranchCreateNestedOneWithoutAdminsInput
+}
+
+export type AdminUncheckedCreateWithoutSentMessagesInput = {
+  id?: string
+  companyId: string
+  branchId?: string | null
+  name: string
+  email: string
+  passwordHash: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type AdminCreateOrConnectWithoutSentMessagesInput = {
+  where: Prisma.AdminWhereUniqueInput
+  create: Prisma.XOR<Prisma.AdminCreateWithoutSentMessagesInput, Prisma.AdminUncheckedCreateWithoutSentMessagesInput>
+}
+
+export type AdminUpsertWithoutSentMessagesInput = {
+  update: Prisma.XOR<Prisma.AdminUpdateWithoutSentMessagesInput, Prisma.AdminUncheckedUpdateWithoutSentMessagesInput>
+  create: Prisma.XOR<Prisma.AdminCreateWithoutSentMessagesInput, Prisma.AdminUncheckedCreateWithoutSentMessagesInput>
+  where?: Prisma.AdminWhereInput
+}
+
+export type AdminUpdateToOneWithWhereWithoutSentMessagesInput = {
+  where?: Prisma.AdminWhereInput
+  data: Prisma.XOR<Prisma.AdminUpdateWithoutSentMessagesInput, Prisma.AdminUncheckedUpdateWithoutSentMessagesInput>
+}
+
+export type AdminUpdateWithoutSentMessagesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAdminsNestedInput
+  branch?: Prisma.BranchUpdateOneWithoutAdminsNestedInput
+}
+
+export type AdminUncheckedUpdateWithoutSentMessagesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.StringFieldUpdateOperationsInput | string
+  branchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type AdminCreateManyCompanyInput = {
   id?: string
   branchId?: string | null
@@ -632,6 +728,7 @@ export type AdminUpdateWithoutCompanyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branch?: Prisma.BranchUpdateOneWithoutAdminsNestedInput
+  sentMessages?: Prisma.MessageUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminUncheckedUpdateWithoutCompanyInput = {
@@ -643,6 +740,7 @@ export type AdminUncheckedUpdateWithoutCompanyInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sentMessages?: Prisma.MessageUncheckedUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminUncheckedUpdateManyWithoutCompanyInput = {
@@ -676,6 +774,7 @@ export type AdminUpdateWithoutBranchInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAdminsNestedInput
+  sentMessages?: Prisma.MessageUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminUncheckedUpdateWithoutBranchInput = {
@@ -687,6 +786,7 @@ export type AdminUncheckedUpdateWithoutBranchInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sentMessages?: Prisma.MessageUncheckedUpdateManyWithoutSentByAdminNestedInput
 }
 
 export type AdminUncheckedUpdateManyWithoutBranchInput = {
@@ -701,6 +801,35 @@ export type AdminUncheckedUpdateManyWithoutBranchInput = {
 }
 
 
+/**
+ * Count Type AdminCountOutputType
+ */
+
+export type AdminCountOutputType = {
+  sentMessages: number
+}
+
+export type AdminCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  sentMessages?: boolean | AdminCountOutputTypeCountSentMessagesArgs
+}
+
+/**
+ * AdminCountOutputType without action
+ */
+export type AdminCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AdminCountOutputType
+   */
+  select?: Prisma.AdminCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * AdminCountOutputType without action
+ */
+export type AdminCountOutputTypeCountSentMessagesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.MessageWhereInput
+}
+
 
 export type AdminSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -714,6 +843,8 @@ export type AdminSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
+  sentMessages?: boolean | Prisma.Admin$sentMessagesArgs<ExtArgs>
+  _count?: boolean | Prisma.AdminCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["admin"]>
 
 export type AdminSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -760,6 +891,8 @@ export type AdminOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
 export type AdminInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   branch?: boolean | Prisma.Admin$branchArgs<ExtArgs>
+  sentMessages?: boolean | Prisma.Admin$sentMessagesArgs<ExtArgs>
+  _count?: boolean | Prisma.AdminCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AdminIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -779,6 +912,10 @@ export type $AdminPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
      * admin to company admin. Branches are only ever soft-deleted anyway.
      */
     branch: Prisma.$BranchPayload<ExtArgs> | null
+    /**
+     * Messages this admin sent in an agent's place.
+     */
+    sentMessages: Prisma.$MessagePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1194,6 +1331,7 @@ export interface Prisma__AdminClient<T, Null = never, ExtArgs extends runtime.Ty
   readonly [Symbol.toStringTag]: "PrismaPromise"
   company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   branch<T extends Prisma.Admin$branchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Admin$branchArgs<ExtArgs>>): Prisma.Prisma__BranchClient<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  sentMessages<T extends Prisma.Admin$sentMessagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Admin$sentMessagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1649,6 +1787,30 @@ export type Admin$branchArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    */
   include?: Prisma.BranchInclude<ExtArgs> | null
   where?: Prisma.BranchWhereInput
+}
+
+/**
+ * Admin.sentMessages
+ */
+export type Admin$sentMessagesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Message
+   */
+  select?: Prisma.MessageSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Message
+   */
+  omit?: Prisma.MessageOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MessageInclude<ExtArgs> | null
+  where?: Prisma.MessageWhereInput
+  orderBy?: Prisma.MessageOrderByWithRelationInput | Prisma.MessageOrderByWithRelationInput[]
+  cursor?: Prisma.MessageWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.MessageScalarFieldEnum | Prisma.MessageScalarFieldEnum[]
 }
 
 /**

@@ -16,10 +16,18 @@ import { env } from "../env.js";
 import {
   addMessage,
   assertConversationAccess,
+  currentAdminAuthor,
   reactToMessage,
+  staffBroadcastTarget,
 } from "../services/conversations.js";
 import { markReceipt } from "../services/receipts.js";
-import { announceMessage, emitReaction, emitReceipt, setRealtimeServer } from "./emit.js";
+import {
+  announceMessage,
+  emitMessageAuthor,
+  emitReaction,
+  emitReceipt,
+  setRealtimeServer,
+} from "./emit.js";
 import type { AppServer, AppSocket } from "./types.js";
 
 /**
@@ -151,13 +159,9 @@ function registerHandlers(socket: AppSocket): void {
       try {
         const { conversationId, content, clientId, attachment, replyToId } =
           socketMessagePayloadSchema.parse(payload);
-        if (actor.type === "ADMIN") {
-          // Admin access to conversations is observation only.
-          ack?.({ ok: false, message: "Admins cannot send messages" });
-          return;
-        }
-
-        const senderType = actor.type === "AGENT" ? "AGENT" : "VISITOR";
+        // An admin stepping in sends as the agent, exactly as over REST; only a
+        // visitor speaks as the visitor. `addMessage` re-checks scope.
+        const senderType = actor.type === "VISITOR" ? "VISITOR" : "AGENT";
 
         // Persisted first: PostgreSQL is the record of what was said, and the
         // broadcast only reports what was already durably stored.
@@ -166,8 +170,17 @@ function registerHandlers(socket: AppSocket): void {
           { content, senderType, clientId, attachment, replyToId },
           actor,
         );
-        if (created)
+        if (created) {
           void announceMessage(message).catch((e: unknown) => console.error("[socket]", e));
+          if (actor.type === "ADMIN") {
+            void (async () => {
+              const author = await currentAdminAuthor(actor.adminId);
+              if (author) {
+                emitMessageAuthor(await staffBroadcastTarget(conversationId), message.id, author);
+              }
+            })().catch((e: unknown) => console.error("[socket] author", e));
+          }
+        }
 
         ack?.({ ok: true, data: message });
       } catch (error) {

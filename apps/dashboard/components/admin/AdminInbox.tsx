@@ -16,6 +16,8 @@ import {
   MessagesSquare,
   Phone,
   Search,
+  Send,
+  ShieldAlert,
   Trash2,
   X,
 } from "lucide-react";
@@ -95,6 +97,8 @@ export function AdminInbox({
 
   const [labels, setLabels] = useState<LabelType[]>([]);
   const [labelId, setLabelId] = useState("");
+
+  const [sending, setSending] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -281,6 +285,15 @@ export function AdminInbox({
       );
     });
 
+    // Who really typed a message, for this admin and any other one watching.
+    socket.on("message:authored", ({ conversationId, messageId, author }) => {
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, adminAuthored: { ...current.adminAuthored, [messageId]: author } }
+          : current,
+      );
+    });
+
     socket.on("conversation:labels", ({ conversationId, labels: next }) => {
       setRows(
         (current) =>
@@ -368,6 +381,27 @@ export function AdminInbox({
       setDeleteError("Could not delete that conversation. Try again.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  /**
+   * Stepping into the chat. The message is stored and broadcast as the agent,
+   * so the visitor keeps seeing one person; the room broadcast is what puts it
+   * on screen here, so nothing is appended locally.
+   */
+  async function send(conversationId: string, content: string) {
+    setSending(true);
+    try {
+      await api(`/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ senderType: "AGENT", content }),
+      });
+      setListError(null);
+    } catch {
+      setListError("Could not send that message");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -619,8 +653,9 @@ export function AdminInbox({
                       <div className="my-2 flex justify-center">
                         <span className="flex max-w-md items-center gap-1.5 rounded-lg bg-warning-soft px-3 py-1.5 text-center text-[11px] text-warning shadow-sm">
                           <Lock className="size-3 shrink-0" aria-hidden />
-                          You are viewing this chat as an administrator. Messages are between the
-                          visitor and {detail.agent.name}.
+                          You are viewing this chat as an administrator. It is between the visitor
+                          and {detail.agent.name} — anything you send goes out as{" "}
+                          {detail.agent.name}.
                         </span>
                       </div>
                       {detail.messages.length === 0 && (
@@ -636,6 +671,7 @@ export function AdminInbox({
                           <Bubble
                             message={message}
                             names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+                            author={detail.adminAuthored?.[message.id]}
                             sender={
                               message.senderType === "AGENT"
                                 ? {
@@ -682,15 +718,18 @@ export function AdminInbox({
                   <div ref={endRef} />
                 </div>
 
-                {/* Where the composer would be: WhatsApp's "only admins can send" bar. */}
-                <div className="flex items-center justify-center gap-2 border-t bg-chat-header px-4 py-3 text-center text-sm text-chat-meta">
-                  <Lock className="size-4 shrink-0" aria-hidden />
-                  {detail
-                    ? detail.status === "ACTIVE"
-                      ? `Only ${detail.agent.name} can reply to this conversation.`
-                      : "This conversation is closed."
-                    : "Read-only"}
-                </div>
+                {detail && detail.status === "ACTIVE" ? (
+                  <InterveneComposer
+                    agentName={detail.agent.name}
+                    sending={sending}
+                    onSend={(text) => send(detail.id, text)}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center gap-2 border-t bg-chat-header px-4 py-3 text-center text-sm text-chat-meta">
+                    <Lock className="size-4 shrink-0" aria-hidden />
+                    {detail ? "This conversation is closed." : "Read-only"}
+                  </div>
+                )}
               </div>
 
               {showInfo && detail && (
@@ -947,14 +986,72 @@ function EmptyPane() {
       <div className="max-w-sm">
         <h2 className="text-2xl font-light">Conversation monitor</h2>
         <p className="mt-2 text-sm text-chat-meta">
-          Select a chat to follow it live. You can read every conversation in your company, while
-          replying stays with the assigned agent.
+          Select a chat to follow it live. You can read every conversation in your company, and step
+          in to reply when an agent needs a hand.
         </p>
       </div>
       <p className="flex items-center gap-1.5 text-xs text-chat-meta">
-        <Lock className="size-3" aria-hidden />
-        Read-only for administrators
+        <ShieldAlert className="size-3" aria-hidden />
+        Anything you send goes out under the agent&rsquo;s name
       </p>
     </div>
+  );
+}
+
+/**
+ * The admin's way into a chat they are otherwise only watching.
+ *
+ * The banner is not decoration: whatever is typed here goes out under the
+ * agent's name, and the person typing should know that before they send, not
+ * after. The visitor is never told an admin was involved.
+ */
+function InterveneComposer({
+  agentName,
+  sending,
+  onSend,
+}: {
+  agentName: string;
+  sending: boolean;
+  onSend: (content: string) => void | Promise<void>;
+}) {
+  const [draft, setDraft] = useState("");
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!content || sending) return;
+    setDraft("");
+    await onSend(content);
+  }
+
+  return (
+    <form onSubmit={submit} className="border-t bg-chat-header">
+      <p className="flex items-center justify-center gap-1.5 px-4 pt-2 text-center text-[11px] text-warning">
+        <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
+        Replying as {agentName}. The visitor sees their name, not yours.
+      </p>
+      <div className="flex items-end gap-2 px-3 py-2 md:px-4">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter sends, Shift+Enter breaks the line — as in the agent's own
+            // composer, so muscle memory carries over.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void submit(e);
+            }
+          }}
+          rows={1}
+          placeholder={`Reply as ${agentName}…`}
+          aria-label={`Reply as ${agentName}`}
+          className="max-h-32 min-h-9 flex-1 resize-none rounded-2xl bg-chat-panel px-4 py-2 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+        />
+        <Button type="submit" size="icon" disabled={sending || draft.trim().length === 0}>
+          <Send className="size-4" aria-hidden />
+          <span className="sr-only">Send</span>
+        </Button>
+      </div>
+    </form>
   );
 }

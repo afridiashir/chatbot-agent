@@ -103,9 +103,13 @@ export function looksLike(mimeType: string, bytes: Uint8Array): boolean {
 
 /* --------------------------------- uploads --------------------------------- */
 
+/**
+ * An admin stepping into a chat uploads as the agent, for the same reason their
+ * messages are stored as the agent: the visitor sees one person throughout.
+ * A visitor's upload is always the visitor's.
+ */
 function senderOf(actor: Actor): "AGENT" | "VISITOR" {
-  if (actor.type === "ADMIN") throw forbidden("Admins cannot send messages");
-  return actor.type;
+  return actor.type === "VISITOR" ? "VISITOR" : "AGENT";
 }
 
 /**

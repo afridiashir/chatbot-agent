@@ -2,6 +2,7 @@ import type {
   Conversation,
   ConversationWithAgent,
   Message,
+  MessageAuthor,
   Reaction,
   SenderType,
 } from "./domain";
@@ -106,6 +107,16 @@ export interface ServerToClientEvents {
    * holds the visitor too, and labels are the team's notes, not theirs.
    */
   "conversation:labels": (payload: { conversationId: string; labels: LabelRef[] }) => void;
+  /**
+   * An admin sent the message with this id in the agent's place. Staff rooms
+   * only — the message itself already reached the conversation room looking
+   * like the agent, which is what the visitor should keep seeing.
+   */
+  "message:authored": (payload: {
+    conversationId: string;
+    messageId: string;
+    author: MessageAuthor;
+  }) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "agent:profile": (payload: AgentProfilePayload) => void;
   "message:receipt": (payload: ReceiptPayload) => void;

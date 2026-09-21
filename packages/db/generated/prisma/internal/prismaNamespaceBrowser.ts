@@ -247,7 +247,8 @@ export const MessageScalarFieldEnum = {
   createdAt: 'createdAt',
   deliveredAt: 'deliveredAt',
   readAt: 'readAt',
-  replyToId: 'replyToId'
+  replyToId: 'replyToId',
+  sentByAdminId: 'sentByAdminId'
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]

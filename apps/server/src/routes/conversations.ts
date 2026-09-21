@@ -14,13 +14,16 @@ import {
   announceMessage,
   emitConversationAssigned,
   emitConversationClosed,
+  emitMessageAuthor,
 } from "../realtime/emit.js";
 import { requireAgent } from "../middleware/require-agent.js";
 import {
   addMessage,
   closeConversation,
   createConversation,
+  currentAdminAuthor,
   getConversation,
+  staffBroadcastTarget,
 } from "../services/conversations.js";
 import { createUpload } from "../services/media.js";
 
@@ -75,13 +78,23 @@ conversationsRouter.post(
     );
     const body = parseOrThrow(createMessageBodySchema, req.body, "message");
 
-    const { message, created } = await addMessage(
-      conversationId,
-      body,
-      resolveActor(req, body.visitorId),
-    );
+    const actor = resolveActor(req, body.visitorId);
+    const { message, created } = await addMessage(conversationId, body, actor);
+
     // A retry of an already-stored message must not reach the room twice.
-    if (created) void announceMessage(message).catch((e: unknown) => console.error("[receipts]", e));
+    if (created) {
+      void announceMessage(message).catch((e: unknown) => console.error("[receipts]", e));
+
+      // An admin answering in the agent's place: the message above went to the
+      // room looking like the agent, and this tells the staff side who really
+      // typed it. Never sent to the conversation room.
+      if (actor.type === "ADMIN") {
+        const author = await currentAdminAuthor(actor.adminId);
+        if (author) {
+          emitMessageAuthor(await staffBroadcastTarget(conversationId), message.id, author);
+        }
+      }
+    }
     sendOk(res, message, created ? 201 : 200);
   }),
 );

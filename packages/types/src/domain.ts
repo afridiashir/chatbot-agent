@@ -151,8 +151,26 @@ export interface ConversationWithAgent extends Conversation {
   visitor: VisitorSummary;
 }
 
+/**
+ * An admin who sent a message in an agent's place. Staff-facing only: the
+ * visitor is shown the agent throughout, which is the point of replying on
+ * their behalf.
+ */
+export interface MessageAuthor {
+  adminId: string;
+  adminName: string;
+}
+
 export interface ConversationDetail extends ConversationWithAgent {
   messages: Message[];
+  /**
+   * Which of those messages an admin actually typed, keyed by message id.
+   *
+   * Present only when the reader is staff — the same endpoint serves the
+   * widget, and a visitor must never learn that someone other than their agent
+   * answered. Absent, not empty, for a visitor.
+   */
+  adminAuthored?: Record<string, MessageAuthor>;
 }
 
 /** A conversation row in the agent's inbox list. */

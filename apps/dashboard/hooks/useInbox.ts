@@ -33,6 +33,8 @@ export interface Inbox {
   connected: boolean;
   error: string | null;
   select: (conversationId: string) => void;
+  /** Back to the list. On a phone that is a navigation step, not just a state change. */
+  deselect: () => void;
   send: (content: string, replyTo?: MessageQuote | null) => Promise<void>;
   /** Adds, replaces or removes this agent's reaction; null takes it back. */
   react: (messageId: string, emoji: string | null) => void;
@@ -383,6 +385,17 @@ export function useInbox(
       );
     });
 
+    // An admin answered in this agent's place. The message itself arrived
+    // through `message:new` looking like the agent; this says who typed it.
+    socket.on("message:authored", ({ conversationId, messageId, author }) => {
+      if (conversationId !== selectedIdRef.current) return;
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, adminAuthored: { ...current.adminAuthored, [messageId]: author } }
+          : current,
+      );
+    });
+
     socket.on("conversation:labels", ({ conversationId, labels: next }) => {
       setConversations((current) =>
         current.map((row) => (row.id === conversationId ? { ...row, labels: next } : row)),
@@ -451,6 +464,11 @@ export function useInbox(
     },
     [token],
   );
+
+  const deselect = useCallback(() => {
+    setSelectedId(null);
+    setDetail(null);
+  }, []);
 
   /**
    * Queue first, then attempt. The message is durable from the moment the agent
@@ -600,6 +618,7 @@ export function useInbox(
     connected: connected && networkUp,
     error,
     select,
+    deselect,
     send,
     sendMedia,
     react,

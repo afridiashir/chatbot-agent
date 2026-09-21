@@ -295,9 +295,9 @@ written once.
 | Room | Members | Carries |
 | --- | --- | --- |
 | `conversation:{id}` | the visitor + assigned agent, after an access check | `message:new`, `conversation:closed`, `conversation:deleted` |
-| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed`, `conversation:deleted`, `conversation:labels` |
+| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed`, `conversation:deleted`, `conversation:labels`, `message:authored` |
 | `branch:{branchId}` | agents of the branch | reserved for branch-wide notices |
-| `admin` | any authenticated agent | `agent:status`, `conversation:labels` |
+| `admin` | any authenticated agent | `agent:status`, `conversation:labels`, `message:authored` |
 
 Visitors join **no** room automatically — only conversation rooms they own, and
 `conversation:join` runs the same ownership check as `GET /api/conversations/:id`.
@@ -467,6 +467,27 @@ closure is broadcast, so visitors are told in real time rather than discovering
 it later. The response reports how many were closed.
 
 ## The widget
+
+### Admin intervention
+
+An admin can step into any chat in their scope and reply. The message is stored
+and broadcast as **`AGENT`**, so the visitor goes on seeing the one person they
+have been talking to — that is what "on behalf of" means here, and it is the
+reason the admin's identity is kept off the visitor's payload entirely.
+
+`Message.sentByAdminId` records who actually typed it. Staff see it: the agent's
+own transcript and the admin's both mark the bubble "Sent by <admin>", live via
+the `message:authored` event and on reload via `adminAuthored` on the
+conversation detail. That field is **absent, not empty**, when the reader is a
+visitor.
+
+What an admin still cannot do is speak *as the visitor* — the sender is pinned
+from the caller rather than taken from the request, so a `senderType: "VISITOR"`
+body is refused with 403.
+
+The composer says so plainly before anything is sent: *"Replying as Bilal Khan.
+The visitor sees their name, not yours."* Someone typing under another person's
+name should know it at the time, not discover it afterwards.
 
 ### Labels
 

@@ -188,32 +188,6 @@ export async function removeConversationLabel(
 }
 
 /**
- * Who should hear that a chat's labels changed: the assigned agent, and the
- * admins of that company and branch. Resolved separately from the mutation so
- * the broadcast cannot accidentally be aimed at the conversation room, which
- * contains the visitor.
- */
-export async function labelBroadcastTarget(
-  conversationId: string,
-): Promise<{ id: string; agentId: string; branchId: string; companyId: string }> {
-  const conversation = await prisma.conversation.findUnique({
-    where: { id: conversationId },
-    select: {
-      id: true,
-      agentId: true,
-      agent: { select: { branchId: true, branch: { select: { companyId: true } } } },
-    },
-  });
-  if (!conversation) throw notFound("Conversation not found");
-  return {
-    id: conversation.id,
-    agentId: conversation.agentId,
-    branchId: conversation.agent.branchId,
-    companyId: conversation.agent.branch.companyId,
-  };
-}
-
-/**
  * The label every conversation starts with, created on demand.
  *
  * Looked up by `isSystem` rather than by name, so a company that renamed it to

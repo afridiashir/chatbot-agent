@@ -6,9 +6,9 @@ import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAgent, requireAgent } from "../middleware/require-agent.js";
 import { emitConversationLabels } from "../realtime/emit.js";
+import { staffBroadcastTarget } from "../services/conversations.js";
 import {
   addConversationLabel,
-  labelBroadcastTarget,
   listLabelsForBranch,
   removeConversationLabel,
 } from "../services/labels.js";
@@ -53,7 +53,7 @@ conversationLabelsRouter.put(
       "label",
     );
     const labels = await addConversationLabel(conversationId, labelId, resolveActor(req));
-    emitConversationLabels(await labelBroadcastTarget(conversationId), labels);
+    emitConversationLabels(await staffBroadcastTarget(conversationId), labels);
     sendOk(res, labels);
   }),
 );
@@ -68,7 +68,7 @@ conversationLabelsRouter.delete(
       "label",
     );
     const labels = await removeConversationLabel(conversationId, labelId, resolveActor(req));
-    emitConversationLabels(await labelBroadcastTarget(conversationId), labels);
+    emitConversationLabels(await staffBroadcastTarget(conversationId), labels);
     sendOk(res, labels);
   }),
 );

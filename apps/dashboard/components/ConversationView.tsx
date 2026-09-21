@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   Clock,
   FileAudio,
   Film,
@@ -9,6 +10,7 @@ import {
   Paperclip,
   Reply,
   Send,
+  ShieldAlert,
   Smile,
   Trash2,
   X,
@@ -20,6 +22,7 @@ import {
   MARITAL_STATUS_LABELS,
   type Label as LabelType,
   type LabelRef,
+  type MessageAuthor,
   type AttachmentKind,
   type ConversationDetail,
   type Message,
@@ -76,6 +79,8 @@ interface ConversationViewProps {
   onReact?: (messageId: string, emoji: string | null) => void;
   onTyping: () => void;
   onClose: (conversationId: string) => Promise<void>;
+  /** Shown only below `md`, where the list and the chat are separate screens. */
+  onBack?: () => void;
 }
 
 /** A message the agent has sent that the server has not confirmed yet. */
@@ -147,6 +152,7 @@ export function Bubble({
   message,
   sender,
   names,
+  author,
   flash,
   reacting,
   onReply,
@@ -162,6 +168,11 @@ export function Bubble({
   sender?: { name: string; seed: string; photo?: string | null };
   /** Names for the quote header. Omitted in read-only views. */
   names?: { agent: string; visitor: string };
+  /**
+   * Set when an admin, not the agent, typed this. Staff-side only — the
+   * visitor's copy of the message carries no trace of it.
+   */
+  author?: MessageAuthor;
   /** Briefly highlighted because a reply's quote pointed here. */
   flash?: boolean;
   /** The reaction bar is open on this message. */
@@ -257,6 +268,14 @@ export function Bubble({
         )}
         style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
       >
+        {author && (
+          // Named rather than hinted at: an agent scrolling their own history
+          // should not have to wonder who wrote a message under their name.
+          <span className="mb-0.5 flex items-center gap-1 text-[10px] font-medium text-warning">
+            <ShieldAlert className="size-3 shrink-0" aria-hidden />
+            Sent by {author.adminName}
+          </span>
+        )}
         {message.replyTo && (
           <button
             type="button"
@@ -377,6 +396,7 @@ export function ConversationView({
   onReact,
   onTyping,
   onClose,
+  onBack,
 }: ConversationViewProps) {
   const [draft, setDraft] = useState("");
   const [closing, setClosing] = useState(false);
@@ -467,10 +487,28 @@ export function ConversationView({
 
   if (!detail) {
     return (
-      <div className="chat-canvas flex flex-1 items-center justify-center">
-        <p className="rounded-full bg-chat-panel px-4 py-2 text-sm text-chat-meta shadow-sm">
-          Select a conversation to open it
-        </p>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* On a phone this pane is only on screen because a chat was tapped, so
+            it needs its own way back while the transcript is still loading —
+            otherwise a slow connection strands the agent here. */}
+        {onBack && (
+          <header className="flex items-center gap-2 border-b bg-chat-header px-3 py-2.5 md:hidden">
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to conversations"
+              className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta hover:bg-accent"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+            <span className="text-sm text-chat-meta">Opening…</span>
+          </header>
+        )}
+        <div className="chat-canvas flex flex-1 items-center justify-center">
+          <p className="rounded-full bg-chat-panel px-4 py-2 text-sm text-chat-meta shadow-sm">
+            Select a conversation to open it
+          </p>
+        </div>
       </div>
     );
   }
@@ -489,7 +527,19 @@ export function ConversationView({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="flex items-center gap-3 border-b bg-chat-header px-4 py-2.5">
+      <header className="flex items-center gap-3 border-b bg-chat-header px-3 py-2.5 md:px-4">
+        {/* Phone only: the list is a separate screen there, so there has to be
+            a way back to it. From `md` up both panes are visible at once. */}
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to conversations"
+            className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta hover:bg-accent md:hidden"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+        )}
         <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
 
         <div className="min-w-0 flex-1">
@@ -533,6 +583,7 @@ export function ConversationView({
             <Bubble
               message={message}
               names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+              author={detail.adminAuthored?.[message.id]}
               flash={flashId === message.id}
               onReply={isClosed ? undefined : setReplyTo}
               reacting={reactingId === message.id}

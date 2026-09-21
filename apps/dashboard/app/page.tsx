@@ -138,8 +138,23 @@ function Dashboard({
   }, [inbox.conversations, query, tab]);
 
   return (
-    <div className="flex h-screen bg-chat-bg">
-      <aside className="flex w-80 shrink-0 flex-col border-r bg-chat-panel">
+    /*
+     * WhatsApp's two-pane layout. On a phone the panes are two screens rather
+     * than two columns: the list fills the width, tapping a chat replaces it,
+     * and the header's back arrow returns. From `md` up both are on screen at
+     * once and the back arrow disappears.
+     *
+     * `dvh`, not `vh`: on mobile Safari `100vh` is taller than the visible area
+     * while the address bar is showing, which would push the composer off the
+     * bottom of the screen.
+     */
+    <div className="flex h-dvh bg-chat-bg">
+      <aside
+        className={cn(
+          "flex w-full shrink-0 flex-col border-r bg-chat-panel md:w-80",
+          inbox.selectedId && "hidden md:flex",
+        )}
+      >
         {/* Own identity and availability, the way a chat client puts you at the top. */}
         <div className="flex items-center gap-3 border-b bg-chat-header px-3 py-2.5">
           <button
@@ -374,7 +389,7 @@ function Dashboard({
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className={cn("min-w-0 flex-1 flex-col", inbox.selectedId ? "flex" : "hidden md:flex")}>
         {!inbox.connected && (
           <p
             role="status"
@@ -410,6 +425,7 @@ function Dashboard({
           onReact={inbox.react}
           onTyping={inbox.notifyTyping}
           onClose={inbox.close}
+          onBack={inbox.deselect}
         />
       </main>
       <ChatLinkDialog

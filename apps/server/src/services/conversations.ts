@@ -6,6 +6,7 @@ import type {
   ConversationStatus,
   ConversationSummary,
   Message,
+  MessageAuthor,
   Reaction,
 } from "@repo/types";
 import type { CreateConversationBody, CreateMessageBody } from "@repo/validation";
@@ -114,7 +115,82 @@ export async function getConversation(
   if (!conversation) throw notFound("Conversation not found");
 
   assertAccess(conversation, actor);
-  return toConversationDetail(conversation);
+
+  // Staff see who really typed each message; a visitor is served the same
+  // endpoint and must not, so the key is absent rather than empty for them.
+  return {
+    ...toConversationDetail(conversation),
+    ...(actor.type === "VISITOR"
+      ? {}
+      : { adminAuthored: await adminAuthors(conversation.messages) }),
+  };
+}
+
+/**
+ * The staff rooms that care about a change to this conversation: the assigned
+ * agent, and the admins of its company and branch.
+ *
+ * Deliberately excludes the conversation room, which holds the visitor. Both
+ * things broadcast through it — label changes and admin authorship — are the
+ * team's business and not the visitor's.
+ */
+export async function staffBroadcastTarget(conversationId: string): Promise<{
+  conversationId: string;
+  agentId: string;
+  branchId: string;
+  companyId: string;
+}> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      id: true,
+      agentId: true,
+      agent: { select: { branchId: true, branch: { select: { companyId: true } } } },
+    },
+  });
+  if (!conversation) throw notFound("Conversation not found");
+  return {
+    conversationId: conversation.id,
+    agentId: conversation.agentId,
+    branchId: conversation.agent.branchId,
+    companyId: conversation.agent.branch.companyId,
+  };
+}
+
+/** The admin behind an intervention, for the staff-side marker. */
+export async function currentAdminAuthor(adminId: string): Promise<MessageAuthor | null> {
+  const admin = await prisma.admin.findUnique({
+    where: { id: adminId },
+    select: { id: true, name: true },
+  });
+  return admin ? { adminId: admin.id, adminName: admin.name } : null;
+}
+
+/**
+ * Which of these messages an admin sent in the agent's place, keyed by message
+ * id. One query for the whole transcript rather than a join on every message,
+ * since in practice almost none of them are admin-sent.
+ */
+export async function adminAuthors(
+  messages: Array<{ id: string; sentByAdminId: string | null }>,
+): Promise<Record<string, MessageAuthor>> {
+  const ids = [...new Set(messages.flatMap((m) => (m.sentByAdminId ? [m.sentByAdminId] : [])))];
+  if (ids.length === 0) return {};
+
+  const admins = await prisma.admin.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true },
+  });
+  const byId = new Map(admins.map((admin) => [admin.id, admin.name]));
+
+  const out: Record<string, MessageAuthor> = {};
+  for (const message of messages) {
+    const name = message.sentByAdminId ? byId.get(message.sentByAdminId) : undefined;
+    if (message.sentByAdminId && name) {
+      out[message.id] = { adminId: message.sentByAdminId, adminName: name };
+    }
+  }
+  return out;
 }
 
 /**
@@ -158,17 +234,22 @@ export async function addMessage(
   });
   if (!conversation) throw notFound("Conversation not found");
 
-  // Admins observe; they never speak. Without this an admin token would fall
-  // through to the VISITOR branch below and could post as the visitor.
-  if (actor.type === "ADMIN") throw forbidden("Admins cannot send messages");
-
+  // `assertAccess` already confines an admin to their company and branch.
   assertAccess(conversation, actor);
 
-  // Nobody may speak as the other party.
-  const expectedSender = actor.type === "AGENT" ? "AGENT" : "VISITOR";
+  /*
+   * An admin may step in and answer in the agent's place. The message is stored
+   * as AGENT, because the visitor has been talking to that agent and should go
+   * on seeing them — `sentByAdminId` is the record of who actually typed it.
+   *
+   * What an admin still may not do is speak as the visitor, which is why the
+   * expected sender is pinned rather than taken from the request.
+   */
+  const expectedSender = actor.type === "VISITOR" ? "VISITOR" : "AGENT";
   if (input.senderType !== expectedSender) {
     throw forbidden(`You can only send messages as ${expectedSender}`);
   }
+  const sentByAdminId = actor.type === "ADMIN" ? actor.adminId : null;
 
   // Checked before the CLOSED guard: a message that was accepted while the
   // conversation was open must still resolve after it closes, otherwise a
@@ -225,6 +306,7 @@ export async function addMessage(
           content: input.content,
           replyToId: input.replyToId ?? null,
           clientId: input.clientId ?? null,
+          sentByAdminId,
           ...(upload ? { attachment: { create: upload } } : {}),
         },
         include: MESSAGE_INCLUDE,

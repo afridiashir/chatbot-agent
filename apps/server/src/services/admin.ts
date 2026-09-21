@@ -41,7 +41,7 @@ import {
 import type { AdminTokenPayload } from "../lib/auth.js";
 import { signAdminToken } from "../lib/auth.js";
 import { deleteObject } from "../lib/storage.js";
-import { unreadCounts } from "./conversations.js";
+import { adminAuthors, unreadCounts } from "./conversations.js";
 import {
   toAdmin,
   toAgent,
@@ -573,6 +573,8 @@ export async function getAnyConversation(
     ...toConversationDetail(conversation),
     branch: { id: conversation.agent.branch.id, name: conversation.agent.branch.name },
     labels: toLabelRefs(conversation.labels),
+    // Always present here: this shape only ever reaches an admin.
+    adminAuthored: await adminAuthors(conversation.messages),
   };
 }
 
