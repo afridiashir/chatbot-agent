@@ -5,6 +5,7 @@ import type {
   Reaction,
   SenderType,
 } from "./domain";
+import type { LabelRef } from "./labels";
 
 /** Room helpers — the single source of truth for room naming. */
 export const rooms = {
@@ -100,6 +101,11 @@ export interface ServerToClientEvents {
    * screen still showing it has to let it go rather than refetch.
    */
   "conversation:deleted": (payload: { conversationId: string }) => void;
+  /**
+   * The labels on a chat changed. Staff rooms only — the conversation room
+   * holds the visitor too, and labels are the team's notes, not theirs.
+   */
+  "conversation:labels": (payload: { conversationId: string; labels: LabelRef[] }) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "agent:profile": (payload: AgentProfilePayload) => void;
   "message:receipt": (payload: ReceiptPayload) => void;

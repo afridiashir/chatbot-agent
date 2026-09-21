@@ -93,6 +93,18 @@ export type Enquiry = Prisma.EnquiryModel
  */
 export type Visitor = Prisma.VisitorModel
 /**
+ * Model Label
+ * A mark an agent or admin puts on a conversation: "Follow up", "Sold".
+ * Company-wide and admin-managed, so the same idea is spelled one way and can
+ * actually be filtered on.
+ */
+export type Label = Prisma.LabelModel
+/**
+ * Model ConversationLabel
+ * Which labels are on which conversation. A chat can carry several at once.
+ */
+export type ConversationLabel = Prisma.ConversationLabelModel
+/**
  * Model Conversation
  * 
  */

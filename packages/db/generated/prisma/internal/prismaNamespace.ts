@@ -404,6 +404,8 @@ export const ModelName = {
   Lead: 'Lead',
   Enquiry: 'Enquiry',
   Visitor: 'Visitor',
+  Label: 'Label',
+  ConversationLabel: 'ConversationLabel',
   Conversation: 'Conversation',
   Reaction: 'Reaction',
   PushSubscription: 'PushSubscription',
@@ -424,7 +426,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "company" | "admin" | "branch" | "agent" | "lead" | "enquiry" | "visitor" | "conversation" | "reaction" | "pushSubscription" | "message" | "attachment"
+    modelProps: "company" | "admin" | "branch" | "agent" | "lead" | "enquiry" | "visitor" | "label" | "conversationLabel" | "conversation" | "reaction" | "pushSubscription" | "message" | "attachment"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -946,6 +948,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Label: {
+      payload: Prisma.$LabelPayload<ExtArgs>
+      fields: Prisma.LabelFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LabelFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LabelFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        findFirst: {
+          args: Prisma.LabelFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LabelFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        findMany: {
+          args: Prisma.LabelFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>[]
+        }
+        create: {
+          args: Prisma.LabelCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        createMany: {
+          args: Prisma.LabelCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LabelCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>[]
+        }
+        delete: {
+          args: Prisma.LabelDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        update: {
+          args: Prisma.LabelUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        deleteMany: {
+          args: Prisma.LabelDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LabelUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LabelUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>[]
+        }
+        upsert: {
+          args: Prisma.LabelUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LabelPayload>
+        }
+        aggregate: {
+          args: Prisma.LabelAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLabel>
+        }
+        groupBy: {
+          args: Prisma.LabelGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LabelGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LabelCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LabelCountAggregateOutputType> | number
+        }
+      }
+    }
+    ConversationLabel: {
+      payload: Prisma.$ConversationLabelPayload<ExtArgs>
+      fields: Prisma.ConversationLabelFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ConversationLabelFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ConversationLabelFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        findFirst: {
+          args: Prisma.ConversationLabelFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ConversationLabelFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        findMany: {
+          args: Prisma.ConversationLabelFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>[]
+        }
+        create: {
+          args: Prisma.ConversationLabelCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        createMany: {
+          args: Prisma.ConversationLabelCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ConversationLabelCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>[]
+        }
+        delete: {
+          args: Prisma.ConversationLabelDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        update: {
+          args: Prisma.ConversationLabelUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        deleteMany: {
+          args: Prisma.ConversationLabelDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ConversationLabelUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ConversationLabelUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>[]
+        }
+        upsert: {
+          args: Prisma.ConversationLabelUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLabelPayload>
+        }
+        aggregate: {
+          args: Prisma.ConversationLabelAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateConversationLabel>
+        }
+        groupBy: {
+          args: Prisma.ConversationLabelGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ConversationLabelGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ConversationLabelCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ConversationLabelCountAggregateOutputType> | number
+        }
+      }
+    }
     Conversation: {
       payload: Prisma.$ConversationPayload<ExtArgs>
       fields: Prisma.ConversationFieldRefs
@@ -1450,6 +1600,28 @@ export const VisitorScalarFieldEnum = {
 export type VisitorScalarFieldEnum = (typeof VisitorScalarFieldEnum)[keyof typeof VisitorScalarFieldEnum]
 
 
+export const LabelScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  name: 'name',
+  color: 'color',
+  isSystem: 'isSystem',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LabelScalarFieldEnum = (typeof LabelScalarFieldEnum)[keyof typeof LabelScalarFieldEnum]
+
+
+export const ConversationLabelScalarFieldEnum = {
+  conversationId: 'conversationId',
+  labelId: 'labelId',
+  createdAt: 'createdAt'
+} as const
+
+export type ConversationLabelScalarFieldEnum = (typeof ConversationLabelScalarFieldEnum)[keyof typeof ConversationLabelScalarFieldEnum]
+
+
 export const ConversationScalarFieldEnum = {
   id: 'id',
   agentId: 'agentId',
@@ -1825,6 +1997,8 @@ export type GlobalOmitConfig = {
   lead?: Prisma.LeadOmit
   enquiry?: Prisma.EnquiryOmit
   visitor?: Prisma.VisitorOmit
+  label?: Prisma.LabelOmit
+  conversationLabel?: Prisma.ConversationLabelOmit
   conversation?: Prisma.ConversationOmit
   reaction?: Prisma.ReactionOmit
   pushSubscription?: Prisma.PushSubscriptionOmit

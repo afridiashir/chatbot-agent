@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MARITAL_STATUSES, PAKISTAN_CITIES } from "@repo/types";
+import { LABEL_COLORS, MARITAL_STATUSES, PAKISTAN_CITIES } from "@repo/types";
 import {
   clientIdSchema,
   conversationStatusSchema,
@@ -14,6 +14,11 @@ export const branchIdParamSchema = z.object({ branchId: idSchema });
 export const agentIdParamSchema = z.object({ agentId: idSchema });
 export const conversationIdParamSchema = z.object({ conversationId: idSchema });
 export const leadIdParamSchema = z.object({ leadId: idSchema });
+export const labelIdParamSchema = z.object({ labelId: idSchema });
+export const conversationLabelParamSchema = z.object({
+  conversationId: idSchema,
+  labelId: idSchema,
+});
 
 /* ----------------------------------- auth ---------------------------------- */
 
@@ -111,6 +116,8 @@ export const listAdminConversationsQuerySchema = z.object({
   branchId: idSchema.optional(),
   agentId: idSchema.optional(),
   status: conversationStatusSchema.optional(),
+  /** Only chats carrying this label. */
+  labelId: idSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
@@ -124,6 +131,25 @@ export const listLeadsQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
 });
+
+/* ---------------------------------- labels --------------------------------- */
+
+const labelNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Give the label a name")
+  .max(32, "Keep the label short");
+
+export const createLabelBodySchema = z.object({
+  name: labelNameSchema,
+  color: z.enum(LABEL_COLORS).default("grey"),
+});
+
+export const updateLabelBodySchema = z
+  .object({ name: labelNameSchema.optional(), color: z.enum(LABEL_COLORS).optional() })
+  .refine((body) => body.name !== undefined || body.color !== undefined, {
+    message: "Provide something to change",
+  });
 
 /** Columns the leads table can be ordered by. */
 export const LEAD_SORTS = [
@@ -389,6 +415,8 @@ export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
 export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
 export type PushSubscriptionBody = z.infer<typeof pushSubscriptionBodySchema>;
+export type CreateLabelBody = z.infer<typeof createLabelBodySchema>;
+export type UpdateLabelBody = z.infer<typeof updateLabelBodySchema>;
 export type CreateBranchBody = z.infer<typeof createBranchBodySchema>;
 export type UpdateBranchBody = z.infer<typeof updateBranchBodySchema>;
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;

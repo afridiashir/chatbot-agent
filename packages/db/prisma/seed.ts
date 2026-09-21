@@ -1,7 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
-import { normalizePhone } from "@repo/types";
+import { INITIAL_LABEL_NAME, normalizePhone } from "@repo/types";
 import { hashPassword } from "../src/password.js";
 import { BRANCHES, COMPANY, VISITORS, type SeedConversation } from "./seed-data.js";
 
@@ -39,6 +39,7 @@ async function seedConversation(
   agentId: string,
   branchId: string,
   conversation: SeedConversation,
+  initialLabelId: string,
 ): Promise<void> {
   const createdAt = nextTimestamp();
   const isClosed = conversation.status === "CLOSED";
@@ -62,6 +63,8 @@ async function seedConversation(
       updatedAt: lastActivity,
       closedAt: isClosed ? nextTimestamp() : null,
       messages: { create: messages },
+      // Seeded chats skip routing, which is what normally applies this.
+      labels: { create: [{ labelId: initialLabelId }] },
     },
   });
 
@@ -158,6 +161,16 @@ async function main(): Promise<void> {
     update: { companyId: COMPANY.id, passwordHash: adminPasswordHash },
   });
 
+  // The label every new chat is given. Upserted rather than created so a
+  // reseed does not fight the unique index, and so a company that renamed it
+  // keeps their own name for it.
+  const initiated = await prisma.label.upsert({
+    where: { companyId_name: { companyId: COMPANY.id, name: INITIAL_LABEL_NAME } },
+    create: { companyId: COMPANY.id, name: INITIAL_LABEL_NAME, color: "grey", isSystem: true },
+    update: { isSystem: true },
+    select: { id: true },
+  });
+
   let agentCount = 0;
   let conversationCount = 0;
 
@@ -200,7 +213,7 @@ async function main(): Promise<void> {
       agentCount += 1;
 
       for (const conversation of agent.conversations) {
-        await seedConversation(agent.id, branch.id, conversation);
+        await seedConversation(agent.id, branch.id, conversation, initiated.id);
         conversationCount += 1;
       }
     }

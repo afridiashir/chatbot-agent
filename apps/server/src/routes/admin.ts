@@ -21,6 +21,9 @@ import {
   setAvatarBodySchema,
   createAdminBodySchema,
   updateAdminBodySchema,
+  createLabelBodySchema,
+  updateLabelBodySchema,
+  labelIdParamSchema,
 } from "@repo/validation";
 import { branchScope } from "../lib/admin-scope.js";
 import { asyncHandler } from "../lib/async-handler.js";
@@ -60,6 +63,12 @@ import {
   updateAgent,
   updateBranch,
 } from "../services/admin.js";
+import {
+  createLabel,
+  deleteLabel,
+  listLabelsWithUsage,
+  updateLabel,
+} from "../services/labels.js";
 import { getAnalytics } from "../services/analytics.js";
 import { listBranchesWithAgents } from "../services/branches.js";
 
@@ -273,6 +282,47 @@ adminRouter.patch(
     const { adminId } = parseOrThrow(adminIdParamSchema, req.params, "admin id");
     const body = parseOrThrow(updateAdminBodySchema, req.body, "admin");
     sendOk(res, await updateAdmin(adminId, body, currentAdmin(req)));
+  }),
+);
+
+/* ----------------------------------- labels -------------------------------- */
+
+/** GET /api/admin/labels — the company's labels with how many chats use each. */
+adminRouter.get(
+  "/labels",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    sendOk(res, await listLabelsWithUsage(currentAdmin(req)));
+  }),
+);
+
+adminRouter.post(
+  "/labels",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseOrThrow(createLabelBodySchema, req.body, "label");
+    sendOk(res, await createLabel(body, currentAdmin(req)), 201);
+  }),
+);
+
+adminRouter.patch(
+  "/labels/:labelId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { labelId } = parseOrThrow(labelIdParamSchema, req.params, "label id");
+    const body = parseOrThrow(updateLabelBodySchema, req.body, "label");
+    sendOk(res, await updateLabel(labelId, body, currentAdmin(req)));
+  }),
+);
+
+/** Removing a label takes it off every chat carrying it; the chats remain. */
+adminRouter.delete(
+  "/labels/:labelId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { labelId } = parseOrThrow(labelIdParamSchema, req.params, "label id");
+    await deleteLabel(labelId, currentAdmin(req));
+    sendOk(res, { deleted: true });
   }),
 );
 

@@ -6,6 +6,7 @@ import type {
   BranchRow,
   ConversationRow,
   EnquiryRow,
+  LabelRow,
   LeadRow,
   MessageRow,
   VisitorRow,
@@ -18,6 +19,8 @@ import type {
   Conversation,
   ConversationDetail,
   Enquiry,
+  Label,
+  LabelRef,
   Lead,
   ConversationSummary,
   ConversationWithAgent,
@@ -251,10 +254,43 @@ export function toConversationDetail(
   };
 }
 
+/**
+ * The join rows a conversation query includes to carry its labels. Kept as
+ * plain as possible — ordering happens in `toLabelRefs`, because a nested
+ * `orderBy` here defeats Prisma's inference of the surrounding row type.
+ */
+export const LABEL_INCLUDE = { labels: { include: { label: true } } };
+
+export function toLabel(row: LabelRow): Label {
+  return {
+    id: row.id,
+    companyId: row.companyId,
+    name: row.name,
+    // Widened on the way in from the database, which stores a plain string.
+    color: row.color as Label["color"],
+    isSystem: row.isSystem,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/** System label first, then alphabetical — the same order the pickers use. */
+export function toLabelRefs(rows: Array<{ label: LabelRow }>): LabelRef[] {
+  return rows
+    .map((row) => row.label)
+    .sort((a, b) => Number(b.isSystem) - Number(a.isSystem) || a.name.localeCompare(b.name))
+    .map((label) => ({
+      id: label.id,
+      name: label.name,
+      color: label.color as LabelRef["color"],
+    }));
+}
+
 export function toConversationSummary(
   row: ConversationRow & {
     visitor: VisitorRow;
     messages: MessageRow[];
+    labels: Array<{ label: LabelRow }>;
     _count: { messages: number };
   },
   unreadCount = 0,
@@ -266,5 +302,6 @@ export function toConversationSummary(
     lastMessage: lastMessage ? toMessage(lastMessage) : null,
     messageCount: row._count.messages,
     unreadCount,
+    labels: toLabelRefs(row.labels),
   };
 }

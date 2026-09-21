@@ -10,6 +10,7 @@ export type {
   Branch as BranchRow,
   Company as CompanyRow,
   Enquiry as EnquiryRow,
+  Label as LabelRow,
   Lead as LeadRow,
   Conversation as ConversationRow,
   Message as MessageRow,

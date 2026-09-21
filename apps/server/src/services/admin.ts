@@ -50,6 +50,8 @@ import {
   toConversationDetail,
   toConversationSummary,
   toEnquiry,
+  toLabelRefs,
+  LABEL_INCLUDE,
   toLead,
   MESSAGE_INCLUDE,
   statsFromEnquiries,
@@ -518,6 +520,8 @@ export async function listAllConversations(
         branch: { AND: [branchScope(actor), query.branchId ? { id: query.branchId } : {}] },
       },
       ...(query.status ? { status: query.status } : {}),
+      // A chat carries several labels, so this asks "is this one among them".
+      ...(query.labelId ? { labels: { some: { labelId: query.labelId } } } : {}),
     },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: query.limit,
@@ -529,6 +533,7 @@ export async function listAllConversations(
         take: 1,
         include: MESSAGE_INCLUDE,
       },
+      ...LABEL_INCLUDE,
       _count: { select: { messages: true } },
     },
   });
@@ -552,6 +557,7 @@ export async function getAnyConversation(
       agent: { include: { branch: { select: { id: true, name: true, companyId: true } } } },
       visitor: true,
       messages: { orderBy: [...MESSAGE_ORDER], include: MESSAGE_INCLUDE },
+      ...LABEL_INCLUDE,
     },
   });
 
@@ -566,6 +572,7 @@ export async function getAnyConversation(
   return {
     ...toConversationDetail(conversation),
     branch: { id: conversation.agent.branch.id, name: conversation.agent.branch.name },
+    labels: toLabelRefs(conversation.labels),
   };
 }
 

@@ -13,6 +13,7 @@ import type { Actor } from "../lib/actor.js";
 import { conflict, forbidden, notFound } from "../lib/http.js";
 import { verifyUpload } from "./media.js";
 import {
+  LABEL_INCLUDE,
   MESSAGE_INCLUDE,
   toConversation,
   toConversationDetail,
@@ -363,6 +364,7 @@ export async function listAgentConversations(
         take: 1,
         include: MESSAGE_INCLUDE,
       },
+      ...LABEL_INCLUDE,
       _count: { select: { messages: true } },
     },
   });

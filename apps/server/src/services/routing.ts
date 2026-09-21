@@ -3,6 +3,7 @@ import type { AssignmentResult, MaritalStatus } from "@repo/types";
 import { normalizePhone } from "@repo/types";
 import { notFound } from "../lib/http.js";
 import { toConversationWithAgent } from "../lib/serialize.js";
+import { initialLabelId } from "./labels.js";
 
 export const NO_AGENTS_MESSAGE = "No agents are currently available.";
 
@@ -116,6 +117,11 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
   // rather than leaking that it once existed.
   if (!branch || !branch.isActive) throw notFound("Branch not found");
 
+  // Resolved before the transaction opens: every new chat is given the
+  // company's initial label ("Initiated"), and creating it lazily inside the
+  // routing transaction would hold the agent locks for longer than needed.
+  const initialLabel = await initialLabelId(branch.companyId);
+
   return prisma.$transaction(async (tx) => {
     // Upserted every time, so a returning visitor can correct details they got
     // wrong the first time without opening a second identity.
@@ -170,6 +176,7 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
         data: {
           agentId: input.preferredAgentId,
           visitorId: input.visitorId,
+          labels: { create: [{ labelId: initialLabel }] },
           ...(input.initialMessage
             ? { messages: { create: [{ senderType: "VISITOR", content: input.initialMessage }] } }
             : {}),
@@ -225,6 +232,7 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
       data: {
         agentId: chosen.id,
         visitorId: input.visitorId,
+        labels: { create: [{ labelId: initialLabel }] },
         ...(input.initialMessage
           ? { messages: { create: [{ senderType: "VISITOR", content: input.initialMessage }] } }
           : {}),

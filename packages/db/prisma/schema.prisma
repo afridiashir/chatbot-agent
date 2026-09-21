@@ -43,6 +43,7 @@ model Company {
   branches Branch[]
   admins   Admin[]
   leads    Lead[]
+  labels   Label[]
 }
 
 /// Company-level operator. Deliberately a separate table from Agent: an admin
@@ -202,6 +203,42 @@ model Visitor {
   @@index([phone])
 }
 
+/// A mark an agent or admin puts on a conversation: "Follow up", "Sold".
+/// Company-wide and admin-managed, so the same idea is spelled one way and can
+/// actually be filtered on.
+model Label {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  /// A token from LABEL_COLORS in @repo/types, not free hex, so every chip
+  /// stays legible in both themes.
+  color     String   @default("grey")
+  /// "Initiated", given to every new conversation. Renameable and
+  /// recolourable, but not deletable — chat creation depends on it existing.
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversations ConversationLabel[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+/// Which labels are on which conversation. A chat can carry several at once.
+model ConversationLabel {
+  conversationId String
+  labelId        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  label        Label        @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, labelId])
+  @@index([labelId])
+}
+
 model Conversation {
   id        String             @id @default(cuid())
   agentId   String
@@ -211,10 +248,11 @@ model Conversation {
   updatedAt DateTime           @updatedAt
   closedAt  DateTime?
 
-  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  visitor   Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  agent     Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  visitor   Visitor             @relation(fields: [visitorId], references: [id], onDelete: Cascade)
   messages  Message[]
   enquiries Enquiry[]
+  labels    ConversationLabel[]
 
   // Counting an agent's live load, and listing their inbox.
   @@index([agentId, status])

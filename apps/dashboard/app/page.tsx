@@ -395,6 +395,13 @@ function Dashboard({
         )}
         <ConversationView
           detail={inbox.detail}
+          // Labels live on the inbox row, not on the detail payload, which the
+          // widget also receives — a visitor must never see them.
+          labels={inbox.conversations.find((row) => row.id === inbox.selectedId)?.labels ?? []}
+          availableLabels={inbox.labels}
+          onToggleLabel={(labelId, next) =>
+            inbox.selectedId && void inbox.toggleLabel(inbox.selectedId, labelId, next)
+          }
           connected={inbox.connected}
           visitorTyping={inbox.selectedId ? Boolean(inbox.typingIn[inbox.selectedId]) : false}
           pending={inbox.pending}

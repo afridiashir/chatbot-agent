@@ -117,7 +117,14 @@ All endpoints answer with the same envelope:
 | PATCH | `/api/admin/branches/:id` | Rename / activate / deactivate / make main |
 | POST | `/api/admin/agents` | Create an agent with an initial password |
 | PATCH | `/api/admin/agents/:id` | Rename, move branch, reset password, deactivate |
-| GET | `/api/admin/conversations` | Every agent's chats, filter by branch/agent/status |
+| GET | `/api/labels` | The company's labels, for an agent's picker **(agent auth)** |
+| GET | `/api/admin/labels` | The same list with usage counts |
+| POST | `/api/admin/labels` | Add a label **(company admin)** |
+| PATCH | `/api/admin/labels/:id` | Rename or recolour **(company admin)** |
+| DELETE | `/api/admin/labels/:id` | Delete; refused for the built-in one **(company admin)** |
+| PUT | `/api/conversations/:id/labels/:labelId` | Put a label on a chat **(agent or admin)** |
+| DELETE | `/api/conversations/:id/labels/:labelId` | Take it off **(agent or admin)** |
+| GET | `/api/admin/conversations` | Every agent's chats, filter by branch/agent/status/label |
 | GET | `/api/admin/conversations/:id` | Read-only transcript |
 | DELETE | `/api/admin/conversations/:id` | Delete a chat and its media, permanently |
 
@@ -288,9 +295,9 @@ written once.
 | Room | Members | Carries |
 | --- | --- | --- |
 | `conversation:{id}` | the visitor + assigned agent, after an access check | `message:new`, `conversation:closed`, `conversation:deleted` |
-| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed`, `conversation:deleted` |
+| `agent:{agentId}` | that agent, joined automatically | `conversation:assigned`, `conversation:closed`, `conversation:deleted`, `conversation:labels` |
 | `branch:{branchId}` | agents of the branch | reserved for branch-wide notices |
-| `admin` | any authenticated agent | `agent:status` |
+| `admin` | any authenticated agent | `agent:status`, `conversation:labels` |
 
 Visitors join **no** room automatically — only conversation rooms they own, and
 `conversation:join` runs the same ownership check as `GET /api/conversations/:id`.
@@ -460,6 +467,27 @@ closure is broadcast, so visitors are told in real time rather than discovering
 it later. The response reports how many were closed.
 
 ## The widget
+
+### Labels
+
+An agent or an admin can label a chat: "Follow up", "Sold", "Refund". A chat
+carries **several at once**, and every new one starts with **Initiated**.
+
+The set is managed by company admins on the Labels page rather than typed per
+chat, for the same reason the city list is closed — "Sold", "sold" and "SOLD"
+are one thing to a person and three to a filter. Colours come from a fixed
+palette so a chip cannot be made illegible.
+
+Two rules hold the feature together. The built-in label can be renamed and
+recoloured but **not deleted**, because every new conversation is given it.
+And labels are **never sent to the visitor**: they are absent from
+`Conversation` and `ConversationDetail`, which the widget receives, and live
+only on `ConversationSummary` and `AdminConversationDetail`. The
+`conversation:labels` broadcast goes to the agent and admin rooms, never the
+conversation room, because the visitor sits in that one.
+
+Labelling is the single write an admin has on a conversation they are otherwise
+only reading.
 
 ### Pre-chat form
 

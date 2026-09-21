@@ -177,6 +177,7 @@ export type CompanyWhereInput = {
   branches?: Prisma.BranchListRelationFilter
   admins?: Prisma.AdminListRelationFilter
   leads?: Prisma.LeadListRelationFilter
+  labels?: Prisma.LabelListRelationFilter
 }
 
 export type CompanyOrderByWithRelationInput = {
@@ -187,6 +188,7 @@ export type CompanyOrderByWithRelationInput = {
   branches?: Prisma.BranchOrderByRelationAggregateInput
   admins?: Prisma.AdminOrderByRelationAggregateInput
   leads?: Prisma.LeadOrderByRelationAggregateInput
+  labels?: Prisma.LabelOrderByRelationAggregateInput
 }
 
 export type CompanyWhereUniqueInput = Prisma.AtLeast<{
@@ -200,6 +202,7 @@ export type CompanyWhereUniqueInput = Prisma.AtLeast<{
   branches?: Prisma.BranchListRelationFilter
   admins?: Prisma.AdminListRelationFilter
   leads?: Prisma.LeadListRelationFilter
+  labels?: Prisma.LabelListRelationFilter
 }, "id">
 
 export type CompanyOrderByWithAggregationInput = {
@@ -230,6 +233,7 @@ export type CompanyCreateInput = {
   branches?: Prisma.BranchCreateNestedManyWithoutCompanyInput
   admins?: Prisma.AdminCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyUncheckedCreateInput = {
@@ -240,6 +244,7 @@ export type CompanyUncheckedCreateInput = {
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutCompanyInput
   admins?: Prisma.AdminUncheckedCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelUncheckedCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyUpdateInput = {
@@ -250,6 +255,7 @@ export type CompanyUpdateInput = {
   branches?: Prisma.BranchUpdateManyWithoutCompanyNestedInput
   admins?: Prisma.AdminUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyUncheckedUpdateInput = {
@@ -260,6 +266,7 @@ export type CompanyUncheckedUpdateInput = {
   branches?: Prisma.BranchUncheckedUpdateManyWithoutCompanyNestedInput
   admins?: Prisma.AdminUncheckedUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUncheckedUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyCreateManyInput = {
@@ -359,6 +366,20 @@ export type CompanyUpdateOneRequiredWithoutLeadsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CompanyUpdateToOneWithWhereWithoutLeadsInput, Prisma.CompanyUpdateWithoutLeadsInput>, Prisma.CompanyUncheckedUpdateWithoutLeadsInput>
 }
 
+export type CompanyCreateNestedOneWithoutLabelsInput = {
+  create?: Prisma.XOR<Prisma.CompanyCreateWithoutLabelsInput, Prisma.CompanyUncheckedCreateWithoutLabelsInput>
+  connectOrCreate?: Prisma.CompanyCreateOrConnectWithoutLabelsInput
+  connect?: Prisma.CompanyWhereUniqueInput
+}
+
+export type CompanyUpdateOneRequiredWithoutLabelsNestedInput = {
+  create?: Prisma.XOR<Prisma.CompanyCreateWithoutLabelsInput, Prisma.CompanyUncheckedCreateWithoutLabelsInput>
+  connectOrCreate?: Prisma.CompanyCreateOrConnectWithoutLabelsInput
+  upsert?: Prisma.CompanyUpsertWithoutLabelsInput
+  connect?: Prisma.CompanyWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CompanyUpdateToOneWithWhereWithoutLabelsInput, Prisma.CompanyUpdateWithoutLabelsInput>, Prisma.CompanyUncheckedUpdateWithoutLabelsInput>
+}
+
 export type CompanyCreateWithoutAdminsInput = {
   id?: string
   name: string
@@ -366,6 +387,7 @@ export type CompanyCreateWithoutAdminsInput = {
   updatedAt?: Date | string
   branches?: Prisma.BranchCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyUncheckedCreateWithoutAdminsInput = {
@@ -375,6 +397,7 @@ export type CompanyUncheckedCreateWithoutAdminsInput = {
   updatedAt?: Date | string
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelUncheckedCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyCreateOrConnectWithoutAdminsInput = {
@@ -400,6 +423,7 @@ export type CompanyUpdateWithoutAdminsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branches?: Prisma.BranchUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyUncheckedUpdateWithoutAdminsInput = {
@@ -409,6 +433,7 @@ export type CompanyUncheckedUpdateWithoutAdminsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branches?: Prisma.BranchUncheckedUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUncheckedUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyCreateWithoutBranchesInput = {
@@ -418,6 +443,7 @@ export type CompanyCreateWithoutBranchesInput = {
   updatedAt?: Date | string
   admins?: Prisma.AdminCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyUncheckedCreateWithoutBranchesInput = {
@@ -427,6 +453,7 @@ export type CompanyUncheckedCreateWithoutBranchesInput = {
   updatedAt?: Date | string
   admins?: Prisma.AdminUncheckedCreateNestedManyWithoutCompanyInput
   leads?: Prisma.LeadUncheckedCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelUncheckedCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyCreateOrConnectWithoutBranchesInput = {
@@ -452,6 +479,7 @@ export type CompanyUpdateWithoutBranchesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   admins?: Prisma.AdminUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyUncheckedUpdateWithoutBranchesInput = {
@@ -461,6 +489,7 @@ export type CompanyUncheckedUpdateWithoutBranchesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   admins?: Prisma.AdminUncheckedUpdateManyWithoutCompanyNestedInput
   leads?: Prisma.LeadUncheckedUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUncheckedUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyCreateWithoutLeadsInput = {
@@ -470,6 +499,7 @@ export type CompanyCreateWithoutLeadsInput = {
   updatedAt?: Date | string
   branches?: Prisma.BranchCreateNestedManyWithoutCompanyInput
   admins?: Prisma.AdminCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyUncheckedCreateWithoutLeadsInput = {
@@ -479,6 +509,7 @@ export type CompanyUncheckedCreateWithoutLeadsInput = {
   updatedAt?: Date | string
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutCompanyInput
   admins?: Prisma.AdminUncheckedCreateNestedManyWithoutCompanyInput
+  labels?: Prisma.LabelUncheckedCreateNestedManyWithoutCompanyInput
 }
 
 export type CompanyCreateOrConnectWithoutLeadsInput = {
@@ -504,6 +535,7 @@ export type CompanyUpdateWithoutLeadsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branches?: Prisma.BranchUpdateManyWithoutCompanyNestedInput
   admins?: Prisma.AdminUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUpdateManyWithoutCompanyNestedInput
 }
 
 export type CompanyUncheckedUpdateWithoutLeadsInput = {
@@ -513,6 +545,63 @@ export type CompanyUncheckedUpdateWithoutLeadsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   branches?: Prisma.BranchUncheckedUpdateManyWithoutCompanyNestedInput
   admins?: Prisma.AdminUncheckedUpdateManyWithoutCompanyNestedInput
+  labels?: Prisma.LabelUncheckedUpdateManyWithoutCompanyNestedInput
+}
+
+export type CompanyCreateWithoutLabelsInput = {
+  id?: string
+  name: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  branches?: Prisma.BranchCreateNestedManyWithoutCompanyInput
+  admins?: Prisma.AdminCreateNestedManyWithoutCompanyInput
+  leads?: Prisma.LeadCreateNestedManyWithoutCompanyInput
+}
+
+export type CompanyUncheckedCreateWithoutLabelsInput = {
+  id?: string
+  name: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  branches?: Prisma.BranchUncheckedCreateNestedManyWithoutCompanyInput
+  admins?: Prisma.AdminUncheckedCreateNestedManyWithoutCompanyInput
+  leads?: Prisma.LeadUncheckedCreateNestedManyWithoutCompanyInput
+}
+
+export type CompanyCreateOrConnectWithoutLabelsInput = {
+  where: Prisma.CompanyWhereUniqueInput
+  create: Prisma.XOR<Prisma.CompanyCreateWithoutLabelsInput, Prisma.CompanyUncheckedCreateWithoutLabelsInput>
+}
+
+export type CompanyUpsertWithoutLabelsInput = {
+  update: Prisma.XOR<Prisma.CompanyUpdateWithoutLabelsInput, Prisma.CompanyUncheckedUpdateWithoutLabelsInput>
+  create: Prisma.XOR<Prisma.CompanyCreateWithoutLabelsInput, Prisma.CompanyUncheckedCreateWithoutLabelsInput>
+  where?: Prisma.CompanyWhereInput
+}
+
+export type CompanyUpdateToOneWithWhereWithoutLabelsInput = {
+  where?: Prisma.CompanyWhereInput
+  data: Prisma.XOR<Prisma.CompanyUpdateWithoutLabelsInput, Prisma.CompanyUncheckedUpdateWithoutLabelsInput>
+}
+
+export type CompanyUpdateWithoutLabelsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  branches?: Prisma.BranchUpdateManyWithoutCompanyNestedInput
+  admins?: Prisma.AdminUpdateManyWithoutCompanyNestedInput
+  leads?: Prisma.LeadUpdateManyWithoutCompanyNestedInput
+}
+
+export type CompanyUncheckedUpdateWithoutLabelsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  branches?: Prisma.BranchUncheckedUpdateManyWithoutCompanyNestedInput
+  admins?: Prisma.AdminUncheckedUpdateManyWithoutCompanyNestedInput
+  leads?: Prisma.LeadUncheckedUpdateManyWithoutCompanyNestedInput
 }
 
 
@@ -524,12 +613,14 @@ export type CompanyCountOutputType = {
   branches: number
   admins: number
   leads: number
+  labels: number
 }
 
 export type CompanyCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   branches?: boolean | CompanyCountOutputTypeCountBranchesArgs
   admins?: boolean | CompanyCountOutputTypeCountAdminsArgs
   leads?: boolean | CompanyCountOutputTypeCountLeadsArgs
+  labels?: boolean | CompanyCountOutputTypeCountLabelsArgs
 }
 
 /**
@@ -563,6 +654,13 @@ export type CompanyCountOutputTypeCountLeadsArgs<ExtArgs extends runtime.Types.E
   where?: Prisma.LeadWhereInput
 }
 
+/**
+ * CompanyCountOutputType without action
+ */
+export type CompanyCountOutputTypeCountLabelsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LabelWhereInput
+}
+
 
 export type CompanySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -572,6 +670,7 @@ export type CompanySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   branches?: boolean | Prisma.Company$branchesArgs<ExtArgs>
   admins?: boolean | Prisma.Company$adminsArgs<ExtArgs>
   leads?: boolean | Prisma.Company$leadsArgs<ExtArgs>
+  labels?: boolean | Prisma.Company$labelsArgs<ExtArgs>
   _count?: boolean | Prisma.CompanyCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["company"]>
 
@@ -601,6 +700,7 @@ export type CompanyInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   branches?: boolean | Prisma.Company$branchesArgs<ExtArgs>
   admins?: boolean | Prisma.Company$adminsArgs<ExtArgs>
   leads?: boolean | Prisma.Company$leadsArgs<ExtArgs>
+  labels?: boolean | Prisma.Company$labelsArgs<ExtArgs>
   _count?: boolean | Prisma.CompanyCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CompanyIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -612,6 +712,7 @@ export type $CompanyPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     branches: Prisma.$BranchPayload<ExtArgs>[]
     admins: Prisma.$AdminPayload<ExtArgs>[]
     leads: Prisma.$LeadPayload<ExtArgs>[]
+    labels: Prisma.$LabelPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1015,6 +1116,7 @@ export interface Prisma__CompanyClient<T, Null = never, ExtArgs extends runtime.
   branches<T extends Prisma.Company$branchesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Company$branchesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   admins<T extends Prisma.Company$adminsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Company$adminsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdminPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   leads<T extends Prisma.Company$leadsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Company$leadsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LeadPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  labels<T extends Prisma.Company$labelsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Company$labelsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LabelPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1510,6 +1612,30 @@ export type Company$leadsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   distinct?: Prisma.LeadScalarFieldEnum | Prisma.LeadScalarFieldEnum[]
+}
+
+/**
+ * Company.labels
+ */
+export type Company$labelsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Label
+   */
+  select?: Prisma.LabelSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Label
+   */
+  omit?: Prisma.LabelOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.LabelInclude<ExtArgs> | null
+  where?: Prisma.LabelWhereInput
+  orderBy?: Prisma.LabelOrderByWithRelationInput | Prisma.LabelOrderByWithRelationInput[]
+  cursor?: Prisma.LabelWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.LabelScalarFieldEnum | Prisma.LabelScalarFieldEnum[]
 }
 
 /**

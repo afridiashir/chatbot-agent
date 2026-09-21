@@ -10,6 +10,7 @@ import {
   Menu,
   MessagesSquare,
   ShieldCheck,
+  Tag,
   Users,
   X,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const NAV = [
   { href: "/admin/agents", label: "Agents", icon: Users },
   { href: "/admin/conversations", label: "Conversations", icon: MessagesSquare },
   { href: "/admin/leads", label: "Leads", icon: Contact },
+  { href: "/admin/labels", label: "Labels", icon: Tag, companyOnly: true },
   { href: "/admin/admins", label: "Admins", icon: ShieldCheck, companyOnly: true },
 ];
 

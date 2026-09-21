@@ -8,6 +8,7 @@ import type {
   ClientToServerEvents,
   ConversationDetail,
   ConversationSummary,
+  Label,
   Message,
   MessageQuote,
   ServerToClientEvents,
@@ -39,6 +40,10 @@ export interface Inbox {
   sendMedia: (media: MediaSend) => Promise<void>;
   close: (conversationId: string) => Promise<void>;
   setOnline: (isOnline: boolean) => Promise<Agent>;
+  /** The company's labels, for the picker on a conversation. */
+  labels: Label[];
+  /** Puts a label on the open conversation, or takes it off. */
+  toggleLabel: (conversationId: string, labelId: string, next: "on" | "off") => Promise<void>;
   /** Conversation ids where the visitor is currently typing. */
   typingIn: Record<string, boolean>;
   /** Called on every keystroke; throttled internally. */
@@ -73,6 +78,11 @@ export function useInbox(
   const [error, setError] = useState<string | null>(null);
 
   const [typingIn, setTypingIn] = useState<Record<string, boolean>>({});
+  const [labels, setLabels] = useState<Label[]>([]);
+  // Read inside the socket handler for a newly assigned chat, which must not
+  // close over a stale list.
+  const labelsRef = useRef<Label[]>([]);
+  labelsRef.current = labels;
   // Restored from localStorage so a reload mid-outage keeps unsent messages.
   const [outbox, setOutbox] = useState<QueuedMessage[]>([]);
   const outboxRef = useRef<QueuedMessage[]>([]);
@@ -82,6 +92,12 @@ export function useInbox(
     setOutbox(next);
     saveOutbox(next);
   }, []);
+
+  useEffect(() => {
+    void api<Label[]>("/api/labels", { token })
+      .then(setLabels)
+      .catch(() => undefined);
+  }, [token]);
 
   useEffect(() => {
     const restored = loadOutbox();
@@ -221,10 +237,28 @@ export function useInbox(
         `${conversation.visitor.name} started a conversation`,
         `chat-${conversation.id}`,
       );
+      // The server gives every new chat the company's initial label. The
+      // assignment payload is shared with the widget so it cannot carry labels;
+      // taking the system label from the list we already hold shows the right
+      // chip immediately instead of after the next refresh.
+      const initial = labelsRef.current.filter((label) => label.isSystem);
       setConversations((current) =>
         current.some((row) => row.id === conversation.id)
           ? current
-          : [{ ...conversation, lastMessage: null, messageCount: 0, unreadCount: 0 }, ...current],
+          : [
+              {
+                ...conversation,
+                lastMessage: null,
+                messageCount: 0,
+                unreadCount: 0,
+                labels: initial.map((label) => ({
+                  id: label.id,
+                  name: label.name,
+                  color: label.color,
+                })),
+              },
+              ...current,
+            ],
       );
     });
 
@@ -346,6 +380,12 @@ export function useInbox(
         current && current.id === conversation.id
           ? { ...current, status: conversation.status, closedAt: conversation.closedAt }
           : current,
+      );
+    });
+
+    socket.on("conversation:labels", ({ conversationId, labels: next }) => {
+      setConversations((current) =>
+        current.map((row) => (row.id === conversationId ? { ...row, labels: next } : row)),
       );
     });
 
@@ -521,6 +561,27 @@ export function useInbox(
     [token],
   );
 
+  /**
+   * The broadcast updates the row, but the response is applied directly too so
+   * the chip appears on the tap rather than on the round trip after it.
+   */
+  const toggleLabel = useCallback(
+    async (conversationId: string, labelId: string, next: "on" | "off") => {
+      try {
+        const updated = await api<ConversationSummary["labels"]>(
+          `/api/conversations/${conversationId}/labels/${labelId}`,
+          { method: next === "on" ? "PUT" : "DELETE", token },
+        );
+        setConversations((current) =>
+          current.map((row) => (row.id === conversationId ? { ...row, labels: updated } : row)),
+        );
+      } catch {
+        setError("Could not change the labels on that chat");
+      }
+    },
+    [token],
+  );
+
   const setOnline = useCallback(
     (isOnline: boolean) =>
       api<Agent>(`/api/agents/${agentId}/status`, {
@@ -544,6 +605,8 @@ export function useInbox(
     react,
     close,
     setOnline,
+    labels,
+    toggleLabel,
     typingIn,
     notifyTyping,
     pending: selectedId ? outbox.filter((m) => m.conversationId === selectedId) : [],

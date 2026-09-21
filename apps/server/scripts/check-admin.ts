@@ -18,6 +18,7 @@ import type {
   BranchWithAgents,
   DeactivateAgentResult,
   DeleteConversationResult,
+  LabelWithUsage,
   Lead,
   LeadDetail,
 } from "@repo/types";
@@ -604,6 +605,115 @@ async function main(): Promise<void> {
     );
   }
 
+
+  console.log("\n11i. Labels: a custom set, applied by agents and admins alike");
+  const startLabels = (await request<LabelWithUsage[]>("/api/admin/labels", { token })).data ?? [];
+  const systemLabel = startLabels.find((l) => l.isSystem);
+  check("a company has exactly one built-in label", startLabels.filter((l) => l.isSystem).length, 1);
+  check("and it is the one new chats get", systemLabel?.name, "Initiated");
+
+  // A fresh chat, so its labels are known exactly.
+  const labelChat = await request<{ available: boolean; conversation: { id: string } }>(
+    "/api/conversations",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        branchId: "branch_karachi",
+        visitorId: `label-${suffix}`,
+        visitor: {
+          name: "Label Visitor",
+          phone: `+92 306 ${digits}`,
+          maritalStatus: "SINGLE",
+          city: "Karachi",
+        },
+      }),
+    },
+  );
+  const labelChatId = labelChat.data?.conversation.id;
+  if (!labelChatId) throw new Error("Could not open a chat to label");
+
+  const fresh = await request<AdminConversationDetail>(
+    `/api/admin/conversations/${labelChatId}`,
+    { token },
+  );
+  check(
+    "a new chat starts with exactly the built-in label",
+    fresh.data?.labels.map((l) => l.name),
+    ["Initiated"],
+  );
+
+  const made = await request<LabelWithUsage>("/api/admin/labels", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ name: `Follow up ${suffix}`, color: "amber" }),
+  });
+  const customId = made.data?.id;
+  check("an admin can add a custom label", made.status, 201);
+  if (!customId) throw new Error("Label was not created");
+
+  check(
+    "a duplicate name is refused",
+    (await request("/api/admin/labels", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ name: `Follow up ${suffix}` }),
+    })).status,
+    409,
+  );
+  check(
+    "a colour outside the palette is refused",
+    (await request("/api/admin/labels", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ name: `Bad ${suffix}`, color: "chartreuse" }),
+    })).status,
+    400,
+  );
+  check(
+    "the built-in label cannot be deleted",
+    (await request(`/api/admin/labels/${systemLabel!.id}`, { method: "DELETE", token })).status,
+    409,
+  );
+
+  const applied = await request<Array<{ id: string; name: string }>>(
+    `/api/conversations/${labelChatId}/labels/${customId}`,
+    { method: "PUT", token },
+  );
+  check("an admin can label a chat they only read", applied.status, 200);
+  check("labels accumulate rather than replacing", applied.data?.length, 2);
+  check(
+    "applying the same label twice is a no-op",
+    (await request<unknown[]>(`/api/conversations/${labelChatId}/labels/${customId}`, {
+      method: "PUT",
+      token,
+    })).data?.length,
+    2,
+  );
+
+  const byLabel = await request<AdminConversationSummary[]>(
+    `/api/admin/conversations?labelId=${customId}`,
+    { token },
+  );
+  check("the list can be filtered to one label", byLabel.data?.length, 1);
+  check("and it is the right chat", byLabel.data?.[0]?.id, labelChatId);
+
+  const removed = await request<unknown[]>(
+    `/api/conversations/${labelChatId}/labels/${systemLabel!.id}`,
+    { method: "DELETE", token },
+  );
+  check("a label can be taken off again", removed.data?.length, 1);
+
+  // A visitor holds no token at all, and labels are the team's notes.
+  const visitorDetail = await request<Record<string, unknown>>(
+    `/api/conversations/${labelChatId}?visitorId=label-${suffix}`,
+  );
+  check("the visitor's own copy of the chat carries no labels", "labels" in (visitorDetail.data ?? {}), false);
+  check(
+    "and a visitor cannot apply one",
+    (await request(`/api/conversations/${labelChatId}/labels/${customId}`, { method: "PUT" }))
+      .status,
+    401,
+  );
 
   console.log("\n12. Stats");
   const stats = (await request<AdminStats>("/api/admin/stats", { token })).data;

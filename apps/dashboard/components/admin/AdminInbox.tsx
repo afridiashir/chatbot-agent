@@ -28,11 +28,14 @@ import {
   type ClientToServerEvents,
   type ConversationStatus,
   type DeleteConversationResult,
+  type Label as LabelType,
+  type LabelRef,
   MARITAL_STATUS_LABELS,
   type Message,
   type ServerToClientEvents,
 } from "@repo/types";
 import { Bubble, DaySeparator, TypingDots } from "@/components/ConversationView";
+import { LabelBar, LabelChip } from "@/components/LabelChip";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -90,6 +93,9 @@ export function AdminInbox({
   const [showInfo, setShowInfo] = useState(false);
   const [typing, setTyping] = useState<Record<string, "AGENT" | "VISITOR" | undefined>>({});
 
+  const [labels, setLabels] = useState<LabelType[]>([]);
+  const [labelId, setLabelId] = useState("");
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -113,12 +119,16 @@ export function AdminInbox({
     void api<BranchWithAgents[]>("/api/admin/branches", { token })
       .then(setBranches)
       .catch(() => undefined);
+    void api<LabelType[]>("/api/admin/labels", { token })
+      .then(setLabels)
+      .catch(() => undefined);
   }, [token]);
 
   const loadList = useCallback(async () => {
     const params = new URLSearchParams({ limit: "200" });
     if (branchId) params.set("branchId", branchId);
     if (status) params.set("status", status);
+    if (labelId) params.set("labelId", labelId);
     try {
       setRows(
         await api<AdminConversationSummary[]>(`/api/admin/conversations?${params}`, { token }),
@@ -127,7 +137,7 @@ export function AdminInbox({
     } catch {
       setListError("Could not load conversations");
     }
-  }, [token, branchId, status]);
+  }, [token, branchId, status, labelId]);
 
   useEffect(() => {
     void loadList();
@@ -271,6 +281,17 @@ export function AdminInbox({
       );
     });
 
+    socket.on("conversation:labels", ({ conversationId, labels: next }) => {
+      setRows(
+        (current) =>
+          current?.map((row) => (row.id === conversationId ? { ...row, labels: next } : row)) ??
+          current,
+      );
+      setDetail((current) =>
+        current && current.id === conversationId ? { ...current, labels: next } : current,
+      );
+    });
+
     // Another admin deleted it, or this one did from a second tab.
     socket.on("conversation:deleted", ({ conversationId }) => forget(conversationId));
 
@@ -350,6 +371,28 @@ export function AdminInbox({
     }
   }
 
+  /** Admins may label a chat even though everything else here is read-only. */
+  async function toggleLabel(conversationId: string, id: string, next: "on" | "off") {
+    try {
+      // Not under /api/admin: the endpoint takes an agent or an admin token,
+      // and decides from the caller which chats they may label.
+      const updated = await api<LabelRef[]>(`/api/conversations/${conversationId}/labels/${id}`, {
+        method: next === "on" ? "PUT" : "DELETE",
+        token,
+      });
+      setRows(
+        (current) =>
+          current?.map((row) => (row.id === conversationId ? { ...row, labels: updated } : row)) ??
+          current,
+      );
+      setDetail((current) =>
+        current && current.id === conversationId ? { ...current, labels: updated } : current,
+      );
+    } catch {
+      setListError("Could not change the labels on that chat");
+    }
+  }
+
   const openCount = rows?.filter((row) => row.status === "ACTIVE").length ?? 0;
   const selectedRow = rows?.find((row) => row.id === selectedId) ?? null;
   const selectedTyping = selectedId ? typing[selectedId] : undefined;
@@ -402,6 +445,19 @@ export function AdminInbox({
               className="h-9 w-full rounded-lg bg-chat-header pr-3 pl-10 text-sm placeholder:text-chat-meta focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             />
           </div>
+          <select
+            value={labelId}
+            onChange={(e) => setLabelId(e.target.value)}
+            aria-label="Filter by label"
+            className="h-8 w-full rounded-lg border-0 bg-chat-header px-2 text-xs"
+          >
+            <option value="">All labels</option>
+            {labels.map((label) => (
+              <option key={label.id} value={label.id}>
+                {label.name}
+              </option>
+            ))}
+          </select>
           <div role="radiogroup" aria-label="Filter by status" className="flex gap-1.5">
             {STATUS_CHIPS.map((chip) => (
               <button
@@ -511,6 +567,14 @@ export function AdminInbox({
                 >
                   {detail.status === "ACTIVE" ? "Open" : "Closed"}
                 </span>
+              )}
+              {detail && (
+                <LabelBar
+                  labels={detail.labels}
+                  available={labels}
+                  onToggle={(id, next) => void toggleLabel(detail.id, id, next)}
+                  className="hidden max-w-72 shrink-0 justify-end lg:flex"
+                />
               )}
               <button
                 type="button"
@@ -733,6 +797,16 @@ function ChatRow({
               <span className="italic">No messages yet</span>
             )}
           </span>
+          {row.labels.length > 0 && (
+            <span className="flex shrink-0 gap-1">
+              {/* One chip in the list; the rest are on the open chat. A row
+                  that wraps to three lines stops being scannable. */}
+              <LabelChip label={row.labels[0]!} />
+              {row.labels.length > 1 && (
+                <span className="text-[10px] text-chat-meta">+{row.labels.length - 1}</span>
+              )}
+            </span>
+          )}
           {row.status === "CLOSED" ? (
             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               Closed

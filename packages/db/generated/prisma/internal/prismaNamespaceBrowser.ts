@@ -58,6 +58,8 @@ export const ModelName = {
   Lead: 'Lead',
   Enquiry: 'Enquiry',
   Visitor: 'Visitor',
+  Label: 'Label',
+  ConversationLabel: 'ConversationLabel',
   Conversation: 'Conversation',
   Reaction: 'Reaction',
   PushSubscription: 'PushSubscription',
@@ -174,6 +176,28 @@ export const VisitorScalarFieldEnum = {
 } as const
 
 export type VisitorScalarFieldEnum = (typeof VisitorScalarFieldEnum)[keyof typeof VisitorScalarFieldEnum]
+
+
+export const LabelScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  name: 'name',
+  color: 'color',
+  isSystem: 'isSystem',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LabelScalarFieldEnum = (typeof LabelScalarFieldEnum)[keyof typeof LabelScalarFieldEnum]
+
+
+export const ConversationLabelScalarFieldEnum = {
+  conversationId: 'conversationId',
+  labelId: 'labelId',
+  createdAt: 'createdAt'
+} as const
+
+export type ConversationLabelScalarFieldEnum = (typeof ConversationLabelScalarFieldEnum)[keyof typeof ConversationLabelScalarFieldEnum]
 
 
 export const ConversationScalarFieldEnum = {

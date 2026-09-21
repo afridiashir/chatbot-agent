@@ -5,6 +5,7 @@
 
 import type { AttachmentKind, MessageAttachment } from "./media";
 import type { MaritalStatus } from "./visitor-profile";
+import type { LabelRef } from "./labels";
 
 export const ConversationStatus = {
   ACTIVE: "ACTIVE",
@@ -161,6 +162,13 @@ export interface ConversationSummary extends Conversation {
   messageCount: number;
   /** Messages from the visitor the agent has not read yet. */
   unreadCount: number;
+  /**
+   * Staff-only. Deliberately here and on `AdminConversationDetail` rather than
+   * on `Conversation`: the widget is served `ConversationWithAgent` and
+   * `ConversationDetail` from the same serializers, and a visitor must never
+   * be shown what the team wrote about them.
+   */
+  labels: LabelRef[];
 }
 
 export interface BranchWithAgents extends Branch {
@@ -175,6 +183,8 @@ export interface AdminConversationSummary extends ConversationSummary {
 
 export interface AdminConversationDetail extends ConversationDetail {
   branch: Pick<Branch, "id" | "name">;
+  /** Safe here: this shape is only ever returned by an admin-authenticated route. */
+  labels: LabelRef[];
 }
 
 /**

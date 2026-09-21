@@ -8,6 +8,7 @@ import type {
   ReceiptPayload,
   Conversation,
   ConversationWithAgent,
+  LabelRef,
   Message,
   Reaction,
 } from "@repo/types";
@@ -160,6 +161,23 @@ export function emitConversationDeleted(conversation: { id: string; agentId: str
   io?.to(rooms.conversation(conversation.id))
     .to(rooms.agent(conversation.agentId))
     .emit("conversation:deleted", { conversationId: conversation.id });
+}
+
+/**
+ * Labels changed on a chat.
+ *
+ * Sent to the assigned agent's room and to the admin rooms, never to the
+ * conversation room: the visitor sits in that one, and what the team labelled
+ * them is none of their business.
+ */
+export function emitConversationLabels(
+  conversation: { id: string; agentId: string; branchId: string; companyId: string },
+  labels: LabelRef[],
+): void {
+  io?.to(rooms.agent(conversation.agentId))
+    .to(rooms.adminCompany(conversation.companyId))
+    .to(rooms.adminBranch(conversation.branchId))
+    .emit("conversation:labels", { conversationId: conversation.id, labels });
 }
 
 /**

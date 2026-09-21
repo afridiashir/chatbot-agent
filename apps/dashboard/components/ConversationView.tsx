@@ -18,11 +18,14 @@ import {
   formatBytes,
   kindForFile,
   MARITAL_STATUS_LABELS,
+  type Label as LabelType,
+  type LabelRef,
   type AttachmentKind,
   type ConversationDetail,
   type Message,
   type MessageQuote,
 } from "@repo/types";
+import { LabelBar } from "@/components/LabelChip";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { ReactionBar } from "@/components/ReactionBar";
 import { MessageMedia } from "@/components/MessageMedia";
@@ -54,6 +57,14 @@ export interface MediaSend {
 
 interface ConversationViewProps {
   detail: ConversationDetail | null;
+  /**
+   * Passed in rather than read off `detail`: the detail payload is shared with
+   * the widget, so labels are deliberately not on it. They come from the
+   * inbox row instead.
+   */
+  labels: LabelRef[];
+  availableLabels: LabelType[];
+  onToggleLabel: (labelId: string, next: "on" | "off") => void;
   connected: boolean;
   visitorTyping: boolean;
   /** Sent but not yet stored by the server. */
@@ -355,6 +366,9 @@ function ReplyButton({ onClick }: { onClick: () => void }) {
 
 export function ConversationView({
   detail,
+  labels,
+  availableLabels,
+  onToggleLabel,
   connected,
   visitorTyping,
   pending,
@@ -493,6 +507,15 @@ export function ConversationView({
             </p>
           )}
         </div>
+
+        {/* Kept in the header rather than a side panel: the label is part of
+            knowing what this chat is, the same as who it is with. */}
+        <LabelBar
+          labels={labels}
+          available={availableLabels}
+          onToggle={onToggleLabel}
+          className="hidden shrink-0 justify-end md:flex md:max-w-80"
+        />
 
         {!isClosed && (
           <Button variant="outline" size="sm" onClick={handleClose} disabled={closing}>
