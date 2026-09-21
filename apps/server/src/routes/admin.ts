@@ -24,6 +24,7 @@ import {
   createLabelBodySchema,
   updateLabelBodySchema,
   labelIdParamSchema,
+  transferConversationBodySchema,
 } from "@repo/validation";
 import { branchScope } from "../lib/admin-scope.js";
 import { asyncHandler } from "../lib/async-handler.js";
@@ -33,8 +34,10 @@ import { currentAdmin, requireAdmin } from "../middleware/require-agent.js";
 import {
   emitAgentProfile,
   emitAgentStatus,
+  emitConversationAssigned,
   emitConversationClosed,
   emitConversationDeleted,
+  emitConversationTransferred,
 } from "../realtime/emit.js";
 import {
   createAvatarUpload,
@@ -60,6 +63,7 @@ import {
   listLeads,
   listLeadsTable,
   loginAdmin,
+  transferConversation,
   updateAgent,
   updateBranch,
 } from "../services/admin.js";
@@ -384,6 +388,41 @@ adminRouter.get(
       "conversation id",
     );
     sendOk(res, await getAnyConversation(conversationId, currentAdmin(req)));
+  }),
+);
+
+/**
+ * POST /api/admin/conversations/:id/transfer — hand an open chat to another
+ * agent. A company admin may send it to anyone in the company, including
+ * another branch; a branch admin only within their own.
+ */
+adminRouter.post(
+  "/conversations/:conversationId/transfer",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+    const { agentId } = parseOrThrow(transferConversationBodySchema, req.body, "transfer");
+    const actor = currentAdmin(req);
+
+    const { transfer, conversation, previous } = await transferConversation(
+      conversationId,
+      agentId,
+      actor,
+    );
+
+    emitConversationTransferred(transfer, previous, actor.companyId);
+    // The new agent is told the way they are told about any chat that has just
+    // reached them, so their inbox needs no separate notion of a handed-over one.
+    emitConversationAssigned(conversation, {
+      title: "Chat transferred to you",
+      body: `${conversation.visitor.name}'s conversation was handed to you`,
+    });
+
+    sendOk(res, transfer);
   }),
 );
 

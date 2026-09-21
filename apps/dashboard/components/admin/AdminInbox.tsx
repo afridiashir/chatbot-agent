@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   Building2,
   CalendarClock,
   CircleCheck,
@@ -29,6 +30,7 @@ import {
   type BranchWithAgents,
   type ClientToServerEvents,
   type ConversationStatus,
+  type ConversationTransfer,
   type DeleteConversationResult,
   type Label as LabelType,
   type LabelRef,
@@ -104,6 +106,10 @@ export function AdminInbox({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const socketRef = useRef<AppSocket | null>(null);
   const joinedRef = useRef<Set<string>>(new Set());
@@ -196,6 +202,33 @@ export function AdminInbox({
       setDetailError(null);
       setShowInfo(false);
     }
+  }, []);
+
+  /**
+   * The chat is someone else's now. Both lists carry the agent and the branch,
+   * and a hand-over across branches changes both, so each is rewritten rather
+   * than waiting for the next poll to notice.
+   */
+  const applyTransfer = useCallback((transfer: ConversationTransfer) => {
+    const { conversationId, agent, branch } = transfer;
+    setRows(
+      (current) =>
+        current?.map((row) =>
+          row.id === conversationId
+            ? {
+                ...row,
+                agentId: agent.id,
+                agent: { id: agent.id, name: agent.name, branchId: agent.branchId },
+                branch,
+              }
+            : row,
+        ) ?? current,
+    );
+    setDetail((current) =>
+      current && current.id === conversationId
+        ? { ...current, agentId: agent.id, agent, branch }
+        : current,
+    );
   }, []);
 
   /* -------------------------------- realtime ------------------------------ */
@@ -305,6 +338,8 @@ export function AdminInbox({
       );
     });
 
+    socket.on("conversation:transferred", applyTransfer);
+
     // Another admin deleted it, or this one did from a second tab.
     socket.on("conversation:deleted", ({ conversationId }) => forget(conversationId));
 
@@ -315,7 +350,7 @@ export function AdminInbox({
       joined.clear();
       Object.values(timers).forEach(clearTimeout);
     };
-  }, [token, loadList, loadDetail, forget]);
+  }, [token, loadList, loadDetail, forget, applyTransfer]);
 
   // Watch every open conversation in the list (for live previews and typing),
   // plus the selected one even if it is closed.
@@ -402,6 +437,31 @@ export function AdminInbox({
       setListError("Could not send that message");
     } finally {
       setSending(false);
+    }
+  }
+
+  /**
+   * Hands the chat to another agent. The broadcast that comes back would move
+   * the row on its own, but the response is applied here too so the change
+   * lands on the click rather than on the round trip after it.
+   */
+  async function transfer(conversationId: string, agentId: string) {
+    setTransferring(true);
+    setTransferError(null);
+    try {
+      const result = await api<ConversationTransfer>(
+        `/api/admin/conversations/${conversationId}/transfer`,
+        { method: "POST", token, body: JSON.stringify({ agentId }) },
+      );
+      applyTransfer(result);
+      setTransferOpen(false);
+      setNotice(`Conversation handed to ${result.agent.name} · ${result.branch.name}`);
+    } catch (error) {
+      setTransferError(
+        error instanceof Error ? error.message : "Could not hand over that conversation",
+      );
+    } finally {
+      setTransferring(false);
     }
   }
 
@@ -610,6 +670,20 @@ export function AdminInbox({
                   className="hidden max-w-72 shrink-0 justify-end lg:flex"
                 />
               )}
+              {detail?.status === "ACTIVE" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferError(null);
+                    setTransferOpen(true);
+                  }}
+                  aria-label="Hand over to another agent"
+                  title="Hand over to another agent"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <ArrowLeftRight className="size-5" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -752,6 +826,16 @@ export function AdminInbox({
         )}
       </section>
 
+      <TransferDialog
+        open={transferOpen && detail !== null}
+        detail={detail}
+        branches={branches}
+        busy={transferring}
+        error={transferError}
+        onClose={() => (transferring ? undefined : setTransferOpen(false))}
+        onTransfer={(agentId) => detail && void transfer(detail.id, agentId)}
+      />
+
       <Dialog
         open={confirmDelete && selectedId !== null}
         onClose={() => (deleting ? undefined : setConfirmDelete(false))}
@@ -789,6 +873,136 @@ export function AdminInbox({
 }
 
 /* ---------------------------------- pieces --------------------------------- */
+
+/**
+ * Choosing who takes the chat next.
+ *
+ * Every agent the admin may reach is offered, not only the free or online ones:
+ * a chat handed to someone who has gone home waits in their inbox, exactly as a
+ * chat from their personal link would, and that is usually what the admin means
+ * when they move a conversation to a named person. The load and the online dot
+ * are there so the choice is made knowingly rather than made for them.
+ *
+ * Deactivated agents are the exception — the server refuses them, so offering
+ * them would only produce an error.
+ */
+function TransferDialog({
+  open,
+  detail,
+  branches,
+  busy,
+  error,
+  onClose,
+  onTransfer,
+}: {
+  open: boolean;
+  detail: AdminConversationDetail | null;
+  branches: BranchWithAgents[];
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onTransfer: (agentId: string) => void;
+}) {
+  const [agentId, setAgentId] = useState("");
+
+  // A fresh pick per chat, so the previous one cannot be handed on by accident.
+  useEffect(() => {
+    if (open) setAgentId("");
+  }, [open, detail?.id]);
+
+  const options = useMemo(
+    () =>
+      branches
+        .filter((branch) => branch.isActive)
+        .map((branch) => ({
+          branch,
+          agents: branch.agents.filter((agent) => agent.isActive && agent.id !== detail?.agent.id),
+        }))
+        .filter((group) => group.agents.length > 0),
+    [branches, detail?.agent.id],
+  );
+
+  const chosen = options.flatMap((group) => group.agents).find((agent) => agent.id === agentId);
+  const movesBranch = Boolean(chosen && chosen.branchId !== detail?.branch.id);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Hand this chat to another agent"
+      description={
+        detail
+          ? `${detail.visitor.name} is with ${detail.agent.name}. Whoever you pick takes over the conversation and its history; ${detail.visitor.name} simply sees their name from the next message on.`
+          : undefined
+      }
+      icon={<ArrowLeftRight className="size-5" aria-hidden />}
+    >
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (agentId && !busy) onTransfer(agentId);
+        }}
+      >
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">New agent</span>
+          <select
+            value={agentId}
+            onChange={(event) => setAgentId(event.target.value)}
+            className="h-10 rounded-lg border bg-background px-2 text-sm"
+          >
+            <option value="">Choose an agent…</option>
+            {options.map((group) => (
+              <optgroup key={group.branch.id} label={group.branch.name}>
+                {group.agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name} · {agent.isOnline ? "online" : "offline"} ·{" "}
+                    {agent.activeConversationCount} open
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+
+        {options.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            There is nobody else to hand this chat to.
+          </p>
+        )}
+
+        {movesBranch && chosen && (
+          <p className="flex items-start gap-1.5 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+            <Building2 className="mt-px size-3.5 shrink-0" aria-hidden />
+            {chosen.name} is in another branch, so the chat moves to it and leaves{" "}
+            {detail?.branch.name}.
+          </p>
+        )}
+
+        {!chosen?.isOnline && chosen && (
+          <p className="text-xs text-muted-foreground">
+            {chosen.name} is offline. The chat waits in their inbox until they are back.
+          </p>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy || !agentId}>
+            {busy ? "Handing over…" : "Hand over"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
 
 function ChatRow({
   row,

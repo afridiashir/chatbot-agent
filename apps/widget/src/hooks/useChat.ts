@@ -276,6 +276,18 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           : current,
       );
     });
+    // An admin handed the chat to another agent. The visitor is not told that
+    // happened — only who is answering now, so the header stops showing a name
+    // that no longer belongs to this conversation.
+    socket.on("conversation:transferred", (transfer) => {
+      if (transfer.conversationId !== conversationId) return;
+      setAgentTyping(false);
+      setConversation((current) =>
+        current && current.id === transfer.conversationId
+          ? { ...current, agentId: transfer.agent.id, agent: transfer.agent }
+          : current,
+      );
+    });
     // An admin removed the chat. Unlike closing it, there is no transcript left
     // to read, so it is said plainly and the visitor is offered a fresh start.
     socket.on("conversation:deleted", (deleted) => {

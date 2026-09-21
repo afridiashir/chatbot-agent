@@ -1,5 +1,6 @@
 import type {
   Conversation,
+  ConversationTransfer,
   ConversationWithAgent,
   Message,
   MessageAuthor,
@@ -107,6 +108,16 @@ export interface ServerToClientEvents {
    * holds the visitor too, and labels are the team's notes, not theirs.
    */
   "conversation:labels": (payload: { conversationId: string; labels: LabelRef[] }) => void;
+  /**
+   * An admin handed the chat to another agent. The previous agent drops it,
+   * the visitor's header switches to the new agent, and admin lists move the
+   * row. The new agent hears about it through `conversation:assigned`, the
+   * same as any chat that has just reached them.
+   *
+   * Everything here is already public to the visitor — it is the agent card
+   * the widget shows — so it can go to the conversation room.
+   */
+  "conversation:transferred": (payload: ConversationTransfer) => void;
   /**
    * An admin sent the message with this id in the agent's place. Staff rooms
    * only — the message itself already reached the conversation room looking

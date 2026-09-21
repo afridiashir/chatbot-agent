@@ -121,6 +121,9 @@ export const listAdminConversationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+/** POST /api/admin/conversations/:id/transfer — who takes the chat over. */
+export const transferConversationBodySchema = z.object({ agentId: idSchema });
+
 export const listLeadsQuerySchema = z.object({
   branchId: idSchema.optional(),
   /** Only people whose enquiry never reached an agent. */
@@ -415,6 +418,7 @@ export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
 export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
 export type PushSubscriptionBody = z.infer<typeof pushSubscriptionBodySchema>;
+export type TransferConversationBody = z.infer<typeof transferConversationBodySchema>;
 export type CreateLabelBody = z.infer<typeof createLabelBodySchema>;
 export type UpdateLabelBody = z.infer<typeof updateLabelBodySchema>;
 export type CreateBranchBody = z.infer<typeof createBranchBodySchema>;

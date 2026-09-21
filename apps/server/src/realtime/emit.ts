@@ -7,6 +7,7 @@ import type {
   AgentStatusPayload,
   ReceiptPayload,
   Conversation,
+  ConversationTransfer,
   ConversationWithAgent,
   LabelRef,
   Message,
@@ -129,7 +130,19 @@ export function emitReaction(
   });
 }
 
-export function emitConversationAssigned(conversation: ConversationWithAgent): void {
+/**
+ * A chat has landed in this agent's inbox. `notification` is what the push says
+ * when their dashboard is shut — a handed-over chat did not start just now, and
+ * saying it did would send them looking for an opening message that is already
+ * several replies old.
+ */
+export function emitConversationAssigned(
+  conversation: ConversationWithAgent,
+  notification: { title: string; body: string } = {
+    title: "New chat",
+    body: `${conversation.visitor.name} started a conversation`,
+  },
+): void {
   io?.to(rooms.agent(conversation.agentId)).emit("conversation:assigned", conversation);
 
   // A chat nobody is watching is the one most worth a notification.
@@ -138,12 +151,65 @@ export function emitConversationAssigned(conversation: ConversationWithAgent): v
       if (!(await agentAway(conversation.agentId))) return;
       await pushToAgent(
         conversation.agentId,
-        "New chat",
-        `${conversation.visitor.name} started a conversation`,
+        notification.title,
+        notification.body,
         `chat-${conversation.id}`,
       );
     } catch (error) {
       console.error("[push] new chat notification", error);
+    }
+  })();
+}
+
+/**
+ * A chat changed hands.
+ *
+ * Unlike a label change this does go to the conversation room: the visitor is
+ * in there and is meant to see it, because the name and photo in their header
+ * have to become whoever is answering now. What they are not told is that an
+ * admin moved them — only who they are talking to.
+ *
+ * The agent who lost the chat hears it in their own room, and both branches'
+ * admins hear it, since a transfer across branches moves the row out of one
+ * list and into the other.
+ */
+export function emitConversationTransferred(
+  transfer: ConversationTransfer,
+  previous: { agentId: string; branchId: string },
+  companyId: string,
+): void {
+  if (!io) return;
+  const server = io;
+  const room = rooms.conversation(transfer.conversationId);
+
+  server
+    .to(room)
+    .to(rooms.agent(previous.agentId))
+    .to(rooms.adminCompany(companyId))
+    .to(rooms.adminBranch(previous.branchId))
+    .to(rooms.adminBranch(transfer.agent.branchId))
+    .emit("conversation:transferred", transfer);
+
+  // Membership of the room is what grants the previous agent everything said in
+  // the chat from here on, so it is taken back on the server rather than left
+  // to their dashboard to give up voluntarily.
+  void server.in(rooms.agent(previous.agentId)).socketsLeave(room);
+
+  // Same for the branch admins the chat has just left behind: a company admin
+  // may move a chat between branches, and a branch admin watches their own
+  // branch only. Their row disappears on the event above; this is what stops
+  // the messages.
+  if (previous.branchId === transfer.agent.branchId) return;
+  void (async () => {
+    for (const socket of await server.in(room).fetchSockets()) {
+      const watcher = socket.data;
+      if (
+        watcher.type === "ADMIN" &&
+        watcher.branchId !== null &&
+        watcher.branchId !== transfer.agent.branchId
+      ) {
+        void socket.leave(room);
+      }
     }
   })();
 }

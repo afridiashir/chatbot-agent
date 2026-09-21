@@ -8,6 +8,8 @@ import type {
   AdminStats,
   Agent,
   Branch,
+  ConversationTransfer,
+  ConversationWithAgent,
   DeactivateAgentResult,
   DeleteConversationResult,
   Lead,
@@ -48,6 +50,7 @@ import {
   toBranch,
   toConversation,
   toConversationDetail,
+  toConversationWithAgent,
   toConversationSummary,
   toEnquiry,
   toLabelRefs,
@@ -575,6 +578,109 @@ export async function getAnyConversation(
     labels: toLabelRefs(conversation.labels),
     // Always present here: this shape only ever reaches an admin.
     adminAuthored: await adminAuthors(conversation.messages),
+  };
+}
+
+/**
+ * The agent a chat is being handed to, checked against what this admin may
+ * touch. Out of reach reads as missing, like every other admin lookup, so one
+ * branch cannot discover another's agents by trying to transfer to them.
+ */
+async function transferTarget(agentId: string, actor: AdminTokenPayload) {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: {
+      id: true,
+      isActive: true,
+      branchId: true,
+      branch: { select: { id: true, name: true, companyId: true, isActive: true } },
+    },
+  });
+
+  if (
+    !agent ||
+    agent.branch.companyId !== actor.companyId ||
+    (actor.branchId !== null && agent.branchId !== actor.branchId)
+  ) {
+    throw notFound("Agent not found");
+  }
+  // Soft-deleted either way: routing already skips them, and a chat handed to
+  // one would sit in an inbox nobody opens.
+  if (!agent.isActive || !agent.branch.isActive) {
+    throw conflict("That agent is no longer taking chats");
+  }
+  return agent;
+}
+
+/**
+ * Hands an open chat to another agent.
+ *
+ * The visitor is not asked and is never told an admin did it: their header
+ * simply switches to whoever is answering now, exactly as it would have if
+ * routing had picked that person to begin with. The transcript stays where it
+ * is — this changes who owns the chat, not what was said in it.
+ *
+ * A company admin may hand a chat across branches, which moves the chat itself
+ * to the new agent's branch. That is the point of the option rather than a side
+ * effect of it: when someone has reached the wrong desk, no amount of replying
+ * from the old one puts them at the right one.
+ *
+ * The new agent's availability is deliberately not checked, matching an agent's
+ * personal link: the chat waits in their inbox until they are back, which is
+ * better than refusing to move it off someone who has gone home.
+ */
+export async function transferConversation(
+  conversationId: string,
+  agentId: string,
+  actor: AdminTokenPayload,
+): Promise<{
+  transfer: ConversationTransfer;
+  conversation: ConversationWithAgent;
+  previous: { agentId: string; branchId: string };
+}> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      agentId: true,
+      status: true,
+      agent: { select: { branchId: true, branch: { select: { companyId: true } } } },
+    },
+  });
+
+  // The same scope, and the same answer, as reading or deleting one.
+  if (
+    !conversation ||
+    conversation.agent.branch.companyId !== actor.companyId ||
+    (actor.branchId !== null && conversation.agent.branchId !== actor.branchId)
+  ) {
+    throw notFound("Conversation not found");
+  }
+  // Who answered a finished chat is history now, and rewriting it would move
+  // the row into an inbox where nobody can act on it.
+  if (conversation.status !== "ACTIVE") {
+    throw conflict("A closed conversation cannot be handed over");
+  }
+  if (conversation.agentId === agentId) {
+    throw conflict("That agent already has this conversation");
+  }
+
+  const target = await transferTarget(agentId, actor);
+
+  const updated = await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { agentId: target.id },
+    include: { agent: true, visitor: true },
+  });
+
+  const withAgent = toConversationWithAgent(updated);
+  return {
+    conversation: withAgent,
+    transfer: {
+      conversationId,
+      agent: withAgent.agent,
+      branch: { id: target.branch.id, name: target.branch.name },
+    },
+    previous: { agentId: conversation.agentId, branchId: conversation.agent.branchId },
   };
 }
 

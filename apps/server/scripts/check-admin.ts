@@ -16,6 +16,7 @@ import type {
   Agent,
   Branch,
   BranchWithAgents,
+  ConversationTransfer,
   DeactivateAgentResult,
   DeleteConversationResult,
   LabelWithUsage,
@@ -367,6 +368,102 @@ async function main(): Promise<void> {
     false,
   );
 
+  console.log("\n7b. An admin can hand the chat to another agent");
+  const secondEmail = `imran.shah.${suffix}@acme.example`;
+  const secondCreated = await request<Agent>("/api/admin/agents", {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      branchId: branch.id,
+      name: "Imran Shah",
+      email: secondEmail,
+      password: "a-strong-agent-password",
+    }),
+  });
+  const second = secondCreated.data;
+  if (!second) throw new Error(`Second agent not created: ${secondCreated.message}`);
+
+  const handed = await request<ConversationTransfer>(
+    `/api/admin/conversations/${conversationId}/transfer`,
+    { method: "POST", token, body: JSON.stringify({ agentId: second.id }) },
+  );
+  check("the chat is handed over", handed.status, 200);
+  check("to the agent that was named", handed.data?.agent.id, second.id);
+  check("and stays in its branch when the new agent is in it", handed.data?.branch.id, branch.id);
+
+  const reassigned = await request<AdminConversationDetail>(
+    `/api/admin/conversations/${conversationId}`,
+    { token },
+  );
+  check("the transcript now names the new agent", reassigned.data?.agent.id, second.id);
+  // Handing a chat over says nothing in it: the visitor is not told at all.
+  check("and nothing was added to it", reassigned.data?.messages.length, 2);
+
+  check(
+    "the agent who lost it can no longer read it",
+    (await request(`/api/conversations/${conversationId}`, { token: newAgentToken })).status,
+    403,
+  );
+
+  const secondLogin = await request<{ token: string }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email: secondEmail, password: "a-strong-agent-password" }),
+  });
+  check(
+    "and the one who now has it can",
+    (await request(`/api/conversations/${conversationId}`, { token: secondLogin.data?.token }))
+      .status,
+    200,
+  );
+
+  check(
+    "handing it to whoever already has it is refused",
+    (
+      await request(`/api/admin/conversations/${conversationId}/transfer`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ agentId: second.id }),
+      })
+    ).status,
+    409,
+  );
+  check(
+    "an agent outside the admin's reach reads as missing",
+    (
+      await request(`/api/admin/conversations/${conversationId}/transfer`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ agentId: "agent_does_not_exist" }),
+      })
+    ).status,
+    404,
+  );
+
+  // Back where it started, so the rest of this script still describes one
+  // agent with one open chat.
+  const handedBack = await request<ConversationTransfer>(
+    `/api/admin/conversations/${conversationId}/transfer`,
+    { method: "POST", token, body: JSON.stringify({ agentId: agent.id }) },
+  );
+  check("and it can be handed back", handedBack.data?.agent.id, agent.id);
+
+  await request(`/api/admin/agents/${second.id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ isActive: false }),
+  });
+  check(
+    "a deactivated agent cannot be handed a chat",
+    (
+      await request(`/api/admin/conversations/${conversationId}/transfer`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ agentId: second.id }),
+      })
+    ).status,
+    409,
+  );
+
   console.log("\n8. Deactivating an agent (soft delete)");
   const deactivated = await request<DeactivateAgentResult>(`/api/admin/agents/${agent.id}`, {
     method: "PATCH",
@@ -406,6 +503,17 @@ async function main(): Promise<void> {
   // Two: the visitor's opening message, and the admin's intervention in step 7.
   check("the transcript is still readable", stillThere.data?.messages.length, 2);
   check("and is now closed", stillThere.data?.status, "CLOSED");
+  check(
+    "a closed chat cannot be handed to anyone",
+    (
+      await request(`/api/admin/conversations/${conversationId}/transfer`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ agentId: agent.id }),
+      })
+    ).status,
+    409,
+  );
 
   console.log("\n10. Deactivating a branch");
   const branchOff = await request<Branch>(`/api/admin/branches/${branch.id}`, {
@@ -770,7 +878,8 @@ async function main(): Promise<void> {
     stats.branches.active - baseline.branches.active,
     0,
   );
-  check("agent total grew by the one we added", stats.agents.total - baseline.agents.total, 1);
+  // Two: the agent of step 4, and the one step 7b hands the chat to.
+  check("agent total grew by the ones we added", stats.agents.total - baseline.agents.total, 2);
   check(
     "active agents are unchanged, since we deactivated them",
     stats.agents.active - baseline.agents.active,

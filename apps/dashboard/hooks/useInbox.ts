@@ -402,6 +402,27 @@ export function useInbox(
       );
     });
 
+    /*
+     * An admin handed one of these chats to someone else.
+     *
+     * Only losing one has to be dealt with here: a chat handed *to* this agent
+     * arrives through `conversation:assigned`, like any other. The server has
+     * already taken the room away, so this is the screen catching up, not the
+     * access check.
+     */
+    socket.on("conversation:transferred", ({ conversationId, agent }) => {
+      if (agent.id === agentId) return;
+      setVisitorTyping(conversationId, false);
+      setConversations((current) => current.filter((row) => row.id !== conversationId));
+      // Anything still queued for it would now be sent as someone else's reply.
+      updateOutbox(outboxRef.current.filter((m) => m.conversationId !== conversationId));
+      if (conversationId === selectedIdRef.current) {
+        setSelectedId(null);
+        setDetail(null);
+        setError(`That conversation was handed to ${agent.name}.`);
+      }
+    });
+
     // An admin deleted the chat. Unlike closing, nothing of it is left to read,
     // so the row goes rather than moving to the Closed tab.
     socket.on("conversation:deleted", ({ conversationId }) => {

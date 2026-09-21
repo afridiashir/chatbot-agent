@@ -152,6 +152,22 @@ export interface ConversationWithAgent extends Conversation {
 }
 
 /**
+ * A chat's new owner, after an admin handed it to another agent.
+ *
+ * Carries the branch as well as the agent because handing a chat to someone in
+ * another branch moves the chat there too — the visitor reached the wrong desk,
+ * and the chat belongs where the person answering it sits.
+ *
+ * Everything in here is already the agent card the visitor is shown, so this
+ * shape is safe to send to the conversation room.
+ */
+export interface ConversationTransfer {
+  conversationId: string;
+  agent: ConversationWithAgent["agent"];
+  branch: Pick<Branch, "id" | "name">;
+}
+
+/**
  * An admin who sent a message in an agent's place. Staff-facing only: the
  * visitor is shown the agent throughout, which is the point of replying on
  * their behalf.
