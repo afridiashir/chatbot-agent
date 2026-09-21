@@ -2,7 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, BellOff, BellRing, Camera, CloudOff, Link2, Search } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  BellRing,
+  Camera,
+  CloudOff,
+  Link2,
+  MailWarning,
+  Search,
+} from "lucide-react";
 import { ChatLinkDialog } from "@/components/ChatLinkDialog";
 import { isMuted, playChime, setMuted, unlockSound } from "@/lib/sound";
 import { disablePush, enablePush, pushEnabled, pushSupported } from "@/lib/push";
@@ -99,6 +108,7 @@ function Dashboard({
     if (!next) playChime("message");
   }
   const [tab, setTab] = useState<"ACTIVE" | "CLOSED">("ACTIVE");
+  const [sort, setSort] = useState<"recent" | "unread">("recent");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   // Re-read after any send or selection change so the list’s draft hints
@@ -127,15 +137,38 @@ function Dashboard({
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const inTab = inbox.conversations.filter((row) => row.status === tab);
-    if (!needle) return inTab;
-    return inTab.filter(
-      (row) =>
-        row.visitor.name.toLowerCase().includes(needle) ||
-        (row.visitor.city ?? "").toLowerCase().includes(needle) ||
-        row.visitor.phone.includes(needle) ||
-        (row.lastMessage?.content ?? "").toLowerCase().includes(needle),
-    );
-  }, [inbox.conversations, query, tab]);
+    const matched = needle
+      ? inTab.filter(
+          (row) =>
+            row.visitor.name.toLowerCase().includes(needle) ||
+            (row.visitor.city ?? "").toLowerCase().includes(needle) ||
+            row.visitor.phone.includes(needle) ||
+            (row.lastMessage?.content ?? "").toLowerCase().includes(needle),
+        )
+      : inTab;
+
+    if (sort === "recent") return matched;
+
+    /*
+     * Unread first, and within each group still newest first — the server
+     * already returns the list in activity order and `sort` is stable, so
+     * ordering on "has unread" alone preserves that inside each group.
+     *
+     * The open conversation counts as read: its badge is cleared on screen, so
+     * leaving it pinned to the top would make the row being read jump about.
+     */
+    const unreadOf = (row: (typeof matched)[number]) =>
+      row.id === inbox.selectedId ? 0 : row.unreadCount;
+    return matched.slice().sort((a, b) => Number(unreadOf(b) > 0) - Number(unreadOf(a) > 0));
+  }, [inbox.conversations, inbox.selectedId, query, tab, sort]);
+
+  const unreadInTab = useMemo(
+    () =>
+      inbox.conversations.filter(
+        (row) => row.status === tab && row.id !== inbox.selectedId && row.unreadCount > 0,
+      ).length,
+    [inbox.conversations, inbox.selectedId, tab],
+  );
 
   return (
     /*
@@ -275,6 +308,27 @@ function Dashboard({
                 </span>
               </button>
             ))}
+
+            {/* Pushed to the end of the same row: it is a view option, not a
+                third tab, so it should not read as one. */}
+            <button
+              type="button"
+              aria-pressed={sort === "unread"}
+              onClick={() => setSort((value) => (value === "unread" ? "recent" : "unread"))}
+              title={sort === "unread" ? "Sorted by unread first" : "Sort unread first"}
+              className={cn(
+                "ml-auto flex items-center gap-1 rounded-full bg-chat-header px-2.5 py-1 text-xs font-medium text-chat-meta transition-colors hover:text-foreground",
+                sort === "unread" && "bg-success-soft text-success hover:text-success",
+              )}
+            >
+              <MailWarning className="size-3.5" aria-hidden />
+              Unread
+              {unreadInTab > 0 && (
+                <span className="rounded-full bg-background/70 px-1.5 text-[10px] tabular-nums">
+                  {unreadInTab}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 

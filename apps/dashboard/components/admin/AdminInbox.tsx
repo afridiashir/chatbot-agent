@@ -635,6 +635,18 @@ export function AdminInbox({
               </button>
             </header>
 
+            {/* Phones and tablets: the header bar is `lg`-only, so without this
+                an admin on anything narrower could not label a chat either. */}
+            {detail && (
+              <div className="flex items-center gap-2 border-b bg-chat-header px-3 py-1.5 lg:hidden">
+                <LabelBar
+                  labels={detail.labels}
+                  available={labels}
+                  onToggle={(id, next) => void toggleLabel(detail.id, id, next)}
+                />
+              </div>
+            )}
+
             <div className="relative flex min-h-0 flex-1">
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="chat-canvas flex flex-1 flex-col gap-1.5 overflow-y-auto px-4 py-3 md:px-[6%]">

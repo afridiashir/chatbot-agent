@@ -574,6 +574,17 @@ export function ConversationView({
         )}
       </header>
 
+      {/*
+        The same bar again, on its own row, for phones. The header has a back
+        arrow, an avatar, two lines of contact detail and a close button on it
+        already — there is no room left for chips, and hiding labelling behind a
+        breakpoint would mean an agent working from their phone simply cannot do
+        it. One row of its own is cheaper than that.
+      */}
+      <div className="flex items-center gap-2 border-b bg-chat-header px-3 py-1.5 md:hidden">
+        <LabelBar labels={labels} available={availableLabels} onToggle={onToggleLabel} />
+      </div>
+
       <div className="chat-canvas flex flex-1 flex-col gap-1.5 overflow-y-auto px-4 py-3">
         {detail.messages.map((message, index) => (
           <div key={message.id} className="flex flex-col gap-1.5">
