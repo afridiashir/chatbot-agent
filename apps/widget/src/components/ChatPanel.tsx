@@ -26,6 +26,7 @@ import { checkVisitorFile } from "../lib/media.js";
 import { EmojiPicker } from "./EmojiPicker.js";
 import { MediaViewer, type ViewedMedia } from "./MediaViewer.js";
 import { MessageMedia } from "./MessageMedia.js";
+import { MessageText } from "./MessageText.js";
 import { LiveWaveform } from "./Waveform.js";
 
 export interface VisitorMediaSend {
@@ -278,7 +279,7 @@ function MessageBubble({
               jumbo ? "emoji pb-1 text-[2.5rem] leading-[1.2]" : ""
             }`}
           >
-            {message.content}
+            <MessageText content={message.content} />
             {/* An invisible spacer the width of the stamp, so the last line never runs under it. */}
             <span className="invisible ml-2 inline-block w-14" aria-hidden="true" />
           </p>

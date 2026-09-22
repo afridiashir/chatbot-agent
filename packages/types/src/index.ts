@@ -4,3 +4,4 @@ export * from "./labels";
 export * from "./api";
 export * from "./socket";
 export * from "./media";
+export * from "./linkify";

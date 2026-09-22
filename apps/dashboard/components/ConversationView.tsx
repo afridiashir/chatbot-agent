@@ -41,6 +41,7 @@ import { useLongPress } from "@/hooks/useLongPress";
 import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
+import { MessageText } from "@/components/MessageText";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
 import { loadDrafts, saveDraft, type QueuedMessage } from "@/lib/outbox";
@@ -102,7 +103,9 @@ function PendingBubble({
             <p className="truncate text-xs text-chat-meta">{quoteText(message.replyTo)}</p>
           </div>
         )}
-        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap break-words">
+          <MessageText content={message.content} />
+        </p>
         <span className="float-right mt-0.5 ml-2 flex items-center gap-1 text-[10px] leading-none text-chat-meta">
           <Clock className="h-2.5 w-2.5" aria-hidden="true" />
           <span className="sr-only">Waiting to send</span>
@@ -312,7 +315,7 @@ export function Bubble({
                 : "text-sm",
             )}
           >
-            {message.content}
+            <MessageText content={message.content} />
           </p>
         )}
         {!bareVoice && (
