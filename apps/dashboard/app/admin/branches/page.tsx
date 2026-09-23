@@ -354,19 +354,32 @@ function BranchCard({
         )}
       </div>
 
-      <div className="mt-auto flex items-center justify-end gap-1 border-t px-2 py-2">
+      {/*
+        A grid, not a row. Four labelled actions are wider than a card in the
+        three-column layout, and a flex row that cannot wrap does not clip — it
+        spills over the card's edge and onto the one beside it. Two columns fit
+        at every width the grid produces, and the cards that carry only two
+        actions (the main branch, an inactive one) simply fill one line of it.
+      */}
+      <div className="mt-auto grid grid-cols-2 gap-x-1 border-t px-2 py-2">
         {branch.isActive && (
-          <Button variant="ghost" size="sm" onClick={onChatLink} className="mr-auto">
+          <Button variant="ghost" size="sm" onClick={onChatLink} className="justify-start px-2">
             <Link2 className="size-3.5" aria-hidden />
             Chat link
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={onRename}>
+        <Button variant="ghost" size="sm" onClick={onRename} className="justify-start px-2">
           <Pencil className="size-3.5" aria-hidden />
           Rename
         </Button>
         {branch.isActive && !branch.isMain && (
-          <Button variant="ghost" size="sm" disabled={busy} onClick={onMakeMain}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={onMakeMain}
+            className="justify-start px-2"
+          >
             <Star className="size-3.5" aria-hidden />
             Make main
           </Button>
@@ -378,7 +391,7 @@ function BranchCard({
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:text-destructive"
+              className="justify-start px-2 text-destructive hover:text-destructive"
               onClick={onDeactivate}
             >
               <PowerOff className="size-3.5" aria-hidden />
@@ -389,7 +402,7 @@ function BranchCard({
           <Button
             variant="ghost"
             size="sm"
-            className="text-success"
+            className="justify-start px-2 text-success"
             onClick={onReactivate}
             disabled={busy}
           >
