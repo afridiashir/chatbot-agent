@@ -409,12 +409,42 @@ async function main(): Promise<void> {
     method: "POST",
     body: JSON.stringify({ email: secondEmail, password: "a-strong-agent-password" }),
   });
-  check(
-    "and the one who now has it can",
-    (await request(`/api/conversations/${conversationId}`, { token: secondLogin.data?.token }))
-      .status,
-    200,
+  const secondToken = secondLogin.data?.token;
+  // Taking a chat over means taking its history with it: everything the first
+  // agent and the visitor said has to be readable by whoever answers next, or
+  // they are replying to a conversation they cannot see.
+  const inherited = await request<{ messages: Message[]; agent: { id: string } }>(
+    `/api/conversations/${conversationId}`,
+    { token: secondToken },
   );
+  check("and the one who now has it can", inherited.status, 200);
+  check("the whole transcript comes with it", inherited.data?.messages.length, 2);
+  check(
+    "including what the previous agent sent",
+    inherited.data?.messages.some((m) => m.content === "Admin stepping in."),
+    true,
+  );
+  check(
+    "and what the visitor said before the hand-over",
+    inherited.data?.messages.some((m) => m.content === "Testing the new branch"),
+    true,
+  );
+
+  // And their inbox has to describe it as the conversation it is, rather than
+  // as a chat that has only just started.
+  const newInbox = await request<
+    Array<{ id: string; messageCount: number; lastMessage: Message | null }>
+  >(`/api/agents/${second.id}/conversations`, { token: secondToken });
+  const inboxRow = newInbox.data?.find((row) => row.id === conversationId);
+  check("it appears in the new agent's inbox", Boolean(inboxRow), true);
+  check("carrying the message count, not zero", inboxRow?.messageCount, 2);
+  check("and the last thing actually said in it", inboxRow?.lastMessage?.content, "Admin stepping in.");
+
+  // The visitor's own copy is untouched by any of it.
+  const visitorCopy = await request<{ messages: Message[] }>(
+    `/api/conversations/${conversationId}?visitorId=${visitorId}`,
+  );
+  check("the visitor keeps the same chat and history", visitorCopy.data?.messages.length, 2);
 
   check(
     "handing it to whoever already has it is refused",
@@ -437,6 +467,43 @@ async function main(): Promise<void> {
       })
     ).status,
     404,
+  );
+
+
+  // The visitor's side of a hand-over: they close the tab, come back, and the
+  // chat they had is still the chat they get — with whoever has it now, even
+  // though that person sits in another branch entirely.
+  const acrossBranches = await request<ConversationTransfer>(
+    `/api/admin/conversations/${conversationId}/transfer`,
+    { method: "POST", token, body: JSON.stringify({ agentId: "agent_bilal_khan" }) },
+  );
+  check("a chat can be handed to another branch", acrossBranches.status, 200);
+  check("and the chat moves to that branch", acrossBranches.data?.branch.id, "branch_karachi");
+
+  const returning = await request<{
+    available: boolean;
+    resumed?: boolean;
+    conversation: { id: string; agentId: string };
+  }>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({
+      // Arriving where they first did, which is no longer where the chat is.
+      branchId: branch.id,
+      visitorId,
+      visitor: {
+        name: "Admin Check Visitor",
+        phone: `+92 300 ${digits}`,
+        maritalStatus: "MARRIED",
+        city: "Lahore",
+      },
+    }),
+  });
+  check("a returning visitor is not started over", returning.data?.resumed, true);
+  check("they land back in the same conversation", returning.data?.conversation.id, conversationId);
+  check(
+    "now with the agent who holds it, not a new one",
+    returning.data?.conversation.agentId,
+    "agent_bilal_khan",
   );
 
   // Back where it started, so the rest of this script still describes one

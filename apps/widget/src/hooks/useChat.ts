@@ -15,6 +15,7 @@ import type { WidgetConfig } from "../config.js";
 import type { VisitorDetails } from "../components/PreChatForm.js";
 import type { VisitorMediaSend } from "../components/ChatPanel.js";
 import { ApiError, apiFetch } from "../lib/api.js";
+import { keepConnected } from "../lib/socket.js";
 import { notifyInBackground } from "../lib/push.js";
 import { uploadVisitorAttachment } from "../lib/media.js";
 import { useTypingIndicator, useTypingSignal } from "./useTyping.js";
@@ -36,6 +37,24 @@ export type ChatPhase = "loading" | "picking" | "starting" | "unavailable" | "ch
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+/**
+ * A line in the transcript that nobody said.
+ *
+ * Only ever "you are now talking to this person": when a chat is picked back up
+ * after being away, and when it is handed to somebody else mid-conversation. It
+ * marks the point in the history where that became true, which is why it sits
+ * between the messages rather than in the header.
+ *
+ * Not stored anywhere — the server keeps messages, and this is not one. It
+ * describes this visit, and a visit is what it should last.
+ */
+export interface ChatNotice {
+  id: string;
+  agentName: string;
+  /** Where it belongs in the transcript. */
+  at: string;
+}
+
 export interface ChatController {
   phase: ChatPhase;
   branches: Branch[];
@@ -45,6 +64,8 @@ export interface ChatController {
   /** The branch fixed by an agent or branch link; the visitor isn't asked. */
   lockedBranch: Branch | null;
   messages: Message[];
+  /** "Connected with ..." lines, shown in among the messages. */
+  notices: ChatNotice[];
   error: string | null;
   /** False while the socket is reconnecting; the composer disables itself. */
   connected: boolean;
@@ -76,6 +97,21 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [conversation, setConversation] = useState<ConversationWithAgent | null>(null);
   const [linkAgent, setLinkAgent] = useState<PublicAgentProfile | null>(null);
+  const [notices, setNotices] = useState<ChatNotice[]>([]);
+
+  /**
+   * Marks the transcript with who is answering from here on.
+   *
+   * Repeating the same name is skipped: a dropped connection or a reopened
+   * panel is not a change of person, and saying so twice would read as one.
+   */
+  const noteConnected = useCallback((agentName: string) => {
+    setNotices((current) => {
+      if (current[current.length - 1]?.agentName === agentName) return current;
+      const at = new Date().toISOString();
+      return [...current, { id: `notice-${at}-${current.length}`, agentName, at }];
+    });
+  }, []);
   const [savedVisitor, setSavedVisitor] = useState<SavedVisitor | null>(() => getSavedVisitor());
   /** Read inside socket handlers, which must not close over changing state. */
   const agentNameRef = useRef<string | null>(null);
@@ -198,6 +234,9 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           const { messages: history, ...rest } = detail;
           setConversation(rest);
           setMessages(history);
+          // Only where there is something to come back to. A chat with nothing
+          // in it yet already says who is there, above the empty canvas.
+          if (history.length > 0) noteConnected(detail.agent.name);
           setPhase("chatting");
         } catch {
           // The stored id is stale or no longer ours — start fresh.
@@ -214,7 +253,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     return () => {
       cancelled = true;
     };
-  }, [config.apiUrl, config.agentId, config.branchId, visitorId]);
+  }, [config.apiUrl, config.agentId, config.branchId, visitorId, noteConnected]);
 
   // One socket per conversation. Keyed on the id so a status change (for
   // example the agent closing the chat) does not force a reconnect.
@@ -282,6 +321,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     socket.on("conversation:transferred", (transfer) => {
       if (transfer.conversationId !== conversationId) return;
       setAgentTyping(false);
+      // The one change of person the visitor does see happen.
+      noteConnected(transfer.agent.name);
       setConversation((current) =>
         current && current.id === transfer.conversationId
           ? { ...current, agentId: transfer.agent.id, agent: transfer.agent }
@@ -302,12 +343,20 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       setPhase("failed");
     });
 
+    // A handshake the server refuses is not something Socket.IO retries, and a
+    // visitor has no sign-in to redo, so it is retried here.
+    const stopRetrying = keepConnected(socket, {
+      onRetrying: () => setConnected(false),
+      onRejected: () => setConnected(false),
+    });
+
     return () => {
+      stopRetrying();
       socket.close();
       socketRef.current = null;
       setConnected(false);
     };
-  }, [conversationId, config.apiUrl, visitorId, appendMessage, setAgentTyping]);
+  }, [conversationId, config.apiUrl, visitorId, appendMessage, setAgentTyping, noteConnected]);
 
   const startChat = useCallback(
     async (visitor: VisitorDetails) => {
@@ -349,13 +398,14 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           `/api/conversations/${result.conversation.id}?visitorId=${encodeURIComponent(visitorId)}`,
         );
         setMessages(detail.messages);
+        if (detail.messages.length > 0) noteConnected(detail.agent.name);
         setPhase("chatting");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Could not start the chat");
         setPhase("failed");
       }
     },
-    [config.apiUrl, config.agentId, config.branchId, visitorId],
+    [config.apiUrl, config.agentId, config.branchId, visitorId, noteConnected],
   );
 
   const sendMessage = useCallback(
@@ -436,6 +486,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     clearStoredConversationId();
     setConversation(null);
     setMessages([]);
+    setNotices([]);
     setError(null);
     setPhase("picking");
   }, []);
@@ -471,6 +522,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     linkAgent,
     lockedBranch,
     messages,
+    notices,
     error,
     connected: connected && networkUp,
     isClosed: conversation?.status === "CLOSED",

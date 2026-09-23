@@ -145,6 +145,15 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
     // A returning visitor rejoins their open chat instead of opening a second
     // one. Checked before availability so they can still reach an agent who has
     // since gone offline.
+    //
+    // Anywhere in the company, not only in the branch they have just arrived
+    // at: an open chat is a conversation already in progress with a particular
+    // person, and coming back to say one more thing should continue it rather
+    // than start again with a stranger who cannot see any of it. This is what
+    // makes a handed-over chat survive the visitor closing the tab — the new
+    // agent may well be in another branch, and that is the whole point of
+    // having handed it to them.
+    //
     // From an agent's link, only a chat with that agent counts: someone who
     // followed a specific person's link expects to talk to them.
     const existing = await tx.conversation.findFirst({
@@ -153,7 +162,10 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
         status: "ACTIVE",
         ...(input.preferredAgentId
           ? { agentId: input.preferredAgentId }
-          : { agent: { branchId: input.branchId } }),
+          : // Company-wide, never wider: one visitor id is the same browser on
+            // every site the widget is on, and another company's chat must not
+            // surface here.
+            { agent: { branch: { companyId: branch.companyId } } }),
       },
       orderBy: { createdAt: "desc" },
       include: { agent: true, visitor: true },

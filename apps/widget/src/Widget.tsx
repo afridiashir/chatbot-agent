@@ -144,6 +144,7 @@ export function Widget({ config }: { config: WidgetConfig }) {
           agentOnline={chat.conversation.agent.isOnline}
           agentPhoto={chat.conversation.agent.avatarUrl ?? null}
           messages={chat.messages}
+          notices={chat.notices}
           connected={chat.connected}
           isClosed={chat.isClosed}
           agentTyping={chat.agentTyping}

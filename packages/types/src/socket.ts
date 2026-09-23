@@ -96,7 +96,16 @@ export interface ServerToClientEvents {
     messageId: string;
     reactions: Reaction[];
   }) => void;
-  "conversation:assigned": (conversation: ConversationWithAgent) => void;
+  /**
+   * A chat is now this agent's. `context` says how it got there: a chat handed
+   * over carries everything already said in it, so an inbox must fetch the real
+   * row rather than draw an empty one, and must not greet it as a chat someone
+   * has just started.
+   */
+  "conversation:assigned": (
+    conversation: ConversationWithAgent,
+    context?: { handedOver: boolean },
+  ) => void;
   "conversation:closed": (conversation: Conversation) => void;
   /**
    * An admin deleted the chat. Nothing of it survives on the server, so every
@@ -128,6 +137,15 @@ export interface ServerToClientEvents {
     messageId: string;
     author: MessageAuthor;
   }) => void;
+  /**
+   * Whether the visitor has the chat open right now, for the staff side only.
+   *
+   * Derived from the sockets in the conversation's room rather than stored: a
+   * browser that is closed without warning stops being counted, which a column
+   * on the visitor could never manage. Sent when it changes, and once to a
+   * dashboard as it joins the room, so a freshly opened inbox is not blank.
+   */
+  "visitor:status": (payload: { conversationId: string; isOnline: boolean }) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "agent:profile": (payload: AgentProfilePayload) => void;
   "message:receipt": (payload: ReceiptPayload) => void;

@@ -16,6 +16,7 @@ import { ChatLinkDialog } from "@/components/ChatLinkDialog";
 import { isMuted, playChime, setMuted, unlockSound } from "@/lib/sound";
 import { disablePush, enablePush, pushEnabled, pushSupported } from "@/lib/push";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
+import { LabelChip } from "@/components/LabelChip";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { describeAttachment, type Agent } from "@repo/types";
 import { ConversationView } from "@/components/ConversationView";
@@ -359,11 +360,20 @@ function Dashboard({
                     inbox.selectedId === conversation.id && "bg-accent",
                   )}
                 >
-                  <Avatar
-                    name={conversation.visitor.name}
-                    seed={conversation.visitor.id}
-                    size="lg"
-                  />
+                  <span className="relative shrink-0">
+                    <Avatar
+                      name={conversation.visitor.name}
+                      seed={conversation.visitor.id}
+                      size="lg"
+                    />
+                    {inbox.visitorOnline[conversation.id] && (
+                      <span
+                        className="absolute right-0 bottom-0 size-3 rounded-full bg-online ring-2 ring-chat-panel"
+                        aria-label="In the chat now"
+                        title="In the chat now"
+                      />
+                    )}
+                  </span>
 
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
@@ -416,6 +426,20 @@ function Dashboard({
                       </span>
                     )}
                   </span>
+
+                  {/* What the team has marked this chat as. One chip only —
+                      a row that wraps to three lines stops being scannable —
+                      with the rest reachable on the chat itself. */}
+                  {conversation.labels.length > 0 && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <LabelChip label={conversation.labels[0]!} />
+                      {conversation.labels.length > 1 && (
+                        <span className="text-[10px] text-chat-meta">
+                          +{conversation.labels.length - 1}
+                        </span>
+                      )}
+                    </span>
+                  )}
 
                   {/* The count of what is waiting, as a chat app shows it. */}
                   {unread > 0 && (
@@ -473,6 +497,7 @@ function Dashboard({
           }
           connected={inbox.connected}
           visitorTyping={inbox.selectedId ? Boolean(inbox.typingIn[inbox.selectedId]) : false}
+          visitorOnline={inbox.selectedId ? inbox.visitorOnline[inbox.selectedId] : undefined}
           pending={inbox.pending}
           onSend={inbox.send}
           onSendMedia={inbox.sendMedia}

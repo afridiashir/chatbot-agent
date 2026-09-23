@@ -418,8 +418,11 @@ adminRouter.post(
     // The new agent is told the way they are told about any chat that has just
     // reached them, so their inbox needs no separate notion of a handed-over one.
     emitConversationAssigned(conversation, {
-      title: "Chat transferred to you",
-      body: `${conversation.visitor.name}'s conversation was handed to you`,
+      handedOver: true,
+      notification: {
+        title: "Chat transferred to you",
+        body: `${conversation.visitor.name}'s conversation was handed to you`,
+      },
     });
 
     sendOk(res, transfer);

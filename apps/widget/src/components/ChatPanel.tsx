@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ATTACHMENT_ACCEPT,
   formatBytes,
@@ -8,6 +8,7 @@ import {
   type AttachmentKind,
   type Message,
 } from "@repo/types";
+import type { ChatNotice } from "../hooks/useChat.js";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "../hooks/useVoiceRecorder.js";
 import { useSwipeReply } from "../hooks/useSwipeReply.js";
 import { useLongPress } from "../hooks/useLongPress.js";
@@ -49,6 +50,8 @@ interface ChatPanelProps {
   /** The agent's profile photo path, or null for the default silhouette. */
   agentPhoto: string | null;
   messages: Message[];
+  /** "Connected with ..." lines, drawn in among the messages. */
+  notices: ChatNotice[];
   connected: boolean;
   isClosed: boolean;
   agentTyping: boolean;
@@ -376,6 +379,7 @@ export function ChatPanel({
   agentOnline,
   agentPhoto,
   messages,
+  notices,
   connected,
   isClosed,
   agentTyping,
@@ -394,7 +398,12 @@ export function ChatPanel({
     file: File;
     kind: Exclude<AttachmentKind, "VOICE">;
   } | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
+  /**
+   * The file on its way to storage, if any. Deliberately not the staged one:
+   * sending hands the file to this and empties the composer, so the next
+   * message can be typed while the upload runs.
+   */
+  const [uploading, setUploading] = useState<{ name: string; progress: number } | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<ViewedMedia | null>(null);
   /** The message being replied to, shown above the box until sent or dropped. */
@@ -452,7 +461,48 @@ export function ChatPanel({
     return () => clearTimeout(timer);
   }, [said]);
 
-  const busy = sending || progress !== null;
+  // Only the text send blocks the box, and that is a moment. An upload runs
+  // behind the composer rather than in front of it.
+  const busy = sending;
+
+  /*
+   * Messages and notices as one list, in the order they happened.
+   *
+   * The day separator and the grouping of one sender's messages are worked out
+   * here rather than in the loop, because a notice sits between messages and
+   * has to break a group: two messages from the same person either side of
+   * "connected with ..." are not one run of speech.
+   */
+  const stream = useMemo(() => {
+    const items: Array<
+      | { kind: "message"; at: string; message: Message; newDay: boolean; continued: boolean }
+      | { kind: "notice"; at: string; notice: ChatNotice }
+    > = [
+      ...messages.map((message) => ({
+        kind: "message" as const,
+        at: message.createdAt,
+        message,
+        newDay: false,
+        continued: false,
+      })),
+      ...notices.map((notice) => ({ kind: "notice" as const, at: notice.at, notice })),
+    ];
+    // A stable sort, with the messages laid down first, puts a notice recorded
+    // in the same moment as a message after it rather than before.
+    items.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+
+    let previous: Message | undefined;
+    for (const item of items) {
+      if (item.kind === "notice") {
+        previous = undefined;
+        continue;
+      }
+      item.newDay = isNewDay(item.message.createdAt, previous?.createdAt);
+      item.continued = !item.newDay && previous?.senderType === item.message.senderType;
+      previous = item.message;
+    }
+    return items;
+  }, [messages, notices]);
   const hasText = draft.trim().length > 0;
   const canSend = connected && !isClosed && !busy && (hasText || staged !== null);
   const agent = { name: agentName, photo: agentPhoto };
@@ -531,19 +581,32 @@ export function ChatPanel({
     setStaged({ file, kind });
   }
 
-  async function sendMedia(media: Omit<VisitorMediaSend, "onProgress" | "replyToId">) {
+  /**
+   * Starts an upload and returns: the file goes on its own while the visitor
+   * carries on typing. One at a time, so the attach and record buttons wait
+   * their turn, but an ordinary message never does.
+   *
+   * A failure names the file, because by then it has left the screen.
+   */
+  function startUpload(
+    media: Omit<VisitorMediaSend, "onProgress" | "replyToId">,
+    name: string,
+  ): void {
     setMediaError(null);
-    setProgress(0);
-    try {
-      await onSendMedia({ ...media, replyToId: replyTo?.id, onProgress: setProgress });
-      setReplyTo(null);
-      return true;
-    } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Could not send that file");
-      return false;
-    } finally {
-      setProgress(null);
-    }
+    setUploading({ name, progress: 0 });
+    const quoted = replyTo?.id;
+    setReplyTo(null);
+
+    void onSendMedia({
+      ...media,
+      replyToId: quoted,
+      onProgress: (fraction) =>
+        setUploading((current) => (current ? { ...current, progress: fraction } : current)),
+    })
+      .catch((error: unknown) =>
+        setMediaError(`${name}: ${error instanceof Error ? error.message : "could not be sent"}`),
+      )
+      .finally(() => setUploading(null));
   }
 
   async function submit(event: React.FormEvent) {
@@ -551,17 +614,19 @@ export function ChatPanel({
     if (!canSend) return;
 
     if (staged) {
-      const ok = await sendMedia({
-        kind: staged.kind,
-        file: staged.file,
-        fileName: staged.file.name,
-        caption: draft.trim(),
-      });
-      if (ok) {
-        setStaged(null);
-        setDraft("");
-        inputRef.current?.focus();
-      }
+      // Cleared first, so the box is free the instant send is pressed.
+      startUpload(
+        {
+          kind: staged.kind,
+          file: staged.file,
+          fileName: staged.file.name,
+          caption: draft.trim(),
+        },
+        staged.file.name,
+      );
+      setStaged(null);
+      setDraft("");
+      inputRef.current?.focus();
       return;
     }
 
@@ -635,14 +700,17 @@ export function ChatPanel({
       setMediaError("That recording was too short.");
       return;
     }
-    await sendMedia({
-      kind: "VOICE",
-      file: note.blob,
-      fileName: note.fileName,
-      caption: "",
-      durationMs: note.durationMs,
-      waveform: note.waveform,
-    });
+    startUpload(
+      {
+        kind: "VOICE",
+        file: note.blob,
+        fileName: note.fileName,
+        caption: "",
+        durationMs: note.durationMs,
+        waveform: note.waveform,
+      },
+      "Voice message",
+    );
   }
 
   const error = mediaError ?? recorder.error ?? chatError;
@@ -657,8 +725,8 @@ export function ChatPanel({
         <StagedPreview
           file={staged.file}
           kind={staged.kind}
-          progress={progress}
-          busy={busy}
+          progress={null}
+          busy={false}
           onRemove={() => setStaged(null)}
         />
       )}
@@ -673,9 +741,17 @@ export function ChatPanel({
               : `${agentName} is away right now. Leave a message and they'll reply here when they're back.`}
           </div>
         )}
-        {messages.map((message, index) => {
-          const previous = messages[index - 1];
-          const newDay = isNewDay(message.createdAt, previous?.createdAt);
+        {stream.map((item) => {
+          if (item.kind === "notice") {
+            return (
+              <div key={item.notice.id} className="my-2 flex justify-center">
+                <span className="max-w-[85%] rounded-lg bg-white px-3 py-1 text-center text-[12px] text-wa-meta shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
+                  Connected with {item.notice.agentName}
+                </span>
+              </div>
+            );
+          }
+          const { message, newDay, continued } = item;
           return (
             <div key={message.id}>
               {newDay && (
@@ -689,7 +765,7 @@ export function ChatPanel({
                 apiUrl={apiUrl}
                 message={message}
                 agent={agent}
-                continued={!newDay && previous?.senderType === message.senderType}
+                continued={continued}
                 canReply={!isClosed && connected}
                 flash={flashId === message.id}
                 reacting={reactingId === message.id}
@@ -797,18 +873,7 @@ export function ChatPanel({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-wa-text">{staged.file.name}</p>
-                <p className="text-[11px] text-wa-meta">
-                  {formatBytes(staged.file.size)}
-                  {progress !== null && ` · uploading ${Math.round(progress * 100)}%`}
-                </p>
-                {progress !== null && (
-                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-wa-panel">
-                    <div
-                      className="h-full rounded-full bg-wa-green transition-[width]"
-                      style={{ width: `${Math.round(progress * 100)}%` }}
-                    />
-                  </div>
-                )}
+                <p className="text-[11px] text-wa-meta">{formatBytes(staged.file.size)}</p>
               </div>
               <button
                 type="button"
@@ -831,6 +896,19 @@ export function ChatPanel({
             </div>
           )}
 
+          {uploading && (
+            <div className="flex items-center gap-2 px-4 pt-2 text-[11px] text-wa-meta">
+              <span className="truncate">
+                Sending {uploading.name} · {Math.round(uploading.progress * 100)}%
+              </span>
+              <span className="h-1 min-w-10 flex-1 overflow-hidden rounded-full bg-wa-panel">
+                <span
+                  className="block h-full rounded-full bg-wa-green transition-[width]"
+                  style={{ width: `${Math.round(uploading.progress * 100)}%` }}
+                />
+              </span>
+            </div>
+          )}
           {error && <p className="px-4 pt-2 text-xs text-red-600">{error}</p>}
 
           {recorder.recording ? (
@@ -1009,11 +1087,7 @@ export function ChatPanel({
                   onPointerDown={(event) => event.preventDefault()}
                   className={roundButton}
                 >
-                  {progress !== null ? (
-                    <span className="text-[11px] font-semibold">{Math.round(progress * 100)}%</span>
-                  ) : (
-                    <SendIcon />
-                  )}
+                  <SendIcon />
                 </button>
               ) : (
                 <button
@@ -1022,12 +1096,14 @@ export function ChatPanel({
                     setEmojiOpen(false);
                     void recorder.start();
                   }}
-                  disabled={!connected || busy}
+                  disabled={!connected || uploading !== null}
                   aria-label="Record a voice message"
                   className={roundButton}
                 >
-                  {progress !== null ? (
-                    <span className="text-[11px] font-semibold">{Math.round(progress * 100)}%</span>
+                  {uploading ? (
+                    <span className="text-[11px] font-semibold">
+                      {Math.round(uploading.progress * 100)}%
+                    </span>
                   ) : (
                     <svg
                       viewBox="0 0 24 24"

@@ -14,7 +14,7 @@ import type {
   MessageAuthor,
   Reaction,
 } from "@repo/types";
-import type { AppServer } from "./types.js";
+import type { AppServer, AppSocket } from "./types.js";
 
 /**
  * The single Socket.IO instance, set once at boot. REST handlers broadcast
@@ -131,19 +131,29 @@ export function emitReaction(
 }
 
 /**
- * A chat has landed in this agent's inbox. `notification` is what the push says
- * when their dashboard is shut — a handed-over chat did not start just now, and
- * saying it did would send them looking for an opening message that is already
- * several replies old.
+ * A chat has landed in this agent's inbox.
+ *
+ * `handedOver` is the difference between a chat that has just started and one
+ * that has been going for a while under somebody else. The dashboard needs it
+ * because the payload cannot carry a transcript: an inbox row drawn from this
+ * alone would say "no messages yet" about a chat with twenty, so a handed-over
+ * one is fetched properly instead. The notification wording follows for the
+ * same reason — being told someone "started a conversation" sends the agent
+ * looking for an opening message that is already several replies old.
  */
 export function emitConversationAssigned(
   conversation: ConversationWithAgent,
-  notification: { title: string; body: string } = {
+  options: { handedOver?: boolean; notification?: { title: string; body: string } } = {},
+): void {
+  const handedOver = options.handedOver ?? false;
+  const notification = options.notification ?? {
     title: "New chat",
     body: `${conversation.visitor.name} started a conversation`,
-  },
-): void {
-  io?.to(rooms.agent(conversation.agentId)).emit("conversation:assigned", conversation);
+  };
+
+  io?.to(rooms.agent(conversation.agentId)).emit("conversation:assigned", conversation, {
+    handedOver,
+  });
 
   // A chat nobody is watching is the one most worth a notification.
   void (async () => {
@@ -278,6 +288,44 @@ export function emitAgentProfile(agent: Agent, conversationIds: string[]): void 
     name: agent.name,
     avatarUrl: agent.avatarUrl,
   });
+}
+
+/**
+ * Whether the visitor is sitting in the chat right now.
+ *
+ * Staff rooms only, like labels: it tells an agent whether the person is there
+ * to answer, and the visitor has no business being told they are being watched.
+ * `only` sends it to a single dashboard instead — how one that has just joined
+ * the room learns where things stand.
+ */
+export function emitVisitorStatus(
+  target: { conversationId: string; agentId: string; branchId: string; companyId: string },
+  isOnline: boolean,
+  only?: AppSocket,
+): void {
+  const payload = { conversationId: target.conversationId, isOnline };
+  if (only) {
+    only.emit("visitor:status", payload);
+    return;
+  }
+  io?.to(rooms.agent(target.agentId))
+    .to(rooms.adminCompany(target.companyId))
+    .to(rooms.adminBranch(target.branchId))
+    .emit("visitor:status", payload);
+}
+
+/**
+ * How many visitor sockets are sitting in a conversation, ignoring one that is
+ * on its way out — `disconnecting` still counts the socket that fired it.
+ */
+export async function visitorsIn(
+  conversationId: string,
+  excludeSocketId?: string,
+): Promise<number> {
+  if (!io) return 0;
+  const sockets = await io.in(rooms.conversation(conversationId)).fetchSockets();
+  return sockets.filter((socket) => socket.data.type === "VISITOR" && socket.id !== excludeSocketId)
+    .length;
 }
 
 /**

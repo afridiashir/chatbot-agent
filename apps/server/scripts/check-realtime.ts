@@ -345,6 +345,70 @@ async function main(): Promise<void> {
   const afterClose = await send(visitorSocket, conversation.id, "still there?");
   check("sending into a closed chat is refused", !afterClose.ok, `got: ${JSON.stringify(afterClose)}`);
 
+  console.log("\n8. The visitor's presence reaches the staff");
+  // A second tab is not a second person: the staff side already says "online",
+  // and opening or closing one must not flicker it.
+  const secondTab: ClientSocket = connect(API, {
+    auth: { role: "VISITOR", visitorId },
+    transports: ["websocket"],
+  });
+  sockets.push(secondTab);
+  await connected(secondTab);
+
+  const reannounced = waitFor(agentSocket, "visitor:status", 1500)
+    .then(() => true)
+    .catch(() => false);
+  await join(secondTab, conversation.id);
+  check("a second tab does not re-announce the visitor", (await reannounced) === false);
+
+  const falseAlarm = waitFor(agentSocket, "visitor:status", 1500)
+    .then(() => true)
+    .catch(() => false);
+  secondTab.close();
+  check("closing one tab while another is open says nothing", (await falseAlarm) === false);
+
+  // The last one leaving is what makes them offline.
+  const wentOffline = waitFor(agentSocket, "visitor:status");
+  visitorSocket.close();
+  check("the last tab closing reports them offline", (await wentOffline).isOnline === false);
+
+  const cameBack: ClientSocket = connect(API, {
+    auth: { role: "VISITOR", visitorId },
+    transports: ["websocket"],
+  });
+  sockets.push(cameBack);
+  await connected(cameBack);
+  const wentOnline = waitFor(agentSocket, "visitor:status");
+  await join(cameBack, conversation.id);
+  check("coming back reports them online", (await wentOnline).isOnline === true);
+
+  // A dashboard opened after the fact must be told where things stand, rather
+  // than only hearing about the next change.
+  const latecomer: ClientSocket = connect(API, {
+    auth: { role: "AGENT", token: targetToken },
+    transports: ["websocket"],
+  });
+  sockets.push(latecomer);
+  await connected(latecomer);
+  const onJoin = waitFor(latecomer, "visitor:status");
+  await join(latecomer, conversation.id);
+  const state = await onJoin;
+  check("a dashboard joining is told the current state", state.isOnline === true);
+  check("and it names the conversation", state.conversationId === conversation.id);
+
+  // The visitor is never told they are being watched.
+  const leaked2 = waitFor(cameBack, "visitor:status", 1500)
+    .then(() => true)
+    .catch(() => false);
+  const another: ClientSocket = connect(API, {
+    auth: { role: "VISITOR", visitorId },
+    transports: ["websocket"],
+  });
+  sockets.push(another);
+  await connected(another);
+  await join(another, conversation.id);
+  check("the visitor never receives presence about themselves", (await leaked2) === false);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   console.log("Run `pnpm db:seed` to restore the demo data.\n");
   if (failed > 0) process.exitCode = 1;

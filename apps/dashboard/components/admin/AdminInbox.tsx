@@ -45,6 +45,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { keepConnected } from "@/lib/socket";
 import { API_URL } from "@/lib/config";
 import { formatListTime, isNewDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,8 @@ export function AdminInbox({
   const [detailError, setDetailError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [typing, setTyping] = useState<Record<string, "AGENT" | "VISITOR" | undefined>>({});
+  /** Whether each visitor has their chat open. Absent until the server says. */
+  const [visitorOnline, setVisitorOnline] = useState<Record<string, boolean>>({});
 
   const [labels, setLabels] = useState<LabelType[]>([]);
   const [labelId, setLabelId] = useState("");
@@ -338,13 +341,26 @@ export function AdminInbox({
       );
     });
 
+    socket.on("visitor:status", ({ conversationId, isOnline }) => {
+      setVisitorOnline((current) =>
+        current[conversationId] === isOnline ? current : { ...current, [conversationId]: isOnline },
+      );
+    });
+
     socket.on("conversation:transferred", applyTransfer);
 
     // Another admin deleted it, or this one did from a second tab.
     socket.on("conversation:deleted", ({ conversationId }) => forget(conversationId));
 
+    // A refused handshake stops Socket.IO retrying for good, so it is retried
+    // here; an admin watching a busy inbox must not silently go deaf.
+    const stopRetrying = keepConnected(socket, {
+      onRejected: (message) => setListError(`${message} Please sign in again.`),
+    });
+
     const timers = typingTimers.current;
     return () => {
+      stopRetrying();
       socket.close();
       socketRef.current = null;
       joined.clear();
@@ -593,6 +609,7 @@ export function AdminInbox({
               row={row}
               selected={row.id === selectedId}
               typing={typing[row.id]}
+              online={Boolean(visitorOnline[row.id])}
               onSelect={() => {
                 setSelectedId(row.id);
                 setShowInfo(false);
@@ -626,11 +643,25 @@ export function AdminInbox({
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 aria-label="Show contact info"
               >
-                <Avatar
-                  name={detail?.visitor.name ?? selectedRow?.visitor.name ?? "?"}
-                  seed={detail?.visitor.id ?? selectedRow?.visitor.id}
-                  size="md"
-                />
+                <span className="relative shrink-0">
+                  <Avatar
+                    name={detail?.visitor.name ?? selectedRow?.visitor.name ?? "?"}
+                    seed={detail?.visitor.id ?? selectedRow?.visitor.id}
+                    size="md"
+                  />
+                  {selectedId && visitorOnline[selectedId] !== undefined && (
+                    <span
+                      className={cn(
+                        "absolute right-0 bottom-0 size-3 rounded-full ring-2 ring-chat-header",
+                        visitorOnline[selectedId] ? "bg-online" : "bg-muted-foreground/50",
+                      )}
+                      title={visitorOnline[selectedId] ? "In the chat now" : "Not in the chat"}
+                      aria-label={
+                        visitorOnline[selectedId] ? "Visitor is online" : "Visitor is offline"
+                      }
+                    />
+                  )}
+                </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">
                     {detail?.visitor.name ?? selectedRow?.visitor.name ?? "Loading…"}
@@ -1008,11 +1039,14 @@ function ChatRow({
   row,
   selected,
   typing,
+  online,
   onSelect,
 }: {
   row: AdminConversationSummary;
   selected: boolean;
   typing: "AGENT" | "VISITOR" | undefined;
+  /** The visitor has this chat open right now. */
+  online: boolean;
   onSelect: () => void;
 }) {
   const last = row.lastMessage;
@@ -1028,7 +1062,16 @@ function ChatRow({
         selected && "bg-accent hover:bg-accent",
       )}
     >
-      <Avatar name={row.visitor.name} seed={row.visitor.id} size="lg" />
+      <span className="relative shrink-0">
+        <Avatar name={row.visitor.name} seed={row.visitor.id} size="lg" />
+        {online && (
+          <span
+            className="absolute right-0 bottom-0 size-3 rounded-full bg-online ring-2 ring-chat-panel"
+            aria-label="In the chat now"
+            title="In the chat now"
+          />
+        )}
+      </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 border-b py-3">
         <span className="flex items-baseline justify-between gap-2">
           <span className="truncate text-[15px] font-medium">{row.visitor.name}</span>

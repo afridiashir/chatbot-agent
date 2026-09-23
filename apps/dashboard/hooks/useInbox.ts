@@ -19,6 +19,7 @@ import { uploadAttachment } from "@/lib/media";
 import { API_URL } from "@/lib/config";
 import { useTypingSignal } from "@/hooks/useTyping";
 import { loadOutbox, newClientId, saveOutbox, type QueuedMessage } from "@/lib/outbox";
+import { keepConnected } from "@/lib/socket";
 import { playChime } from "@/lib/sound";
 import { notifyInBackground } from "@/lib/push";
 import { TYPING, applyReceipt } from "@repo/types";
@@ -48,6 +49,12 @@ export interface Inbox {
   toggleLabel: (conversationId: string, labelId: string, next: "on" | "off") => Promise<void>;
   /** Conversation ids where the visitor is currently typing. */
   typingIn: Record<string, boolean>;
+  /**
+   * Whether the visitor has each chat open right now. Absent means unknown —
+   * the server reports it per chat as the room is joined — so it is not the
+   * same as offline, and the dot is only drawn once there is an answer.
+   */
+  visitorOnline: Record<string, boolean>;
   /** Called on every keystroke; throttled internally. */
   notifyTyping: () => void;
   /** Sent but not yet confirmed by the server, for the open conversation. */
@@ -80,6 +87,7 @@ export function useInbox(
   const [error, setError] = useState<string | null>(null);
 
   const [typingIn, setTypingIn] = useState<Record<string, boolean>>({});
+  const [visitorOnline, setVisitorOnline] = useState<Record<string, boolean>>({});
   const [labels, setLabels] = useState<Label[]>([]);
   // Read inside the socket handler for a newly assigned chat, which must not
   // close over a stale list.
@@ -230,15 +238,31 @@ export function useInbox(
 
     socket.on("disconnect", () => setConnected(false));
 
-    socket.on("conversation:assigned", (conversation) => {
+    socket.on("conversation:assigned", (conversation, context) => {
       socket.emit("conversation:join", { conversationId: conversation.id });
       // A visitor is waiting: worth hearing even with the inbox in view.
       playChime("newChat");
       notifyInBackground(
-        "New chat",
-        `${conversation.visitor.name} started a conversation`,
+        context?.handedOver ? "Chat transferred to you" : "New chat",
+        context?.handedOver
+          ? `${conversation.visitor.name}'s conversation was handed to you`
+          : `${conversation.visitor.name} started a conversation`,
         `chat-${conversation.id}`,
       );
+
+      if (context?.handedOver) {
+        /*
+         * A chat that has been going on under somebody else. Everything that
+         * makes its row — what was last said, how much of it there is, what the
+         * team has marked it as — is already in the database and none of it is
+         * in this payload, so the list is refetched rather than invented. The
+         * agent is meant to take over a conversation in progress, and a row
+         * claiming it is empty would be the first thing they read about it.
+         */
+        void loadConversations().catch(() => setError("Could not load conversations"));
+        return;
+      }
+
       // The server gives every new chat the company's initial label. The
       // assignment payload is shared with the widget so it cannot carry labels;
       // taking the system label from the list we already hold shows the right
@@ -268,6 +292,12 @@ export function useInbox(
       if (payload.senderType === "VISITOR") {
         setVisitorTyping(payload.conversationId, payload.isTyping);
       }
+    });
+
+    socket.on("visitor:status", ({ conversationId, isOnline }) => {
+      setVisitorOnline((current) =>
+        current[conversationId] === isOnline ? current : { ...current, [conversationId]: isOnline },
+      );
     });
 
     socket.on("message:new", (message: Message) => {
@@ -438,7 +468,19 @@ export function useInbox(
       }
     });
 
+    // The server turning the handshake away is not something Socket.IO retries,
+    // so it is retried here — otherwise the inbox sits with a dead socket and
+    // only a fresh sign-in brings it back.
+    const stopRetrying = keepConnected(socket, {
+      onRetrying: () => setConnected(false),
+      onRejected: (message) => {
+        setConnected(false);
+        setError(`${message} Please sign in again.`);
+      },
+    });
+
     return () => {
+      stopRetrying();
       socket.close();
       socketRef.current = null;
       setConnected(false);
@@ -648,6 +690,7 @@ export function useInbox(
     labels,
     toggleLabel,
     typingIn,
+    visitorOnline,
     notifyTyping,
     pending: selectedId ? outbox.filter((m) => m.conversationId === selectedId) : [],
     pendingCount: outbox.length,

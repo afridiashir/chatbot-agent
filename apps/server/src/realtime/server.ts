@@ -26,7 +26,9 @@ import {
   emitMessageAuthor,
   emitReaction,
   emitReceipt,
+  emitVisitorStatus,
   setRealtimeServer,
+  visitorsIn,
 } from "./emit.js";
 import type { AppServer, AppSocket } from "./types.js";
 
@@ -38,6 +40,38 @@ function toAckError(error: unknown): { ok: false; message: string } {
   if (error instanceof HttpError) return { ok: false, message: error.message };
   console.error("[socket]", error);
   return { ok: false, message: "Something went wrong" };
+}
+
+/**
+ * Turns a failed handshake into an error the client can act on.
+ *
+ * This matters more than it looks: Socket.IO gives up for good when a
+ * connection is refused by this middleware — unlike a dropped network, which it
+ * retries on its own. So a moment's trouble here, a database blip while an
+ * admin's scope is being read, used to leave a dashboard permanently without a
+ * socket, looking connected but unable to send anything, until the person
+ * signed out and in again.
+ *
+ * `retryable` is what tells the two apart. Bad credentials are final and the
+ * person has to sign in again; anything else is ours to be sorry about, and the
+ * client keeps trying.
+ */
+function handshakeError(error: unknown): Error & { data: { retryable: boolean } } {
+  const rejected = error instanceof HttpError && (error.status === 401 || error.status === 403);
+  // A malformed handshake is the client's own doing, so retrying cannot help.
+  const malformed = error instanceof Error && error.message.startsWith("Invalid handshake");
+
+  if (!rejected && !malformed) console.error("[socket] handshake", error);
+
+  const out = new Error(
+    rejected || malformed
+      ? error instanceof Error
+        ? error.message
+        : "Authentication failed"
+      : "Could not start the connection",
+  ) as Error & { data: { retryable: boolean } };
+  out.data = { retryable: !rejected && !malformed };
+  return out;
 }
 
 /** Resolves the handshake `auth` payload into the same Actor the REST API uses. */
@@ -67,6 +101,28 @@ async function authenticate(socket: AppSocket): Promise<Actor> {
   return { type: "VISITOR", visitorId: parsed.data.visitorId };
 }
 
+/** The conversation a room name refers to, or null for any other room. */
+function conversationIdOf(room: string): string | null {
+  const id = room.startsWith("conversation:") ? room.slice("conversation:".length) : null;
+  return id || null;
+}
+
+/**
+ * A visitor's socket has gone from a chat. Their last one leaving is what makes
+ * them offline to the staff — a second tab closing does not.
+ *
+ * Best effort by design: nobody can be told about a failure here, and a
+ * presence dot left on is a smaller problem than a crashed handler.
+ */
+async function visitorLeft(conversationId: string, socketId: string): Promise<void> {
+  try {
+    if ((await visitorsIn(conversationId, socketId)) > 0) return;
+    emitVisitorStatus(await staffBroadcastTarget(conversationId), false);
+  } catch (error) {
+    if (!(error instanceof HttpError)) console.error("[socket] visitor presence", error);
+  }
+}
+
 function registerHandlers(socket: AppSocket): void {
   const actor = socket.data;
 
@@ -86,6 +142,22 @@ function registerHandlers(socket: AppSocket): void {
           const receipt = await markReceipt(conversationId, actor.type, "DELIVERED");
           if (receipt) emitReceipt(receipt);
         }
+
+        if (actor.type === "VISITOR") {
+          // They have the chat open. Their first socket is the one worth
+          // announcing; a second tab changes nothing the staff can see.
+          if ((await visitorsIn(conversationId, socket.id)) === 0) {
+            emitVisitorStatus(await staffBroadcastTarget(conversationId), true);
+          }
+        } else {
+          // A dashboard joining needs the state as it already is, not only
+          // changes to it, or the chat it opens looks like nobody is there.
+          emitVisitorStatus(
+            await staffBroadcastTarget(conversationId),
+            (await visitorsIn(conversationId)) > 0,
+            socket,
+          );
+        }
       } catch (error) {
         ack?.(toAckError(error));
       }
@@ -94,8 +166,21 @@ function registerHandlers(socket: AppSocket): void {
 
   socket.on("conversation:leave", (payload) => {
     const parsed = socketJoinPayloadSchema.safeParse(payload);
-    if (parsed.success) {
-      void socket.leave(rooms.conversation(parsed.data.conversationId));
+    if (!parsed.success) return;
+    void socket.leave(rooms.conversation(parsed.data.conversationId));
+    if (actor.type === "VISITOR") void visitorLeft(parsed.data.conversationId, socket.id);
+  });
+
+  /*
+   * The tab was closed, the phone locked, the connection lost. `disconnecting`
+   * rather than `disconnect` because by the latter the rooms are already gone,
+   * and the rooms are the only record of which chats this socket was in.
+   */
+  socket.on("disconnecting", () => {
+    if (actor.type !== "VISITOR") return;
+    for (const room of socket.rooms) {
+      const conversationId = conversationIdOf(room);
+      if (conversationId) void visitorLeft(conversationId, socket.id);
     }
   });
 
@@ -209,7 +294,7 @@ export function createSocketServer(httpServer: HttpServer): AppServer {
         next();
       })
       .catch((error: unknown) => {
-        next(error instanceof Error ? error : new Error("Authentication failed"));
+        next(handshakeError(error));
       });
   });
 

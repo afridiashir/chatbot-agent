@@ -71,6 +71,8 @@ interface ConversationViewProps {
   onToggleLabel: (labelId: string, next: "on" | "off") => void;
   connected: boolean;
   visitorTyping: boolean;
+  /** Whether the visitor has the chat open. Undefined until the server says. */
+  visitorOnline?: boolean;
   /** Sent but not yet stored by the server. */
   pending: QueuedMessage[];
   onSend: (content: string) => Promise<void>;
@@ -393,6 +395,7 @@ export function ConversationView({
   onToggleLabel,
   connected,
   visitorTyping,
+  visitorOnline,
   pending,
   onSend,
   onSendMedia,
@@ -543,12 +546,34 @@ export function ConversationView({
             <ArrowLeft className="size-5" />
           </button>
         )}
-        <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
+        <span className="relative shrink-0">
+          <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
+          {visitorOnline !== undefined && (
+            <span
+              // Ringed in the header's own colour so it reads as a badge on the
+              // avatar rather than a dot floating beside it.
+              className={cn(
+                "absolute right-0 bottom-0 size-3 rounded-full ring-2 ring-chat-header",
+                visitorOnline ? "bg-online" : "bg-muted-foreground/50",
+              )}
+              title={visitorOnline ? "In the chat now" : "Not in the chat"}
+              aria-label={visitorOnline ? "Visitor is online" : "Visitor is offline"}
+            />
+          )}
+        </span>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{detail.visitor.name}</p>
           {visitorTyping ? (
             <p className="text-xs font-medium text-success">typing...</p>
+          ) : visitorOnline ? (
+            <p className="truncate text-xs">
+              <span className="font-medium text-success">Online</span>
+              <span className="text-chat-meta">
+                {" · "}
+                {detail.visitor.phone}
+              </span>
+            </p>
           ) : (
             <p className="truncate text-xs text-chat-meta">
               <a href={`tel:${detail.visitor.phone}`} className="hover:underline">
@@ -714,7 +739,12 @@ function Composer({
 }) {
   const [sending, setSending] = useState(false);
   const [staged, setStaged] = useState<Staged | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
+  /**
+   * The file on its way to storage, if any. It is deliberately not the staged
+   * one: sending hands the file to this and empties the composer, so a reply
+   * can be typed while the upload runs.
+   */
+  const [uploading, setUploading] = useState<{ name: string; progress: number } | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
@@ -773,7 +803,9 @@ function Composer({
   );
 
   const hasText = draft.trim().length > 0;
-  const busy = sending || progress !== null;
+  // Only the text send blocks the box, and that is a moment. An upload no
+  // longer counts: it runs behind the composer rather than in front of it.
+  const busy = sending;
 
   function clearDraft() {
     onDraftChange("");
@@ -800,19 +832,30 @@ function Composer({
     });
   }
 
-  async function sendMedia(media: Omit<MediaSend, "onProgress">) {
+  /**
+   * Starts an upload and returns: the file goes out on its own while the agent
+   * carries on typing. One at a time, so the attach and record buttons wait
+   * their turn, but nothing holds up an ordinary reply.
+   *
+   * A failure names the file, because by then it is no longer on screen to
+   * point at.
+   */
+  function startUpload(media: Omit<MediaSend, "onProgress">, name: string) {
     setMediaError(null);
-    setProgress(0);
-    try {
-      await onSendMedia({ ...media, replyToId: replyTo?.id, onProgress: setProgress });
-      onCancelReply();
-      return true;
-    } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Could not send that file");
-      return false;
-    } finally {
-      setProgress(null);
-    }
+    setUploading({ name, progress: 0 });
+    const quoted = replyTo?.id;
+    onCancelReply();
+
+    void onSendMedia({
+      ...media,
+      replyToId: quoted,
+      onProgress: (fraction) =>
+        setUploading((current) => (current ? { ...current, progress: fraction } : current)),
+    })
+      .catch((error: unknown) =>
+        setMediaError(`${name}: ${error instanceof Error ? error.message : "could not be sent"}`),
+      )
+      .finally(() => setUploading(null));
   }
 
   async function submit(event: React.FormEvent) {
@@ -820,16 +863,18 @@ function Composer({
     if (busy) return;
 
     if (staged) {
-      const ok = await sendMedia({
-        kind: staged.kind,
-        file: staged.file,
-        fileName: staged.file.name,
-        caption: draft.trim(),
-      });
-      if (ok) {
-        setStaged(null);
-        clearDraft();
-      }
+      // Cleared first, so the composer is free the instant send is pressed.
+      startUpload(
+        {
+          kind: staged.kind,
+          file: staged.file,
+          fileName: staged.file.name,
+          caption: draft.trim(),
+        },
+        staged.file.name,
+      );
+      setStaged(null);
+      clearDraft();
       return;
     }
 
@@ -853,14 +898,17 @@ function Composer({
       setMediaError("That recording was too short.");
       return;
     }
-    await sendMedia({
-      kind: "VOICE",
-      file: note.blob,
-      fileName: note.fileName,
-      caption: "",
-      durationMs: note.durationMs,
-      waveform: note.waveform,
-    });
+    startUpload(
+      {
+        kind: "VOICE",
+        file: note.blob,
+        fileName: note.fileName,
+        caption: "",
+        durationMs: note.durationMs,
+        waveform: note.waveform,
+      },
+      "Voice message",
+    );
   }
 
   const error = mediaError ?? recorder.error;
@@ -901,26 +949,30 @@ function Composer({
             <p className="truncate text-sm font-medium">{staged.file.name}</p>
             <p className="text-xs text-chat-meta">
               {formatBytes(staged.file.size)} · {staged.kind.toLowerCase()}
-              {progress !== null && ` · uploading ${Math.round(progress * 100)}%`}
             </p>
-            {progress !== null && (
-              <div className="mt-1 h-1 overflow-hidden rounded-full bg-chat-panel">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width]"
-                  style={{ width: `${Math.round(progress * 100)}%` }}
-                />
-              </div>
-            )}
           </div>
           <button
             type="button"
             onClick={() => setStaged(null)}
-            disabled={busy}
             aria-label="Remove attachment"
             className="flex size-8 items-center justify-center rounded-full text-chat-meta hover:bg-accent disabled:opacity-40"
           >
             <X className="size-4" />
           </button>
+        </div>
+      )}
+
+      {uploading && (
+        <div className="flex items-center gap-2 px-4 pt-2 text-xs text-chat-meta">
+          <span className="truncate">
+            Sending {uploading.name} · {Math.round(uploading.progress * 100)}%
+          </span>
+          <span className="h-1 min-w-12 flex-1 overflow-hidden rounded-full bg-chat-panel">
+            <span
+              className="block h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${Math.round(uploading.progress * 100)}%` }}
+            />
+          </span>
         </div>
       )}
 
@@ -1009,7 +1061,7 @@ function Composer({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            disabled={!connected || busy}
+            disabled={!connected || uploading !== null}
             aria-label="Attach a photo, video or audio file"
             title={connected ? "Attach" : "Attachments need a connection"}
             className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
@@ -1060,12 +1112,14 @@ function Composer({
             <button
               type="button"
               onClick={() => void recorder.start()}
-              disabled={!connected || busy}
+              disabled={!connected || uploading !== null}
               aria-label="Record a voice message"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {progress !== null ? (
-                <span className="text-[10px] font-semibold">{Math.round(progress * 100)}%</span>
+              {uploading ? (
+                <span className="text-[10px] font-semibold">
+                  {Math.round(uploading.progress * 100)}%
+                </span>
               ) : (
                 <Mic className="h-4 w-4" aria-hidden="true" />
               )}
