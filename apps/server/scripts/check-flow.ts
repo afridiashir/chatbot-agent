@@ -335,6 +335,50 @@ async function main(): Promise<void> {
   check("flagged as resumed", resumed.data?.available && resumed.data.resumed, true);
   check("resume answers 200, not 201", resumed.status, 200);
 
+  console.log("\n8b. An open chat stays with its agent when they go offline");
+  // The agent steps away and somebody else is the only one free. Their chat is
+  // still theirs: it is not handed to whoever happens to be online, and the
+  // visitor coming back lands in it rather than in a new one with a stranger.
+  await setOnline(BILAL, false);
+  await setOnline(AHMED, true);
+
+  const whileAway = await startChat(visitorId);
+  check(
+    "the chat does not move to the agent who is online",
+    whileAway.data?.available && whileAway.data.conversation.agentId,
+    BILAL,
+  );
+  check(
+    "it is the same conversation, not a new one",
+    whileAway.data?.available && whileAway.data.conversation.id,
+    conversation.id,
+  );
+  check(
+    "and it is still open",
+    whileAway.data?.available && whileAway.data.conversation.status,
+    "ACTIVE",
+  );
+
+  // The message they send while nobody is watching still goes to that agent.
+  const saidWhileAway = await request<Message>(`/api/conversations/${conversation.id}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ senderType: "VISITOR", visitorId, content: "Are you there?" }),
+  });
+  check("a message sent while they are away is accepted", saidWhileAway.status, 201);
+
+  const stillTheirs = await request<ConversationSummary[]>(`/api/agents/${BILAL}/conversations`, {
+    token: bilalToken,
+  });
+  check(
+    "and it waits in their own inbox",
+    stillTheirs.data?.some((row) => row.id === conversation.id),
+    true,
+  );
+
+  // Put the branch back the way step 9 expects to find it.
+  await setOnline(AHMED, false);
+  await setOnline(BILAL, true);
+
   console.log("\n9. Agent closes the conversation");
   check("Bilal is carrying one chat", await loads(), {
     Ahmed: "offline",
