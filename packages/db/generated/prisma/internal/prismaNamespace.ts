@@ -1591,6 +1591,7 @@ export const VisitorScalarFieldEnum = {
   id: 'id',
   name: 'name',
   phone: 'phone',
+  phoneKey: 'phoneKey',
   maritalStatus: 'maritalStatus',
   city: 'city',
   createdAt: 'createdAt',

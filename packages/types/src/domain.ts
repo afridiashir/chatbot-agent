@@ -152,6 +152,32 @@ export interface ConversationWithAgent extends Conversation {
 }
 
 /**
+ * One row in the visitor's own list of chats.
+ *
+ * The widget opens on this: every conversation the person has, whoever they
+ * spoke to, so they can carry on with one agent while another is mid-answer.
+ * Deliberately not `ConversationSummary` — that one carries `labels`, which are
+ * the team's notes about this person and must never reach them.
+ */
+export interface VisitorConversationSummary extends Conversation {
+  agent: Pick<Agent, "id" | "name" | "isOnline" | "avatarUrl">;
+  branch: Pick<Branch, "id" | "name">;
+  lastMessage: Message | null;
+  /** Messages from the agent this visitor has not read yet. */
+  unreadCount: number;
+}
+
+/**
+ * What the widget gets back when someone types their number: who they are, as
+ * we already know them, and every chat that number has open or closed.
+ */
+export interface VisitorLookupResult {
+  /** Null when the number has never written in — the form is asked for then. */
+  visitor: VisitorSummary | null;
+  conversations: VisitorConversationSummary[];
+}
+
+/**
  * A chat's new owner, after an admin handed it to another agent.
  *
  * Carries the branch as well as the agent because handing a chat to someone in

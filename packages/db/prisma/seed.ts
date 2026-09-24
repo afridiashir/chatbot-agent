@@ -1,7 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
-import { INITIAL_LABEL_NAME, normalizePhone } from "@repo/types";
+import { INITIAL_LABEL_NAME, normalizePhone, visitorPhoneKey } from "@repo/types";
 import { hashPassword } from "../src/password.js";
 import { BRANCHES, COMPANY, VISITORS, type SeedConversation } from "./seed-data.js";
 
@@ -135,7 +135,12 @@ async function main(): Promise<void> {
   await prisma.agent.deleteMany({ where: { id: { notIn: seedAgentIds } } });
 
   for (const visitor of VISITORS) {
-    await prisma.visitor.create({ data: visitor });
+    // Derived rather than written into the seed data: the key is how a visitor
+    // is identified, and a hand-typed copy would drift from the rule the
+    // application uses the moment either changed.
+    await prisma.visitor.create({
+      data: { ...visitor, phoneKey: visitorPhoneKey(visitor.phone, visitor.id) },
+    });
   }
 
   await prisma.company.upsert({

@@ -20,6 +20,7 @@ import type {
   Conversation,
   ConversationSummary,
   Message,
+  VisitorLookupResult,
   ServerToClientEvents,
 } from "@repo/types";
 
@@ -414,6 +415,98 @@ async function main(): Promise<void> {
   );
 
   for (const socket of [agentSocket, visitorSocket]) socket.close();
+
+  console.log("\n11. The number is the identity: one person, several chats");
+  // The widget opens on a list now, so a visitor is no longer one conversation.
+  // Two agent links are two chats with two people, at the same time.
+  const personPhone = `+92 300 ${String(Date.now()).slice(-7)}`;
+  const deviceOne = nextVisitorId();
+  const person = {
+    name: "List Test Visitor",
+    phone: personPhone,
+    maritalStatus: "SINGLE" as const,
+    city: "Karachi",
+  };
+
+  await setOnline(BILAL, true);
+  await setOnline(HAMZA, true);
+
+  const withBilal = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: deviceOne, agentId: BILAL, visitor: person }),
+  });
+  const withHamza = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: deviceOne, agentId: HAMZA, visitor: person }),
+  });
+  const bilalChat = withBilal.data?.available ? withBilal.data.conversation.id : "";
+  const hamzaChat = withHamza.data?.available ? withHamza.data.conversation.id : "";
+  check("a second agent's link opens a second chat", bilalChat !== hamzaChat, true);
+  check("and both are open at once", [!!bilalChat, !!hamzaChat], [true, true]);
+
+  // A plain chat, with no agent named, continues one they already have rather
+  // than handing them a third stranger.
+  const plain = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: deviceOne, visitor: person }),
+  });
+  check(
+    "a plain chat continues one of them instead of starting a third",
+    plain.data?.available && [bilalChat, hamzaChat].includes(plain.data.conversation.id),
+    true,
+  );
+
+  console.log("\n11b. A second device finds them by number alone");
+  const deviceTwo = nextVisitorId();
+  const lookup = await request<VisitorLookupResult>("/api/conversations/lookup", {
+    method: "POST",
+    body: JSON.stringify({ phone: personPhone, visitorId: deviceTwo }),
+  });
+  check("the lookup knows who they are", lookup.data?.visitor?.name, person.name);
+  const found = (lookup.data?.conversations ?? []).map((row) => row.id).sort();
+  check("and returns both of their chats", found, [bilalChat, hamzaChat].sort());
+  check(
+    "each one says which agent it is with",
+    (lookup.data?.conversations ?? []).every((row) => Boolean(row.agent.name && row.branch.name)),
+    true,
+  );
+
+  const fromNewDevice = await request<{ messages: Message[] }>(
+    `/api/conversations/${bilalChat}?visitorId=${deviceTwo}`,
+  );
+  check("a device that has never seen the chat can open it", fromNewDevice.status, 200);
+
+  console.log("\n11c. Somebody else's number opens nothing");
+  const strangerDevice = nextVisitorId();
+  await request("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({
+      visitorId: strangerDevice,
+      visitor: { ...person, name: "Someone Else", phone: `+92 302 ${String(Date.now()).slice(-7)}` },
+    }),
+  });
+  check(
+    "a different number cannot read the chat",
+    (await request(`/api/conversations/${bilalChat}?visitorId=${strangerDevice}`)).status,
+    403,
+  );
+  const nobody = await request<VisitorLookupResult>("/api/conversations/lookup", {
+    method: "POST",
+    body: JSON.stringify({ phone: "+92 398 7654321", visitorId: nextVisitorId() }),
+  });
+  check("a number we have never seen has nothing", nobody.data?.conversations.length, 0);
+  check("and is not claimed to be anyone", nobody.data?.visitor, null);
+
+  check(
+    "a number that is not a number is refused",
+    (
+      await request("/api/conversations/lookup", {
+        method: "POST",
+        body: JSON.stringify({ phone: "0300 12", visitorId: nextVisitorId() }),
+      })
+    ).status,
+    400,
+  );
 
   console.log(`\n${passed} passed, ${failed} failed`);
   console.log("Run `pnpm db:seed` to restore the demo data.\n");

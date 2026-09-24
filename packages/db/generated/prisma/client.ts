@@ -89,7 +89,12 @@ export type Lead = Prisma.LeadModel
 export type Enquiry = Prisma.EnquiryModel
 /**
  * Model Visitor
+ * One browser. Its id is the value the widget keeps in localStorage.
  * 
+ * A person is not a browser, though, which is why `phoneKey` is here: the
+ * widget finds someone's chats by the number they type, so two browsers
+ * belonging to the same person share a key and reach the same conversations.
+ * It is deliberately not unique — a second device is a second row.
  */
 export type Visitor = Prisma.VisitorModel
 /**

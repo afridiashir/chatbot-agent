@@ -5,10 +5,12 @@ import {
   createMessageBodySchema,
   createUploadBodySchema,
   getConversationQuerySchema,
+  lookupConversationsBodySchema,
 } from "@repo/validation";
 import { resolveActor } from "../lib/actor.js";
 import { asyncHandler } from "../lib/async-handler.js";
 import { sendOk } from "../lib/http.js";
+import { rateLimit } from "../lib/rate-limit.js";
 import { parseOrThrow } from "../lib/validate.js";
 import {
   announceMessage,
@@ -23,6 +25,7 @@ import {
   createConversation,
   currentAdminAuthor,
   getConversation,
+  lookupConversations,
   staffBroadcastTarget,
 } from "../services/conversations.js";
 import { createUpload } from "../services/media.js";
@@ -49,6 +52,26 @@ conversationsRouter.post(
 
     const status = result.available && !result.resumed ? 201 : 200;
     sendOk(res, result, status);
+  }),
+);
+
+/**
+ * POST /api/conversations/lookup — the chats belonging to a phone number.
+ *
+ * What the widget opens on: the visitor types their number and gets their own
+ * conversations back, whoever they were with. The number is the only thing
+ * asked for, so the rate limit is what stops it being worked through in bulk.
+ */
+conversationsRouter.post(
+  "/lookup",
+  rateLimit({
+    windowMs: 60_000,
+    max: 10,
+    message: "Too many attempts. Wait a minute and try again.",
+  }),
+  asyncHandler(async (req, res) => {
+    const body = parseOrThrow(lookupConversationsBodySchema, req.body, "lookup");
+    sendOk(res, await lookupConversations(body));
   }),
 );
 

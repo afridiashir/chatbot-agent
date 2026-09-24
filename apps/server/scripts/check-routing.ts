@@ -7,6 +7,7 @@
  * afterwards to restore the documented demo state.
  */
 import { prisma } from "@repo/db";
+import { visitorPhoneKey } from "@repo/types";
 import { assignAgent } from "../src/services/routing.js";
 
 const BRANCH_ID = "branch_karachi";
@@ -43,14 +44,19 @@ let visitorSeq = 0;
 const nextVisitorId = () => `check-visitor-${Date.now()}-${++visitorSeq}`;
 
 /** Stand-in pre-chat form details, so assignAgent has a visitor to record. */
-const details = (visitorId: string) => ({
-  name: `Test Visitor ${visitorSeq}`,
-  // A distinct number per visitor: leads are deduplicated on the phone now, so
-  // a shared one would collapse every test visitor into a single person.
-  phone: `+92 300 ${String(1000000 + visitorSeq).slice(-7)}`,
-  maritalStatus: "SINGLE" as const,
-  city: "Karachi",
-});
+const details = (visitorId: string) => {
+  // A distinct number per visitor: leads are deduplicated on the phone now, and
+  // the phone is also what identifies a visitor, so a shared one would collapse
+  // every test visitor into a single person with access to all their chats.
+  const phone = `+92 300 ${String(1000000 + visitorSeq).slice(-7)}`;
+  return {
+    name: `Test Visitor ${visitorSeq}`,
+    phone,
+    phoneKey: visitorPhoneKey(phone, visitorId),
+    maritalStatus: "SINGLE" as const,
+    city: "Karachi",
+  };
+};
 
 /** Opens a chat the way the widget does. */
 const startChat = (visitorId = nextVisitorId()) =>
@@ -95,14 +101,14 @@ async function main(): Promise<void> {
     [AGENTS.usman, false, 0],
     [AGENTS.hamza, true, 3],
   ]);
-  check("Ahmed 2 / Bilal 1 / Usman offline / Hamza 3 -> Bilal", assignedTo(
-    await startChat(),
-  ), "Bilal");
+  check(
+    "Ahmed 2 / Bilal 1 / Usman offline / Hamza 3 -> Bilal",
+    assignedTo(await startChat()),
+    "Bilal",
+  );
 
   console.log("\n2. Deterministic tie-break (Ahmed 2 / Bilal 2 / Hamza 3)");
-  check("earlier-created agent wins the tie -> Ahmed", assignedTo(
-    await startChat(),
-  ), "Ahmed");
+  check("earlier-created agent wins the tie -> Ahmed", assignedTo(await startChat()), "Ahmed");
 
   console.log("\n3. An offline agent is skipped");
   await setBranchState([
@@ -111,9 +117,7 @@ async function main(): Promise<void> {
     [AGENTS.usman, false, 0],
     [AGENTS.hamza, true, 3],
   ]);
-  check("Bilal offline with the lowest load -> Ahmed", assignedTo(
-    await startChat(),
-  ), "Ahmed");
+  check("Bilal offline with the lowest load -> Ahmed", assignedTo(await startChat()), "Ahmed");
 
   console.log("\n4. Nobody online");
   await setBranchState([
@@ -129,9 +133,13 @@ async function main(): Promise<void> {
     unavailable.available === false ? unavailable.message : null,
     "No agents are currently available.",
   );
-  check("conversation count unchanged", await prisma.conversation.count({
-    where: { agent: { branchId: BRANCH_ID } },
-  }), 0);
+  check(
+    "conversation count unchanged",
+    await prisma.conversation.count({
+      where: { agent: { branchId: BRANCH_ID } },
+    }),
+    0,
+  );
 
   console.log("\n5. A returning visitor resumes rather than duplicating");
   await setBranchState([
@@ -149,9 +157,13 @@ async function main(): Promise<void> {
     first.available && second.available && first.conversation.id === second.conversation.id,
     true,
   );
-  check("only one conversation exists", await prisma.conversation.count({
-    where: { agent: { branchId: BRANCH_ID } },
-  }), 1);
+  check(
+    "only one conversation exists",
+    await prisma.conversation.count({
+      where: { agent: { branchId: BRANCH_ID } },
+    }),
+    1,
+  );
 
   console.log("\n6. Concurrent visitors (the race)");
   await setBranchState([
@@ -161,12 +173,14 @@ async function main(): Promise<void> {
     [AGENTS.hamza, true, 0],
   ]);
   const CONCURRENT = 9;
-  await Promise.all(
-    Array.from({ length: CONCURRENT }, () => startChat()),
-  );
+  await Promise.all(Array.from({ length: CONCURRENT }, () => startChat()));
   const spread = await loads();
   console.log(`          distribution: ${JSON.stringify(spread)}`);
-  check("every visitor was assigned", Object.values(spread).reduce((a, b) => a + b, 0), CONCURRENT);
+  check(
+    "every visitor was assigned",
+    Object.values(spread).reduce((a, b) => a + b, 0),
+    CONCURRENT,
+  );
   check(
     "load is evenly balanced across the 3 online agents",
     [spread.Ahmed, spread.Bilal, spread.Hamza].sort(),

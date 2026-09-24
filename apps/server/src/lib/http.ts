@@ -36,3 +36,4 @@ export const unauthorized = (message = "Authentication required") =>
   new HttpError(401, "UNAUTHORIZED", message);
 export const forbidden = (message = "Not allowed") => new HttpError(403, "FORBIDDEN", message);
 export const conflict = (message: string) => new HttpError(409, "CONFLICT", message);
+export const tooMany = (message: string) => new HttpError(429, "TOO_MANY", message);

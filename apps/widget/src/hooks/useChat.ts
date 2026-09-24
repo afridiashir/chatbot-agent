@@ -10,6 +10,8 @@ import type {
   Message,
   PublicAgentProfile,
   ServerToClientEvents,
+  VisitorConversationSummary,
+  VisitorLookupResult,
 } from "@repo/types";
 import type { WidgetConfig } from "../config.js";
 import type { VisitorDetails } from "../components/PreChatForm.js";
@@ -21,19 +23,26 @@ import { uploadVisitorAttachment } from "../lib/media.js";
 import { useTypingIndicator, useTypingSignal } from "./useTyping.js";
 import {
   clearStoredConversationId,
+  clearStoredPhone,
   getSavedVisitor,
-  getStoredConversationId,
-  storeSavedVisitor,
-  type SavedVisitor,
+  getStoredPhone,
   getVisitorId,
   storeConversationId,
+  storePhone,
+  storeSavedVisitor,
+  type SavedVisitor,
 } from "../lib/storage.js";
 
 /**
- * `unavailable` is a first-class phase, not an error: nobody being online is a
+ * The widget is a small chat app, not a single conversation, so it has screens
+ * rather than states: the number they are known by, the list of their chats,
+ * and one chat open.
+ *
+ * `unavailable` is a first-class screen, not an error: nobody being online is a
  * normal answer that the visitor needs stated plainly.
  */
-export type ChatPhase = "loading" | "picking" | "starting" | "unavailable" | "chatting" | "failed";
+export type ChatPhase =
+  "loading" | "identify" | "list" | "form" | "starting" | "unavailable" | "chatting" | "failed";
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -58,6 +67,11 @@ export interface ChatNotice {
 export interface ChatController {
   phase: ChatPhase;
   branches: Branch[];
+  /** The number this browser is identified by, once given. */
+  phone: string | null;
+  /** Every chat this person has, newest activity first. */
+  conversations: VisitorConversationSummary[];
+  /** The one they have open, if any. */
   conversation: ConversationWithAgent | null;
   /** The agent whose personal link this is, once loaded. */
   linkAgent: PublicAgentProfile | null;
@@ -72,6 +86,18 @@ export interface ChatController {
   isClosed: boolean;
   /** True while the assigned agent is composing a reply. */
   agentTyping: boolean;
+  /** True while their list is being fetched, so the screen can say so. */
+  busy: boolean;
+  /** Hands over the number their chats are found by. */
+  identify: (phone: string) => Promise<void>;
+  /** Forgets the number, for handing the device to somebody else. */
+  signOut: () => void;
+  /** Opens one of their chats. */
+  open: (conversationId: string) => Promise<void>;
+  /** Back to the list, which is refreshed on the way. */
+  back: () => void;
+  /** Starts a chat: with the agent whose link this is, or with whoever is free. */
+  startNew: () => void;
   startChat: (visitor: VisitorDetails) => Promise<void>;
   sendMessage: (content: string, replyToId?: string) => Promise<void>;
   /** Adds, replaces or removes this visitor's reaction; null takes it back. */
@@ -87,6 +113,10 @@ export interface ChatController {
   startOver: () => void;
 }
 
+/** Newest activity first, the way any chat list is ordered. */
+const byRecency = (rows: VisitorConversationSummary[]): VisitorConversationSummary[] =>
+  [...rows].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
+
 /**
  * `visible` is whether the chat panel is open. Only then, with the tab in front,
  * does the visitor count as having seen the agent's messages.
@@ -95,9 +125,12 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const visitorId = useMemo(() => getVisitorId(), []);
   const [phase, setPhase] = useState<ChatPhase>("loading");
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [phone, setPhone] = useState<string | null>(() => getStoredPhone());
+  const [conversations, setConversations] = useState<VisitorConversationSummary[]>([]);
   const [conversation, setConversation] = useState<ConversationWithAgent | null>(null);
   const [linkAgent, setLinkAgent] = useState<PublicAgentProfile | null>(null);
   const [notices, setNotices] = useState<ChatNotice[]>([]);
+  const [busy, setBusy] = useState(false);
 
   /**
    * Marks the transcript with who is answering from here on.
@@ -112,6 +145,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       return [...current, { id: `notice-${at}-${current.length}`, agentName, at }];
     });
   }, []);
+
   const [savedVisitor, setSavedVisitor] = useState<SavedVisitor | null>(() => getSavedVisitor());
   /** Read inside socket handlers, which must not close over changing state. */
   const agentNameRef = useRef<string | null>(null);
@@ -125,6 +159,9 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
 
   const socketRef = useRef<ClientSocket | null>(null);
   const conversationId = conversation?.id ?? null;
+  /** Read by socket handlers, which must know which chat is on screen. */
+  const openIdRef = useRef<string | null>(null);
+  openIdRef.current = conversationId;
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState === "visible");
   /** The newest agent message already reported read, so each is reported once. */
   const reportedReadRef = useRef<string | null>(null);
@@ -160,7 +197,101 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     );
   }, []);
 
-  // Load branches, and resume an open conversation if this browser has one.
+  /* --------------------------------- their chats -------------------------------- */
+
+  /**
+   * Fetches the chats belonging to a number.
+   *
+   * The same call identifies this browser as that person, which is what lets it
+   * open chats started on another device — so it is also how a returning
+   * visitor is recognised without being asked anything again.
+   */
+  const fetchList = useCallback(
+    async (forPhone: string): Promise<VisitorLookupResult> => {
+      const result = await apiFetch<VisitorLookupResult>(
+        config.apiUrl,
+        "/api/conversations/lookup",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            phone: forPhone,
+            visitorId,
+            ...(config.agentId ? { agentId: config.agentId } : {}),
+            ...(config.branchId ? { branchId: config.branchId } : {}),
+          }),
+        },
+      );
+      setConversations(byRecency(result.conversations));
+      return result;
+    },
+    [config.apiUrl, config.agentId, config.branchId, visitorId],
+  );
+
+  /** Loads one chat and puts it on screen. */
+  const openConversation = useCallback(
+    async (id: string) => {
+      setError(null);
+      setBusy(true);
+      try {
+        const detail = await apiFetch<ConversationDetail>(
+          config.apiUrl,
+          `/api/conversations/${id}?visitorId=${encodeURIComponent(visitorId)}`,
+        );
+        const { messages: history, ...rest } = detail;
+        setConversation(rest);
+        setMessages(history);
+        setNotices([]);
+        // Only where there is something to come back to. A chat with nothing in
+        // it yet already says who is there, above the empty canvas.
+        if (history.length > 0) noteConnected(detail.agent.name);
+        storeConversationId(id);
+        // Opening it is reading it; the badge goes now rather than after the
+        // receipt has made its way back.
+        setConversations((current) =>
+          current.map((row) => (row.id === id ? { ...row, unreadCount: 0 } : row)),
+        );
+        setPhase("chatting");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Could not open that chat");
+        setPhase("list");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [config.apiUrl, visitorId, noteConnected],
+  );
+
+  /**
+   * Where to land once we know who they are.
+   *
+   * An agent's link is a request to talk to that person: their chat opens
+   * straight away if there is one, and the back button is what turns it back
+   * into the list. Everyone else lands on the list, or on the form when the
+   * number is new to us.
+   */
+  const settle = useCallback(
+    async (result: VisitorLookupResult) => {
+      if (config.agentId) {
+        const theirs = result.conversations.find(
+          (row) => row.agent.id === config.agentId && row.status === "ACTIVE",
+        );
+        if (theirs) {
+          await openConversation(theirs.id);
+          return;
+        }
+      }
+      // Nothing to show a list of: they go straight to starting one.
+      if (result.conversations.length === 0) {
+        setPhase("form");
+        return;
+      }
+      setPhase("list");
+    },
+    [config.agentId, openConversation],
+  );
+
+  /* ---------------------------------- boot ---------------------------------- */
+
   useEffect(() => {
     let cancelled = false;
 
@@ -172,8 +303,6 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
 
         // A link for one agent or one branch: resolve it up front, so a
         // deactivated agent or branch says so instead of failing at "Start".
-        let targetAgentId: string | null = null;
-        let targetBranchId: string | null = null;
         if (config.agentId) {
           try {
             const agent = await apiFetch<PublicAgentProfile>(
@@ -183,7 +312,6 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
             if (cancelled) return;
             setLinkAgent(agent);
             setLockedBranch(list.find((branch) => branch.id === agent.branch.id) ?? null);
-            targetAgentId = agent.id;
           } catch {
             if (cancelled) return;
             setError("This chat link is no longer active.");
@@ -198,50 +326,21 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
             return;
           }
           setLockedBranch(branch);
-          targetBranchId = branch.id;
         }
 
-        const storedId = getStoredConversationId();
-        if (!storedId) {
-          setPhase("picking");
+        const known = getStoredPhone();
+        if (!known) {
+          setPhase("identify");
           return;
         }
 
         try {
-          const detail = await apiFetch<ConversationDetail>(
-            config.apiUrl,
-            `/api/conversations/${storedId}?visitorId=${encodeURIComponent(visitorId)}`,
-          );
+          const result = await fetchList(known);
           if (cancelled) return;
-
-          if (detail.status === "CLOSED") {
-            // A finished chat should not reopen on the next page view.
-            clearStoredConversationId();
-            setPhase("picking");
-            return;
-          }
-
-          // An open chat with someone else stays open, but this link is for a
-          // particular agent or branch, so start with that instead.
-          if (
-            (targetAgentId && detail.agent.id !== targetAgentId) ||
-            (targetBranchId && detail.agent.branchId !== targetBranchId)
-          ) {
-            setPhase("picking");
-            return;
-          }
-
-          const { messages: history, ...rest } = detail;
-          setConversation(rest);
-          setMessages(history);
-          // Only where there is something to come back to. A chat with nothing
-          // in it yet already says who is there, above the empty canvas.
-          if (history.length > 0) noteConnected(detail.agent.name);
-          setPhase("chatting");
+          await settle(result);
         } catch {
-          // The stored id is stale or no longer ours — start fresh.
-          clearStoredConversationId();
-          if (!cancelled) setPhase("picking");
+          // The number no longer checks out, or the lookup is unavailable.
+          if (!cancelled) setPhase("identify");
         }
       } catch (err) {
         if (cancelled) return;
@@ -253,12 +352,19 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     return () => {
       cancelled = true;
     };
-  }, [config.apiUrl, config.agentId, config.branchId, visitorId, noteConnected]);
+  }, [config.apiUrl, config.agentId, config.branchId, fetchList, settle]);
 
-  // One socket per conversation. Keyed on the id so a status change (for
-  // example the agent closing the chat) does not force a reconnect.
+  /* --------------------------------- realtime -------------------------------- */
+
+  /**
+   * One socket for the whole session, not one per chat.
+   *
+   * Every one of their conversations is joined, so a reply from the agent they
+   * are not reading still lands on the list as an unread count — which is the
+   * point of having a list at all.
+   */
   useEffect(() => {
-    if (!conversationId) return;
+    if (!phone) return;
 
     const socket: ClientSocket = io(config.apiUrl, {
       auth: { role: "VISITOR", visitorId },
@@ -266,15 +372,14 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     });
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      setConnected(true);
-      socket.emit("conversation:join", { conversationId });
-    });
+    socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
+
     socket.on("message:new", (message) => {
-      // Their message arriving means they have stopped typing.
+      const mine = message.conversationId === openIdRef.current;
+
       if (message.senderType === "AGENT") {
-        setAgentTyping(false);
+        if (mine) setAgentTyping(false);
         // Only while the visitor is on another tab; on the hosted page a push
         // covers them once it is closed altogether.
         notifyInBackground(
@@ -283,21 +388,46 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           `chat-${message.conversationId}`,
         );
       }
-      appendMessage(message);
+
+      if (mine) appendMessage(message);
+
+      // The list carries its own copy of the last thing said, and the count of
+      // what has not been read, for every chat including the open one.
+      setConversations((current) =>
+        byRecency(
+          current.map((row) =>
+            row.id === message.conversationId
+              ? {
+                  ...row,
+                  lastMessage: message,
+                  updatedAt: message.createdAt,
+                  unreadCount:
+                    message.senderType === "AGENT" && !mine ? row.unreadCount + 1 : row.unreadCount,
+                }
+              : row,
+          ),
+        ),
+      );
     });
-    socket.on("message:reaction", ({ messageId, reactions }) => {
+
+    socket.on("message:reaction", ({ conversationId: id, messageId, reactions }) => {
+      if (id !== openIdRef.current) return;
       setMessages((current) =>
         current.map((message) => (message.id === messageId ? { ...message, reactions } : message)),
       );
     });
+
     socket.on("message:receipt", (receipt) => {
+      if (receipt.conversationId !== openIdRef.current) return;
       setMessages((current) => applyReceipt(current, receipt));
     });
+
     socket.on("typing:update", (payload) => {
-      if (payload.conversationId === conversationId && payload.senderType === "AGENT") {
+      if (payload.conversationId === openIdRef.current && payload.senderType === "AGENT") {
         setAgentTyping(payload.isTyping);
       }
     });
+
     socket.on("agent:profile", (profile) => {
       setConversation((current) =>
         current && current.agent.id === profile.agentId
@@ -307,40 +437,72 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
             }
           : current,
       );
+      setConversations((current) =>
+        current.map((row) =>
+          row.agent.id === profile.agentId
+            ? { ...row, agent: { ...row.agent, name: profile.name, avatarUrl: profile.avatarUrl } }
+            : row,
+        ),
+      );
     });
+
     socket.on("conversation:closed", (closed) => {
       setConversation((current) =>
         current && current.id === closed.id
           ? { ...current, status: closed.status, closedAt: closed.closedAt }
           : current,
       );
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === closed.id ? { ...row, status: closed.status, closedAt: closed.closedAt } : row,
+        ),
+      );
     });
+
     // An admin handed the chat to another agent. The visitor is not told that
     // happened — only who is answering now, so the header stops showing a name
     // that no longer belongs to this conversation.
     socket.on("conversation:transferred", (transfer) => {
-      if (transfer.conversationId !== conversationId) return;
-      setAgentTyping(false);
-      // The one change of person the visitor does see happen.
-      noteConnected(transfer.agent.name);
-      setConversation((current) =>
-        current && current.id === transfer.conversationId
-          ? { ...current, agentId: transfer.agent.id, agent: transfer.agent }
-          : current,
+      if (transfer.conversationId === openIdRef.current) {
+        setAgentTyping(false);
+        // The one change of person the visitor does see happen.
+        noteConnected(transfer.agent.name);
+        setConversation((current) =>
+          current && current.id === transfer.conversationId
+            ? { ...current, agentId: transfer.agent.id, agent: transfer.agent }
+            : current,
+        );
+      }
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === transfer.conversationId
+            ? {
+                ...row,
+                agentId: transfer.agent.id,
+                agent: {
+                  id: transfer.agent.id,
+                  name: transfer.agent.name,
+                  isOnline: transfer.agent.isOnline,
+                  avatarUrl: transfer.agent.avatarUrl,
+                },
+                branch: transfer.branch,
+              }
+            : row,
+        ),
       );
     });
+
     // An admin removed the chat. Unlike closing it, there is no transcript left
-    // to read, so it is said plainly and the visitor is offered a fresh start.
+    // to read, so it leaves the list rather than sitting there unopenable.
     socket.on("conversation:deleted", (deleted) => {
-      if (deleted.conversationId !== conversationId) return;
-      // The stored id has to go with it, or a reload would try to resume a
-      // conversation the server no longer has.
+      setConversations((current) => current.filter((row) => row.id !== deleted.conversationId));
+      if (deleted.conversationId !== openIdRef.current) return;
       clearStoredConversationId();
       setAgentTyping(false);
       setConversation(null);
       setMessages([]);
-      setError("This conversation was removed.");
-      setPhase("failed");
+      setError("That conversation was removed.");
+      setPhase("list");
     });
 
     // A handshake the server refuses is not something Socket.IO retries, and a
@@ -356,7 +518,75 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       socketRef.current = null;
       setConnected(false);
     };
-  }, [conversationId, config.apiUrl, visitorId, appendMessage, setAgentTyping, noteConnected]);
+  }, [phone, config.apiUrl, visitorId, appendMessage, setAgentTyping, noteConnected]);
+
+  /*
+   * Room membership follows the list. Rejoined on every reconnect too, because
+   * the server forgets which rooms a socket was in when it drops.
+   */
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !connected) return;
+    for (const row of conversations) {
+      socket.emit("conversation:join", { conversationId: row.id });
+    }
+  }, [conversations, connected]);
+
+  /* --------------------------------- actions -------------------------------- */
+
+  const identify = useCallback(
+    async (given: string) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const result = await fetchList(given);
+        storePhone(given);
+        setPhone(given);
+        await settle(result);
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Could not look that number up");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [fetchList, settle],
+  );
+
+  const signOut = useCallback(() => {
+    clearStoredPhone();
+    clearStoredConversationId();
+    setPhone(null);
+    setConversations([]);
+    setConversation(null);
+    setMessages([]);
+    setNotices([]);
+    setError(null);
+    setPhase("identify");
+  }, []);
+
+  const open = useCallback((id: string) => openConversation(id), [openConversation]);
+
+  const back = useCallback(() => {
+    setConversation(null);
+    setMessages([]);
+    setNotices([]);
+    setError(null);
+    clearStoredConversationId();
+    setPhase("list");
+    // Quietly brought up to date: anything said while they were reading another
+    // chat is already in, but a closed chat or a hand-over may not be.
+    const known = getStoredPhone();
+    if (known) void fetchList(known).catch(() => undefined);
+  }, [fetchList]);
+
+  /**
+   * Starting another chat. Their details are already known by this point in
+   * almost every case, so the form is only shown to somebody genuinely new.
+   */
+  const startNew = useCallback(() => {
+    setError(null);
+    setPhase("form");
+  }, []);
 
   const startChat = useCallback(
     async (visitor: VisitorDetails) => {
@@ -367,6 +597,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       // available should not cost them their details a second time.
       storeSavedVisitor(visitor);
       setSavedVisitor(visitor);
+      storePhone(visitor.phone);
+      setPhone(visitor.phone);
 
       try {
         const result = await apiFetch<AssignmentResult>(config.apiUrl, "/api/conversations", {
@@ -390,22 +622,14 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           return;
         }
 
-        storeConversationId(result.conversation.id);
-        setConversation(result.conversation);
-
-        const detail = await apiFetch<ConversationDetail>(
-          config.apiUrl,
-          `/api/conversations/${result.conversation.id}?visitorId=${encodeURIComponent(visitorId)}`,
-        );
-        setMessages(detail.messages);
-        if (detail.messages.length > 0) noteConnected(detail.agent.name);
-        setPhase("chatting");
+        await fetchList(visitor.phone).catch(() => undefined);
+        await openConversation(result.conversation.id);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Could not start the chat");
         setPhase("failed");
       }
     },
-    [config.apiUrl, config.agentId, config.branchId, visitorId, noteConnected],
+    [config.apiUrl, config.agentId, config.branchId, visitorId, fetchList, openConversation],
   );
 
   const sendMessage = useCallback(
@@ -482,14 +706,15 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     agentNameRef.current = conversation?.agent.name ?? linkAgent?.name ?? null;
   }, [conversation, linkAgent]);
 
+  /** What the "start a new chat" button does once a chat has ended. */
   const startOver = useCallback(() => {
-    clearStoredConversationId();
     setConversation(null);
     setMessages([]);
     setNotices([]);
     setError(null);
-    setPhase("picking");
-  }, []);
+    clearStoredConversationId();
+    setPhase(savedVisitor ? "form" : "identify");
+  }, [savedVisitor]);
 
   useEffect(() => {
     const onChange = () => setPageVisible(document.visibilityState === "visible");
@@ -518,6 +743,8 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   return {
     phase,
     branches,
+    phone,
+    conversations,
     conversation,
     linkAgent,
     lockedBranch,
@@ -527,6 +754,12 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     connected: connected && networkUp,
     isClosed: conversation?.status === "CLOSED",
     agentTyping,
+    busy,
+    identify,
+    signOut,
+    open,
+    back,
+    startNew,
     startChat,
     sendMessage,
     sendMedia,

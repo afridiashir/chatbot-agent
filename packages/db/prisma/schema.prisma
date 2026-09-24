@@ -188,10 +188,21 @@ model Enquiry {
   @@index([answered, createdAt])
 }
 
+/// One browser. Its id is the value the widget keeps in localStorage.
+///
+/// A person is not a browser, though, which is why `phoneKey` is here: the
+/// widget finds someone's chats by the number they type, so two browsers
+/// belonging to the same person share a key and reach the same conversations.
+/// It is deliberately not unique — a second device is a second row.
 model Visitor {
   id            String         @id
   name          String
   phone         String
+  /// The number reduced to digits with a country code, exactly as `Lead` does
+  /// it. This is the identity a conversation is guarded by, so a visitor whose
+  /// number holds no digits at all is keyed by their own id instead of sharing
+  /// an "empty" identity with every other such browser.
+  phoneKey      String
   /// Null on visitors recorded before the pre-chat form asked for these.
   maritalStatus MaritalStatus?
   city          String?
@@ -203,6 +214,7 @@ model Visitor {
   pushSubscriptions PushSubscription[]
 
   @@index([phone])
+  @@index([phoneKey])
 }
 
 /// A mark an agent or admin puts on a conversation: "Follow up", "Sold".

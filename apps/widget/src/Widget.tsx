@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { WidgetConfig } from "./config.js";
 import { AgentAvatar } from "./components/AgentAvatar.js";
+import { ChatList } from "./components/ChatList.js";
+import { PhoneGate } from "./components/PhoneGate.js";
 import { ChatPanel } from "./components/ChatPanel.js";
 import { Launcher } from "./components/Launcher.js";
 import { PreChatForm } from "./components/PreChatForm.js";
@@ -20,7 +22,8 @@ export function Widget({ config }: { config: WidgetConfig }) {
     : undefined;
   const chatting = chat.phase === "chatting" ? chat.conversation?.agent : undefined;
   // Before a chat starts, an agent's link already knows who you'll talk to.
-  const agent = chatting ?? chat.linkAgent ?? undefined;
+  // On the list, nobody: it belongs to all of them at once.
+  const agent = chatting ?? (chat.phase === "list" ? undefined : (chat.linkAgent ?? undefined));
 
   // Full screen on phones: stop the page underneath from scrolling while the
   // chat covers it, and put the host page back exactly as it was on close.
@@ -51,6 +54,27 @@ export function Widget({ config }: { config: WidgetConfig }) {
     >
       {/* WhatsApp's teal header: the agent once known, a welcome before. */}
       <header className="flex items-center gap-3 bg-wa-teal px-3 pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 text-white">
+        {/* Back to the list, where a phone puts it. Only once there is a list
+            to go back to: on the way in there is nothing behind this screen. */}
+        {chat.phase === "chatting" && (
+          <button
+            type="button"
+            onClick={chat.back}
+            aria-label="Back to your chats"
+            className="-ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" />
+            </svg>
+          </button>
+        )}
         {agent ? (
           <>
             <AgentAvatar
@@ -81,9 +105,15 @@ export function Widget({ config }: { config: WidgetConfig }) {
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-[15px] leading-tight font-medium">
-                {chat.lockedBranch ? chat.lockedBranch.name : "Chat with us"}
+                {chat.phase === "list"
+                  ? "Your chats"
+                  : chat.lockedBranch
+                    ? chat.lockedBranch.name
+                    : "Chat with us"}
               </h2>
-              <p className="truncate text-xs text-white/80">We typically reply in a few minutes</p>
+              <p className="truncate text-xs text-white/80">
+                {chat.phase === "list" ? chat.phone : "We typically reply in a few minutes"}
+              </p>
             </div>
           </>
         )}
@@ -110,11 +140,33 @@ export function Widget({ config }: { config: WidgetConfig }) {
 
       {chat.phase === "loading" && <Status>Loading…</Status>}
 
-      {(chat.phase === "picking" || chat.phase === "starting") && (
+      {chat.phase === "identify" && (
+        <PhoneGate
+          agentName={chat.linkAgent?.name ?? null}
+          branchName={chat.lockedBranch?.name ?? null}
+          busy={chat.busy}
+          error={chat.error}
+          onSubmit={(phone) => void chat.identify(phone)}
+        />
+      )}
+
+      {chat.phase === "list" && (
+        <ChatList
+          apiUrl={config.apiUrl}
+          conversations={chat.conversations}
+          busy={chat.busy}
+          error={chat.error}
+          onOpen={(id) => void chat.open(id)}
+          onNew={chat.startNew}
+        />
+      )}
+
+      {(chat.phase === "form" || chat.phase === "starting") && (
         <PreChatForm
           lockedBranch={chat.lockedBranch}
           agentName={chat.linkAgent?.name ?? null}
           saved={chat.savedVisitor}
+          phone={chat.phone}
           submitting={chat.phase === "starting"}
           onStart={(visitor) => void chat.startChat(visitor)}
         />

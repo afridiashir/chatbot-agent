@@ -6,6 +6,7 @@ import {
   OTHER_CITY,
   PAKISTAN_CITIES,
   PAKISTAN_CITY_GROUPS,
+  phoneProblem,
 } from "@repo/types";
 import type { SavedVisitor } from "../lib/storage.js";
 
@@ -24,6 +25,8 @@ interface PreChatFormProps {
   agentName?: string | null;
   /** What this visitor told us before, on this device. */
   saved?: SavedVisitor | null;
+  /** The number they identified themselves with, which is not asked twice. */
+  phone?: string | null;
   submitting: boolean;
   onStart: (visitor: VisitorDetails) => void;
 }
@@ -41,12 +44,15 @@ export function PreChatForm({
   lockedBranch,
   agentName,
   saved,
+  phone,
   submitting,
   onStart,
 }: PreChatFormProps) {
   const [form, setForm] = useState({
     name: saved?.name ?? "",
-    phone: saved?.phone ?? "",
+    // The number they were identified by wins: it is the one their chats are
+    // filed under, and asking for it twice invites two different answers.
+    phone: phone ?? saved?.phone ?? "",
     maritalStatus: saved?.maritalStatus ?? "",
     city: saved?.city ?? "",
   });
@@ -57,7 +63,10 @@ export function PreChatForm({
   function validate(): boolean {
     const next: typeof errors = {};
     if (form.name.trim().length < 2) next.name = "Please enter your name";
-    if (!/^[0-9+()\-.\s]{7,24}$/.test(form.phone.trim())) next.phone = "Enter a valid number";
+    // The same rule the server holds them to, so a number accepted here cannot
+    // be refused a moment later.
+    const badPhone = phoneProblem(form.phone);
+    if (badPhone) next.phone = badPhone;
     // Checked against the same lists the server validates against, so a value
     // that passes here cannot be rejected there.
     if (!MARITAL_STATUSES.includes(form.maritalStatus as MaritalStatus)) {
@@ -73,7 +82,7 @@ export function PreChatForm({
     if (submitting || !saved) return;
     onStart({
       name: saved.name,
-      phone: saved.phone,
+      phone: phone ?? saved.phone,
       maritalStatus: saved.maritalStatus,
       city: saved.city,
     });

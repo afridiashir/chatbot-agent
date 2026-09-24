@@ -329,3 +329,57 @@ export function normalizePhone(phone: string): string {
   else if (digits.length === 10 && !digits.startsWith("92")) digits = `92${digits}`;
   return digits;
 }
+
+/** Characters someone might reasonably type in a phone number. */
+const PHONE_CHARACTERS = /^[0-9+()\-.\s]+$/;
+
+/**
+ * What is wrong with a phone number, or null when nothing is.
+ *
+ * The number is how a person is identified now — it finds their chats, and it
+ * is what the team calls and messages on WhatsApp afterwards — so a typo costs
+ * more than it used to. It is checked here rather than in the form alone, so
+ * the widget and the API agree on what counts as a number.
+ *
+ * Pakistani numbers are held to the shape they actually have, because that is
+ * nearly all of them and `0300 1234567` reversed a digit is otherwise accepted
+ * in silence. Everyone else is asked for their country code and then taken at
+ * their word: there are too many national formats in the world to police, and
+ * refusing a real customer is worse than storing an odd number.
+ */
+export function phoneProblem(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return "Enter your phone number";
+  if (!PHONE_CHARACTERS.test(trimmed)) return "Use digits, spaces and + ( ) - only";
+
+  const digits = normalizePhone(trimmed);
+
+  // `normalizePhone` reads a local or bare ten-digit number as Pakistani, so
+  // anything landing on 92 is held to Pakistan's mobile shape: 92 3XX XXXXXXX.
+  if (digits.startsWith("92")) {
+    if (digits.length !== 12 || !digits.startsWith("923")) {
+      return "Enter a Pakistani mobile like 0300 1234567, or add your country code";
+    }
+    return null;
+  }
+
+  // E.164 allows fifteen digits including the country code, and no real number
+  // is shorter than about ten once its country code is there.
+  if (digits.length < 10) return "That number is too short — include your country code";
+  if (digits.length > 15) return "That number is too long";
+  return null;
+}
+
+/**
+ * The identity key stored on a Visitor row.
+ *
+ * Falls back to the browser's own id when the number holds no digits at all,
+ * matching the migration: this key is what lets one browser reach another's
+ * conversations, so two unidentifiable visitors must not collapse into one
+ * identity and be handed each other's chats.
+ */
+export const visitorPhoneKey = (phone: string, visitorId: string): string =>
+  normalizePhone(phone) || `unknown-${visitorId}`;
+
+/** Convenience for the places that only need a yes or no. */
+export const isValidPhone = (raw: string): boolean => phoneProblem(raw) === null;

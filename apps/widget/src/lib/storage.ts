@@ -50,6 +50,19 @@ export function getVisitorId(): string {
   return generated;
 }
 
+/**
+ * The number this browser has identified itself with.
+ *
+ * It is the visitor's identity now — the widget opens on the chats belonging to
+ * it — so it is remembered like a session, and forgetting it is how someone
+ * hands the device back or looks up a different number.
+ */
+const PHONE_KEY = "acme-chat:phone";
+
+export const getStoredPhone = (): string | null => read(PHONE_KEY);
+export const storePhone = (phone: string): void => write(PHONE_KEY, phone);
+export const clearStoredPhone = (): void => remove(PHONE_KEY);
+
 export const getStoredConversationId = (): string | null => read(CONVERSATION_KEY);
 export const storeConversationId = (id: string): void => write(CONVERSATION_KEY, id);
 export const clearStoredConversationId = (): void => remove(CONVERSATION_KEY);

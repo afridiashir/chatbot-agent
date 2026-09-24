@@ -8,18 +8,26 @@ import type {
   Message,
   MessageAuthor,
   Reaction,
+  VisitorLookupResult,
 } from "@repo/types";
-import type { CreateConversationBody, CreateMessageBody } from "@repo/validation";
+import { visitorPhoneKey } from "@repo/types";
+import type {
+  CreateConversationBody,
+  CreateMessageBody,
+  LookupConversationsBody,
+} from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
 import { conflict, forbidden, notFound } from "../lib/http.js";
 import { verifyUpload } from "./media.js";
 import {
+  avatarPath,
   LABEL_INCLUDE,
   MESSAGE_INCLUDE,
   toConversation,
   toConversationDetail,
   toConversationSummary,
   toMessage,
+  toVisitorSummary,
 } from "../lib/serialize.js";
 import { assignAgent } from "./routing.js";
 import { mainBranch } from "./branches.js";
@@ -51,14 +59,29 @@ export async function createConversation(input: CreateConversationBody): Promise
   return assignAgent({ ...rest, branchId: agent.branchId, preferredAgentId: agentId });
 }
 
-function assertAccess(
+/**
+ * Two browsers belonging to one person.
+ *
+ * The phone number is what identifies a visitor now, so the same person on a
+ * second device reaches the same conversations. A browser whose number held no
+ * digits is keyed by its own id and therefore matches nothing but itself.
+ */
+async function sameVisitor(one: string, other: string): Promise<boolean> {
+  const rows = await prisma.visitor.findMany({
+    where: { id: { in: [one, other] } },
+    select: { phoneKey: true },
+  });
+  return rows.length === 2 && rows[0]!.phoneKey === rows[1]!.phoneKey;
+}
+
+async function assertAccess(
   conversation: {
     agentId: string;
     visitorId: string;
     agent: { branchId: string; branch: { companyId: string } };
   },
   actor: Actor,
-): void {
+): Promise<void> {
   if (actor.type === "ADMIN") {
     // Admins read conversations in their own company, and a branch admin only
     // in their branch. Anything else is reported as missing, not forbidden, so
@@ -70,12 +93,151 @@ function assertAccess(
     return;
   }
 
-  const allowed =
-    actor.type === "AGENT"
-      ? conversation.agentId === actor.agentId
-      : conversation.visitorId === actor.visitorId;
+  if (actor.type === "AGENT") {
+    if (conversation.agentId !== actor.agentId) {
+      throw forbidden("This conversation belongs to someone else");
+    }
+    return;
+  }
 
-  if (!allowed) throw forbidden("This conversation belongs to someone else");
+  // The common case, and the cheap one: the browser that owns the chat is the
+  // browser asking for it.
+  if (conversation.visitorId === actor.visitorId) return;
+  // Otherwise it may still be their chat from another device, which costs one
+  // lookup — paid only by the visitor who has actually changed device.
+  if (await sameVisitor(conversation.visitorId, actor.visitorId)) return;
+
+  throw forbidden("This conversation belongs to someone else");
+}
+
+/**
+ * Every chat a phone number has, and who the number belongs to.
+ *
+ * This is what the widget opens on: someone types their number and sees the
+ * conversations they have had, whoever they were with, so they can carry on
+ * with one agent while another is still thinking. Closed chats are included —
+ * they are history worth reading, and the widget shows them as ended.
+ *
+ * The number alone is enough, deliberately: there is no code to type and no
+ * account to sign into, so anyone who knows a number can read what that number
+ * has said to us. That is the product decision this was built to; if it ever
+ * needs to be tightened, this function and `sameVisitor` are the two places
+ * that grant the access.
+ *
+ * Scoped to one company: a visitor id is the same browser on every site the
+ * widget is embedded on, and another company's chats must never appear here.
+ */
+export async function lookupConversations(
+  input: LookupConversationsBody,
+): Promise<VisitorLookupResult> {
+  const companyId = await companyFor(input);
+  const phoneKey = visitorPhoneKey(input.phone, input.visitorId);
+
+  // Every browser this person has ever written in from. Their details come from
+  // the most recent one, so a second device is not asked for them again.
+  const known = await prisma.visitor.findMany({
+    where: { phoneKey },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (known.length === 0) return { visitor: null, conversations: [] };
+
+  const rows = await prisma.conversation.findMany({
+    where: {
+      visitorId: { in: known.map((visitor) => visitor.id) },
+      agent: { branch: { companyId } },
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: 50,
+    include: {
+      agent: { include: { branch: { select: { id: true, name: true } } } },
+      messages: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        include: MESSAGE_INCLUDE,
+      },
+    },
+  });
+
+  // This browser now answers to that number, which is what lets it open the
+  // chats being returned. The details are carried over rather than asked for.
+  const latest = known[0]!;
+  await prisma.visitor.upsert({
+    where: { id: input.visitorId },
+    create: {
+      id: input.visitorId,
+      name: latest.name,
+      phone: input.phone,
+      phoneKey,
+      maritalStatus: latest.maritalStatus,
+      city: latest.city,
+    },
+    update: { phoneKey, phone: input.phone },
+  });
+
+  const unread = await visitorUnreadCounts(rows.map((row) => row.id));
+
+  return {
+    visitor: toVisitorSummary(latest),
+    conversations: rows.map((row) => ({
+      ...toConversation(row),
+      agent: {
+        id: row.agent.id,
+        name: row.agent.name,
+        isOnline: row.agent.isOnline,
+        avatarUrl: avatarPath(row.agent),
+      },
+      branch: { id: row.agent.branch.id, name: row.agent.branch.name },
+      lastMessage: row.messages[0] ? toMessage(row.messages[0]) : null,
+      unreadCount: unread.get(row.id) ?? 0,
+    })),
+  };
+}
+
+/**
+ * Whose chats to search. The link the widget was opened from says which company
+ * it belongs to; a plain widget falls back to the main branch, exactly as
+ * starting a chat does.
+ */
+async function companyFor(input: LookupConversationsBody): Promise<string> {
+  if (input.agentId) {
+    const agent = await prisma.agent.findUnique({
+      where: { id: input.agentId },
+      select: { branch: { select: { companyId: true } } },
+    });
+    if (agent) return agent.branch.companyId;
+  }
+  if (input.branchId) {
+    const branch = await prisma.branch.findUnique({
+      where: { id: input.branchId },
+      select: { companyId: true },
+    });
+    if (branch) return branch.companyId;
+  }
+
+  const main = await mainBranch();
+  if (!main) throw notFound("No branch is available");
+  const branch = await prisma.branch.findUnique({
+    where: { id: main.id },
+    select: { companyId: true },
+  });
+  if (!branch) throw notFound("No branch is available");
+  return branch.companyId;
+}
+
+/**
+ * How many of the agent's messages the visitor has not read, per conversation —
+ * the mirror of `unreadCounts`, which answers the same question for the agent.
+ */
+export async function visitorUnreadCounts(conversationIds: string[]): Promise<Map<string, number>> {
+  if (conversationIds.length === 0) return new Map();
+
+  const groups = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: { conversationId: { in: conversationIds }, senderType: "AGENT", readAt: null },
+    _count: { _all: true },
+  });
+
+  return new Map(groups.map((group) => [group.conversationId, group._count._all]));
 }
 
 /** What `assertAccess` needs loaded alongside a conversation. */
@@ -97,7 +259,7 @@ export async function assertConversationAccess(
   });
   if (!conversation) throw notFound("Conversation not found");
 
-  assertAccess(conversation, actor);
+  await assertAccess(conversation, actor);
 }
 
 export async function getConversation(
@@ -114,7 +276,7 @@ export async function getConversation(
   });
   if (!conversation) throw notFound("Conversation not found");
 
-  assertAccess(conversation, actor);
+  await assertAccess(conversation, actor);
 
   // Staff see who really typed each message; a visitor is served the same
   // endpoint and must not, so the key is absent rather than empty for them.
@@ -235,7 +397,7 @@ export async function addMessage(
   if (!conversation) throw notFound("Conversation not found");
 
   // `assertAccess` already confines an admin to their company and branch.
-  assertAccess(conversation, actor);
+  await assertAccess(conversation, actor);
 
   /*
    * An admin may step in and answer in the agent's place. The message is stored
@@ -363,7 +525,7 @@ export async function reactToMessage(
   if (!message) throw notFound("Message not found");
 
   const conversation = message.conversation;
-  assertAccess(conversation, actor);
+  await assertAccess(conversation, actor);
   if (conversation.status === "CLOSED") throw conflict("This conversation has been closed");
 
   const senderType = actor.type === "AGENT" ? "AGENT" : "VISITOR";
@@ -414,7 +576,7 @@ export async function closeConversation(
   });
   if (!conversation) throw notFound("Conversation not found");
 
-  assertAccess(conversation, actor);
+  await assertAccess(conversation, actor);
 
   if (conversation.status === "CLOSED") return toConversation(conversation);
 

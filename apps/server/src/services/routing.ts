@@ -1,6 +1,6 @@
 import { prisma } from "@repo/db";
 import type { AssignmentResult, MaritalStatus } from "@repo/types";
-import { normalizePhone } from "@repo/types";
+import { normalizePhone, visitorPhoneKey } from "@repo/types";
 import { notFound } from "../lib/http.js";
 import { toConversationWithAgent } from "../lib/serialize.js";
 import { initialLabelId } from "./labels.js";
@@ -124,19 +124,24 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
 
   return prisma.$transaction(async (tx) => {
     // Upserted every time, so a returning visitor can correct details they got
-    // wrong the first time without opening a second identity.
+    // wrong the first time. The identity key is rewritten with them: someone who
+    // fixes a mistyped number becomes a different person, and the chats they are
+    // shown have to follow the number they actually own.
+    const phoneKey = visitorPhoneKey(input.visitor.phone, input.visitorId);
     await tx.visitor.upsert({
       where: { id: input.visitorId },
       create: {
         id: input.visitorId,
         name: input.visitor.name,
         phone: input.visitor.phone,
+        phoneKey,
         maritalStatus: input.visitor.maritalStatus,
         city: input.visitor.city,
       },
       update: {
         name: input.visitor.name,
         phone: input.visitor.phone,
+        phoneKey,
         maritalStatus: input.visitor.maritalStatus,
         city: input.visitor.city,
       },
@@ -158,7 +163,10 @@ export async function assignAgent(input: AssignAgentInput): Promise<AssignmentRe
     // followed a specific person's link expects to talk to them.
     const existing = await tx.conversation.findFirst({
       where: {
-        visitorId: input.visitorId,
+        // By person rather than by browser: the same number on a second device
+        // is the same conversation, which is the whole point of the list the
+        // widget now opens on.
+        visitor: { phoneKey },
         status: "ACTIVE",
         ...(input.preferredAgentId
           ? { agentId: input.preferredAgentId }

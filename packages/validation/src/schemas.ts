@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LABEL_COLORS, MARITAL_STATUSES, PAKISTAN_CITIES } from "@repo/types";
+import { LABEL_COLORS, MARITAL_STATUSES, PAKISTAN_CITIES, phoneProblem } from "@repo/types";
 import {
   clientIdSchema,
   conversationStatusSchema,
@@ -243,9 +243,23 @@ export const listAgentConversationsQuerySchema = z.object({
 /* -------------------------------- visitors --------------------------------- */
 
 /**
- * Collected by the widget's pre-chat form. Phone numbers vary far too much
- * between countries to validate strictly, so this only rejects input that is
- * obviously not a phone number.
+ * A phone number, checked by the rule the widget shows its own errors from, so
+ * the form and the API cannot disagree about what a number is.
+ *
+ * It is the identity a visitor is found by now — it decides which chats they
+ * are shown — which is why it is no longer merely "looks like a number".
+ */
+export const phoneSchema = z
+  .string()
+  .trim()
+  .max(24, "That number looks too long")
+  .superRefine((value, ctx) => {
+    const problem = phoneProblem(value);
+    if (problem) ctx.addIssue({ code: "custom", message: problem });
+  });
+
+/**
+ * Collected by the widget's pre-chat form.
  *
  * Marital status and city are closed sets rather than free text: they exist to
  * be filtered and grouped in the admin, which only works if everyone picking
@@ -254,12 +268,7 @@ export const listAgentConversationsQuerySchema = z.object({
  */
 export const visitorDetailsSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80, "That name is too long"),
-  phone: z
-    .string()
-    .trim()
-    .min(7, "That number looks too short")
-    .max(24, "That number looks too long")
-    .regex(/^[0-9+()\-.\s]+$/, "Use digits, spaces and + ( ) - only"),
+  phone: phoneSchema,
   maritalStatus: z.enum(MARITAL_STATUSES, { message: "Choose your marital status" }),
   city: z.enum(PAKISTAN_CITIES as [string, ...string[]], { message: "Choose your city" }),
 });
@@ -282,6 +291,22 @@ export const createConversationBodySchema = z.object({
   visitor: visitorDetailsSchema,
   /** Optional opening message so the agent sees intent immediately. */
   initialMessage: messageContentSchema.optional(),
+});
+
+/**
+ * POST /api/conversations/lookup — "these are my chats".
+ *
+ * A POST rather than a GET because the phone number is the body of the
+ * request, not a thing to leave in a URL, a proxy log or a browser history.
+ * `visitorId` is this browser, which the lookup binds to the number so the
+ * chats it returns can then actually be opened from here.
+ */
+export const lookupConversationsBodySchema = z.object({
+  phone: phoneSchema,
+  visitorId: visitorIdSchema,
+  /** The link the widget was opened from, which says whose company to search. */
+  branchId: idSchema.optional(),
+  agentId: idSchema.optional(),
 });
 
 export const getConversationQuerySchema = z.object({
@@ -415,6 +440,7 @@ export type CreateConversationBody = z.infer<typeof createConversationBodySchema
 export type VisitorDetails = z.infer<typeof visitorDetailsSchema>;
 export type CreateMessageBody = z.infer<typeof createMessageBodySchema>;
 export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
+export type LookupConversationsBody = z.infer<typeof lookupConversationsBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
 export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
 export type PushSubscriptionBody = z.infer<typeof pushSubscriptionBodySchema>;

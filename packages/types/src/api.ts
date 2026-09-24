@@ -27,6 +27,8 @@ export const ApiErrorCode = {
   UNAUTHORIZED: "UNAUTHORIZED",
   FORBIDDEN: "FORBIDDEN",
   CONFLICT: "CONFLICT",
+  /** Too many attempts from one place, too quickly. */
+  TOO_MANY: "TOO_MANY",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
 export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
