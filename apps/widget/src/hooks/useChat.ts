@@ -92,8 +92,11 @@ export interface ChatController {
   identify: (phone: string) => Promise<void>;
   /** Forgets the number, for handing the device to somebody else. */
   signOut: () => void;
-  /** Opens one of their chats. */
-  open: (conversationId: string) => Promise<void>;
+  /**
+   * Opens their chat with one agent. Everything they have ever said to that
+   * person is one thread, however many conversations it is made of.
+   */
+  open: (agentId: string) => Promise<void>;
   /** Back to the list, which is refreshed on the way. */
   back: () => void;
   /** Starts a chat: with the agent whose link this is, or with whoever is free. */
@@ -158,10 +161,17 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const [networkUp, setNetworkUp] = useState(true);
 
   const socketRef = useRef<ClientSocket | null>(null);
+  /** The conversation new messages are sent to: their live one with this agent. */
   const conversationId = conversation?.id ?? null;
-  /** Read by socket handlers, which must know which chat is on screen. */
-  const openIdRef = useRef<string | null>(null);
-  openIdRef.current = conversationId;
+  /**
+   * Every conversation making up the thread on screen.
+   *
+   * One agent can be several conversations — an earlier one they closed, and a
+   * live one — and the visitor is shown them as the single thread they
+   * experienced. Socket handlers read this to know whether an event belongs to
+   * what is on screen.
+   */
+  const openIdsRef = useRef<Set<string>>(new Set());
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState === "visible");
   /** The newest agent message already reported read, so each is reported once. */
   const reportedReadRef = useRef<string | null>(null);
@@ -222,33 +232,74 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
         },
       );
       setConversations(byRecency(result.conversations));
+
+      // We already know this person. Their details fill the form in rather than
+      // being asked for again on a device that has never seen them — the
+      // number was enough to recognise them.
+      const known = result.visitor;
+      const status = known?.maritalStatus;
+      const city = known?.city;
+      if (known && status && city) {
+        const remembered: SavedVisitor = {
+          name: known.name,
+          phone: known.phone,
+          maritalStatus: status,
+          city,
+        };
+        setSavedVisitor((current) => current ?? remembered);
+      }
       return result;
     },
     [config.apiUrl, config.agentId, config.branchId, visitorId],
   );
 
-  /** Loads one chat and puts it on screen. */
-  const openConversation = useCallback(
-    async (id: string) => {
+  /**
+   * Puts one agent's thread on screen.
+   *
+   * `ids` are every conversation the visitor has had with that person, oldest
+   * first. Their messages are merged into one transcript, because that is what
+   * the visitor remembers having — one conversation with one agent — whatever
+   * the chats were closed and reopened along the way. Replies go to the live
+   * one, which is the last of them.
+   */
+  const openThread = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
       setError(null);
       setBusy(true);
       try {
-        const detail = await apiFetch<ConversationDetail>(
-          config.apiUrl,
-          `/api/conversations/${id}?visitorId=${encodeURIComponent(visitorId)}`,
+        const details = await Promise.all(
+          ids.map((id) =>
+            apiFetch<ConversationDetail>(
+              config.apiUrl,
+              `/api/conversations/${id}?visitorId=${encodeURIComponent(visitorId)}`,
+            ),
+          ),
         );
-        const { messages: history, ...rest } = detail;
+
+        // The one still open takes the replies; with none open it is the most
+        // recent, so the composer can still say the chat has ended.
+        const live =
+          details.find((detail) => detail.status === "ACTIVE") ?? details[details.length - 1]!;
+        const history = details
+          .flatMap((detail) => detail.messages)
+          .sort((a, b) =>
+            a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : 1,
+          );
+
+        const { messages: _drop, ...rest } = live;
+        openIdsRef.current = new Set(ids);
         setConversation(rest);
         setMessages(history);
         setNotices([]);
         // Only where there is something to come back to. A chat with nothing in
         // it yet already says who is there, above the empty canvas.
-        if (history.length > 0) noteConnected(detail.agent.name);
-        storeConversationId(id);
+        if (history.length > 0) noteConnected(live.agent.name);
+        storeConversationId(live.id);
         // Opening it is reading it; the badge goes now rather than after the
         // receipt has made its way back.
         setConversations((current) =>
-          current.map((row) => (row.id === id ? { ...row, unreadCount: 0 } : row)),
+          current.map((row) => (ids.includes(row.id) ? { ...row, unreadCount: 0 } : row)),
         );
         setPhase("chatting");
       } catch (err) {
@@ -259,6 +310,17 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       }
     },
     [config.apiUrl, visitorId, noteConnected],
+  );
+
+  /** Every conversation with one agent, oldest first. */
+  const threadFor = useCallback(
+    (agentId: string, rows: VisitorConversationSummary[]): string[] =>
+      rows
+        .filter((row) => row.agent.id === agentId)
+        .slice()
+        .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+        .map((row) => row.id),
+    [],
   );
 
   /**
@@ -272,11 +334,9 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
   const settle = useCallback(
     async (result: VisitorLookupResult) => {
       if (config.agentId) {
-        const theirs = result.conversations.find(
-          (row) => row.agent.id === config.agentId && row.status === "ACTIVE",
-        );
-        if (theirs) {
-          await openConversation(theirs.id);
+        const theirs = threadFor(config.agentId, result.conversations);
+        if (theirs.length > 0) {
+          await openThread(theirs);
           return;
         }
       }
@@ -287,7 +347,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       }
       setPhase("list");
     },
-    [config.agentId, openConversation],
+    [config.agentId, openThread, threadFor],
   );
 
   /* ---------------------------------- boot ---------------------------------- */
@@ -376,7 +436,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     socket.on("disconnect", () => setConnected(false));
 
     socket.on("message:new", (message) => {
-      const mine = message.conversationId === openIdRef.current;
+      const mine = openIdsRef.current.has(message.conversationId);
 
       if (message.senderType === "AGENT") {
         if (mine) setAgentTyping(false);
@@ -411,19 +471,19 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     });
 
     socket.on("message:reaction", ({ conversationId: id, messageId, reactions }) => {
-      if (id !== openIdRef.current) return;
+      if (!openIdsRef.current.has(id)) return;
       setMessages((current) =>
         current.map((message) => (message.id === messageId ? { ...message, reactions } : message)),
       );
     });
 
     socket.on("message:receipt", (receipt) => {
-      if (receipt.conversationId !== openIdRef.current) return;
+      if (!openIdsRef.current.has(receipt.conversationId)) return;
       setMessages((current) => applyReceipt(current, receipt));
     });
 
     socket.on("typing:update", (payload) => {
-      if (payload.conversationId === openIdRef.current && payload.senderType === "AGENT") {
+      if (openIdsRef.current.has(payload.conversationId) && payload.senderType === "AGENT") {
         setAgentTyping(payload.isTyping);
       }
     });
@@ -463,7 +523,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     // happened — only who is answering now, so the header stops showing a name
     // that no longer belongs to this conversation.
     socket.on("conversation:transferred", (transfer) => {
-      if (transfer.conversationId === openIdRef.current) {
+      if (openIdsRef.current.has(transfer.conversationId)) {
         setAgentTyping(false);
         // The one change of person the visitor does see happen.
         noteConnected(transfer.agent.name);
@@ -496,7 +556,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     // to read, so it leaves the list rather than sitting there unopenable.
     socket.on("conversation:deleted", (deleted) => {
       setConversations((current) => current.filter((row) => row.id !== deleted.conversationId));
-      if (deleted.conversationId !== openIdRef.current) return;
+      if (!openIdsRef.current.has(deleted.conversationId)) return;
       clearStoredConversationId();
       setAgentTyping(false);
       setConversation(null);
@@ -564,9 +624,13 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     setPhase("identify");
   }, []);
 
-  const open = useCallback((id: string) => openConversation(id), [openConversation]);
+  const open = useCallback(
+    (agentId: string) => openThread(threadFor(agentId, conversations)),
+    [openThread, threadFor, conversations],
+  );
 
   const back = useCallback(() => {
+    openIdsRef.current = new Set();
     setConversation(null);
     setMessages([]);
     setNotices([]);
@@ -622,14 +686,17 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
           return;
         }
 
-        await fetchList(visitor.phone).catch(() => undefined);
-        await openConversation(result.conversation.id);
+        const refreshed = await fetchList(visitor.phone).catch(() => null);
+        const thread = refreshed
+          ? threadFor(result.conversation.agent.id, refreshed.conversations)
+          : [];
+        await openThread(thread.length > 0 ? thread : [result.conversation.id]);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Could not start the chat");
         setPhase("failed");
       }
     },
-    [config.apiUrl, config.agentId, config.branchId, visitorId, fetchList, openConversation],
+    [config.apiUrl, config.agentId, config.branchId, visitorId, fetchList, openThread, threadFor],
   );
 
   const sendMessage = useCallback(

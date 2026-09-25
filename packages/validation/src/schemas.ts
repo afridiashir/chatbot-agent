@@ -8,6 +8,21 @@ import {
   visitorIdSchema,
 } from "./common";
 
+/**
+ * A city from the widget's pre-chat form.
+ *
+ * The list in `@repo/types` is what the form offers and what nearly everyone
+ * picks, which is what keeps the admin's filter useful — everyone choosing
+ * Lahore writes it the same way. It is no longer a closed set, though: someone
+ * from a town that is not on the list has to be able to say so, and turning
+ * them away over it would cost a customer to protect a filter.
+ */
+export const citySchema = z
+  .string()
+  .trim()
+  .min(2, "Choose your city")
+  .max(60, "That city name is too long");
+
 /* ---------------------------------- params --------------------------------- */
 
 export const branchIdParamSchema = z.object({ branchId: idSchema });
@@ -178,8 +193,12 @@ export const leadsTableQuerySchema = z
     conversation: z.enum(["open", "closed", "none"]).optional(),
     /** `new`: got in touch once. `returning`: more than once. */
     visits: z.enum(["new", "returning"]).optional(),
-    /** Both from the pre-chat form, so both are filterable in the table. */
-    city: z.enum(PAKISTAN_CITIES as [string, ...string[]]).optional(),
+    /**
+     * Both from the pre-chat form, so both are filterable in the table. The
+     * city is free text rather than the known list, because a visitor may have
+     * typed one that is not on it and it still has to be filterable.
+     */
+    city: citySchema.optional(),
     maritalStatus: z.enum(MARITAL_STATUSES).optional(),
     /** Only leads with an enquiry inside [from, to). ISO timestamps. */
     from: z.iso.datetime().optional(),
@@ -261,16 +280,15 @@ export const phoneSchema = z
 /**
  * Collected by the widget's pre-chat form.
  *
- * Marital status and city are closed sets rather than free text: they exist to
- * be filtered and grouped in the admin, which only works if everyone picking
- * "Lahore" writes it the same way. The lists live in `@repo/types` so the
- * widget renders exactly what the server will accept.
+ * Marital status stays a closed set: it exists to be filtered and grouped in
+ * the admin, and there are only five answers. The list lives in `@repo/types`
+ * so the widget renders exactly what the server will accept.
  */
 export const visitorDetailsSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80, "That name is too long"),
   phone: phoneSchema,
   maritalStatus: z.enum(MARITAL_STATUSES, { message: "Choose your marital status" }),
-  city: z.enum(PAKISTAN_CITIES as [string, ...string[]], { message: "Choose your city" }),
+  city: citySchema,
 });
 
 /* ------------------------------- conversations ------------------------------ */

@@ -1,13 +1,7 @@
 import { useState } from "react";
 import type { Branch, MaritalStatus } from "@repo/types";
-import {
-  MARITAL_STATUSES,
-  MARITAL_STATUS_LABELS,
-  OTHER_CITY,
-  PAKISTAN_CITIES,
-  PAKISTAN_CITY_GROUPS,
-  phoneProblem,
-} from "@repo/types";
+import { MARITAL_STATUSES, MARITAL_STATUS_LABELS, phoneProblem } from "@repo/types";
+import { CityPicker } from "./CityPicker.js";
 import type { SavedVisitor } from "../lib/storage.js";
 
 export interface VisitorDetails {
@@ -72,7 +66,9 @@ export function PreChatForm({
     if (!MARITAL_STATUSES.includes(form.maritalStatus as MaritalStatus)) {
       next.maritalStatus = "Choose your marital status";
     }
-    if (!PAKISTAN_CITIES.includes(form.city)) next.city = "Choose your city";
+    // Anything they typed counts, which is the point of the picker; it only
+    // has to be long enough to be a place.
+    if (form.city.trim().length < 2) next.city = "Enter your city";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -96,7 +92,7 @@ export function PreChatForm({
       name: form.name.trim(),
       phone: form.phone.trim(),
       maritalStatus: form.maritalStatus as MaritalStatus,
-      city: form.city,
+      city: form.city.trim(),
     });
   }
 
@@ -173,6 +169,7 @@ export function PreChatForm({
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               placeholder="+92 300 1234567"
               aria-label="Phone number"
+              type="tel"
               autoComplete="tel"
               inputMode="tel"
               className={field("phone")}
@@ -203,28 +200,15 @@ export function PreChatForm({
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-wa-icon">City</span>
             {/*
-              Grouped by province: over two hundred options in one flat list is
-              unreadable, and a native <select> gives the phone's own picker,
-              which is easier to scroll than anything drawn here.
+              Typed rather than scrolled for: over two hundred options is more
+              than anyone wants to page through on a phone, and a town that is
+              not on the list is still somewhere they may be from.
             */}
-            <select
+            <CityPicker
               value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-              aria-label="City"
-              className={field("city")}
-            >
-              <option value="">Select your city</option>
-              {PAKISTAN_CITY_GROUPS.map((group) => (
-                <optgroup key={group.province} label={group.province}>
-                  {group.cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              <option value={OTHER_CITY}>{OTHER_CITY}</option>
-            </select>
+              invalid={Boolean(errors.city)}
+              onChange={(city) => setForm({ ...form, city })}
+            />
             {errors.city && <span className="text-xs text-red-600">{errors.city}</span>}
           </label>
 
