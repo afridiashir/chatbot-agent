@@ -475,6 +475,12 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
       );
     });
 
+    // An admin removed a message. Nothing of it is left, so it simply goes.
+    socket.on("message:deleted", ({ conversationId: id, messageId }) => {
+      if (!openIdsRef.current.has(id)) return;
+      setMessages((current) => current.filter((message) => message.id !== messageId));
+    });
+
     socket.on("message:reaction", ({ conversationId: id, messageId, reactions }) => {
       if (!openIdsRef.current.has(id)) return;
       setMessages((current) =>

@@ -377,6 +377,24 @@ export function useInbox(
       }
     });
 
+    // An admin removed a message. The preview in the list may have been it, so
+    // the row is refetched rather than left quoting something that is gone.
+    socket.on("message:deleted", ({ conversationId, messageId }) => {
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, messages: current.messages.filter((m) => m.id !== messageId) }
+          : current,
+      );
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === conversationId && row.lastMessage?.id === messageId
+            ? { ...row, lastMessage: null, messageCount: Math.max(0, row.messageCount - 1) }
+            : row,
+        ),
+      );
+      void loadConversations().catch(() => undefined);
+    });
+
     socket.on("message:reaction", ({ conversationId, messageId, reactions }) => {
       setConversations((current) =>
         current.map((row) =>

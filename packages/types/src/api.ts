@@ -82,3 +82,11 @@ export interface DeleteConversationResult {
   deletedMessages: number;
   deletedAttachments: number;
 }
+
+/** One message removed from a chat that otherwise stays where it is. */
+export interface DeleteMessageResult {
+  id: string;
+  conversationId: string;
+  /** Whether a photo, video or voice note went with it. */
+  deletedAttachment: boolean;
+}

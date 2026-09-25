@@ -169,6 +169,7 @@ export function Bubble({
   author,
   flash,
   reacting,
+  onDelete,
   onReply,
   onReact,
   onOpenReactions,
@@ -191,6 +192,8 @@ export function Bubble({
   flash?: boolean;
   /** The reaction bar is open on this message. */
   reacting?: boolean;
+  /** Set for an admin, who may remove a message outright. */
+  onDelete?: (message: Message) => void;
   /** Omitted where replying isn't possible, such as the admin's read-only view. */
   onReply?: (message: Message) => void;
   onReact?: (messageId: string, emoji: string | null) => void;
@@ -297,10 +300,13 @@ export function Bubble({
       {/* Beside the bubble on its outer side: left of the agent's own messages,
           right of the visitor's. Sized even while hidden, so the row does not
           jump as the pointer moves over it. */}
-      {onReply && fromAgent && (
+      {fromAgent && (
         <>
-          {onOpenReactions && <ReactButton onClick={() => onOpenReactions(message.id)} />}
-          <ReplyButton onClick={() => onReply(message)} />
+          {onDelete && <DeleteButton onClick={() => onDelete(message)} />}
+          {onReply && onOpenReactions && (
+            <ReactButton onClick={() => onOpenReactions(message.id)} />
+          )}
+          {onReply && <ReplyButton onClick={() => onReply(message)} />}
         </>
       )}
 
@@ -387,13 +393,34 @@ export function Bubble({
         )}
       </div>
 
-      {onReply && !fromAgent && (
+      {!fromAgent && (
         <>
-          <ReplyButton onClick={() => onReply(message)} />
-          {onOpenReactions && <ReactButton onClick={() => onOpenReactions(message.id)} />}
+          {onReply && <ReplyButton onClick={() => onReply(message)} />}
+          {onReply && onOpenReactions && (
+            <ReactButton onClick={() => onOpenReactions(message.id)} />
+          )}
+          {onDelete && <DeleteButton onClick={() => onDelete(message)} />}
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Removing one message, for an admin. Beside the bubble like the others, and
+ * tinted like everything else in this product that does not come back.
+ */
+function DeleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Delete this message"
+      title="Delete message"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-chat-meta opacity-0 shadow-sm transition hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+    >
+      <Trash2 className="size-3.5" aria-hidden />
+    </button>
   );
 }
 

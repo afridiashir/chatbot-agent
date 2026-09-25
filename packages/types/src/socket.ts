@@ -113,6 +113,12 @@ export interface ServerToClientEvents {
    */
   "conversation:deleted": (payload: { conversationId: string }) => void;
   /**
+   * An admin removed one message. Everyone holding the chat drops it: there is
+   * no copy left on the server, and the point of removing something said in
+   * error is that no trace of it stays on screen either.
+   */
+  "message:deleted": (payload: { conversationId: string; messageId: string }) => void;
+  /**
    * The labels on a chat changed. Staff rooms only — the conversation room
    * holds the visitor too, and labels are the team's notes, not theirs.
    */

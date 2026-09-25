@@ -231,6 +231,28 @@ export function emitConversationClosed(conversation: Conversation): void {
 }
 
 /**
+ * One message is gone for good.
+ *
+ * To the conversation room, which holds the visitor and whoever is answering:
+ * the whole point of removing something said in error is that it stops being on
+ * anybody's screen. The agent's own room as well, because a chat they have
+ * closed is one they are no longer in, and its inbox row may be quoting the
+ * message that has just gone.
+ */
+export function emitMessageDeleted(message: {
+  conversationId: string;
+  messageId: string;
+  agentId: string;
+}): void {
+  io?.to(rooms.conversation(message.conversationId))
+    .to(rooms.agent(message.agentId))
+    .emit("message:deleted", {
+      conversationId: message.conversationId,
+      messageId: message.messageId,
+    });
+}
+
+/**
  * The chat is gone for good. Sent to the room before everyone is dropped from
  * it, and to the agent's dashboard so the row leaves their inbox.
  */

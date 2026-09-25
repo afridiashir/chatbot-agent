@@ -111,6 +111,10 @@ export function AdminInbox({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  /** The one message an admin is about to remove, if they are. */
+  const [confirmMessage, setConfirmMessage] = useState<Message | null>(null);
+  const [deletingMessage, setDeletingMessage] = useState(false);
+
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -342,6 +346,23 @@ export function AdminInbox({
       );
     });
 
+    // An admin removed one message — this one, or another admin elsewhere.
+    socket.on("message:deleted", ({ conversationId, messageId }) => {
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, messages: current.messages.filter((m) => m.id !== messageId) }
+          : current,
+      );
+      setRows(
+        (current) =>
+          current?.map((row) =>
+            row.id === conversationId && row.lastMessage?.id === messageId
+              ? { ...row, lastMessage: null, messageCount: Math.max(0, row.messageCount - 1) }
+              : row,
+          ) ?? current,
+      );
+    });
+
     socket.on("visitor:renamed", ({ conversationId, displayName }) => {
       setRows(
         (current) =>
@@ -422,6 +443,29 @@ export function AdminInbox({
         row.agent.name.toLowerCase().includes(needle),
     );
   }, [rows, query]);
+
+  /**
+   * One message, gone for good.
+   *
+   * The broadcast that comes back is what clears it from this screen and from
+   * everyone else's, so nothing is removed locally ahead of the server.
+   */
+  async function deleteMessage(message: Message) {
+    if (!detail) return;
+    setDeletingMessage(true);
+    try {
+      await api(`/api/admin/conversations/${detail.id}/messages/${message.id}`, {
+        method: "DELETE",
+        token,
+      });
+      setConfirmMessage(null);
+      setNotice("Message deleted");
+    } catch {
+      setListError("Could not delete that message");
+    } finally {
+      setDeletingMessage(false);
+    }
+  }
 
   /**
    * Permanent, and the server says so too. The broadcast that comes back would
@@ -834,6 +878,7 @@ export function AdminInbox({
                                   }
                                 : { name: detail.visitor.name, seed: detail.visitor.id }
                             }
+                            onDelete={setConfirmMessage}
                           />
                         </div>
                       ))}
@@ -896,6 +941,49 @@ export function AdminInbox({
           </>
         )}
       </section>
+
+      <Dialog
+        open={confirmMessage !== null}
+        onClose={() => (deletingMessage ? undefined : setConfirmMessage(null))}
+        title="Delete this message?"
+        description={
+          confirmMessage
+            ? `It is removed for everyone, permanently — the visitor's screen included. The rest of the conversation stays.`
+            : undefined
+        }
+        icon={<Trash2 className="size-5" aria-hidden />}
+        tone="danger"
+      >
+        <div className="flex flex-col gap-3">
+          {confirmMessage && (
+            <p className="max-h-24 overflow-y-auto rounded-lg bg-muted px-3 py-2 text-sm break-words text-muted-foreground">
+              {confirmMessage.content ||
+                (confirmMessage.attachment
+                  ? describeAttachment(
+                      confirmMessage.attachment.kind,
+                      confirmMessage.attachment.durationMs,
+                    )
+                  : "")}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              disabled={deletingMessage}
+              onClick={() => setConfirmMessage(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deletingMessage}
+              onClick={() => confirmMessage && void deleteMessage(confirmMessage)}
+            >
+              {deletingMessage ? "Deleting…" : "Delete message"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <TransferDialog
         open={transferOpen && detail !== null}

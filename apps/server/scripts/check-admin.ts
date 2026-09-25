@@ -59,8 +59,7 @@ async function request<T>(
     },
   });
   const body = (await res.json()) as
-    | { ok: true; data: T }
-    | { ok: false; error: { message: string } };
+    { ok: true; data: T } | { ok: false; error: { message: string } };
 
   return body.ok
     ? { status: res.status, data: body.data }
@@ -105,10 +104,16 @@ async function main(): Promise<void> {
   if (!agentToken) throw new Error("Agent login failed");
 
   console.log("\n2. Agent tokens do not unlock admin routes");
-  check("agent token is refused", (await request("/api/admin/stats", { token: agentToken })).status, 401);
-  check("admin token is refused by agent routes", (
-    await request("/api/agents/agent_bilal_khan/conversations", { token })
-  ).status, 401);
+  check(
+    "agent token is refused",
+    (await request("/api/admin/stats", { token: agentToken })).status,
+    401,
+  );
+  check(
+    "admin token is refused by agent routes",
+    (await request("/api/agents/agent_bilal_khan/conversations", { token })).status,
+    401,
+  );
   check("no token at all", (await request("/api/admin/stats")).status, 401);
 
   // Soft deletes leave rows behind, so the counts asserted at the end are
@@ -309,11 +314,7 @@ async function main(): Promise<void> {
     "/api/admin/conversations?branchId=branch_karachi&status=ACTIVE",
     { token },
   );
-  check(
-    "another agent's chats are readable too",
-    (otherBranch.data?.length ?? 0) > 0,
-    true,
-  );
+  check("another agent's chats are readable too", (otherBranch.data?.length ?? 0) > 0, true);
 
   const transcript = await request<AdminConversationDetail>(
     `/api/admin/conversations/${conversationId}`,
@@ -438,7 +439,11 @@ async function main(): Promise<void> {
   const inboxRow = newInbox.data?.find((row) => row.id === conversationId);
   check("it appears in the new agent's inbox", Boolean(inboxRow), true);
   check("carrying the message count, not zero", inboxRow?.messageCount, 2);
-  check("and the last thing actually said in it", inboxRow?.lastMessage?.content, "Admin stepping in.");
+  check(
+    "and the last thing actually said in it",
+    inboxRow?.lastMessage?.content,
+    "Admin stepping in.",
+  );
 
   // The visitor's own copy is untouched by any of it.
   const visitorCopy = await request<{ messages: Message[] }>(
@@ -468,7 +473,6 @@ async function main(): Promise<void> {
     ).status,
     404,
   );
-
 
   // The visitor's side of a hand-over: they close the tab, come back, and the
   // chat they had is still the chat they get — with whoever has it now, even
@@ -530,6 +534,84 @@ async function main(): Promise<void> {
     ).status,
     409,
   );
+
+  console.log("\n7c. An admin can remove one message without touching the rest");
+  // Something said in error — a bank detail in the wrong window — has to be
+  // removable on its own, not only by deleting the whole conversation.
+  const spoken = await request<Message>(`/api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ senderType: "VISITOR", visitorId, content: "Wrong window, sorry" }),
+  });
+  const keep = await request<Message>(`/api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ senderType: "VISITOR", visitorId, content: "This one stays" }),
+  });
+  const doomed = spoken.data?.id ?? "";
+
+  const removedOne = await request<{ id: string; deletedAttachment: boolean }>(
+    `/api/admin/conversations/${conversationId}/messages/${doomed}`,
+    { method: "DELETE", token },
+  );
+  check("the message is deleted", removedOne.status, 200);
+  check("and it reports which one", removedOne.data?.id, doomed);
+
+  const after = await request<AdminConversationDetail>(
+    `/api/admin/conversations/${conversationId}`,
+    { token },
+  );
+  const left = (after.data?.messages ?? []).map((message) => message.content);
+  check("it is gone from the transcript", left.includes("Wrong window, sorry"), false);
+  check("the rest of the conversation is untouched", left.includes("This one stays"), true);
+  check("and the chat itself is still there", after.status, 200);
+
+  // The visitor's own copy loses it too: a message removed in error must not
+  // survive on the screen it was sent to.
+  const visitorAfterDelete = await request<{ messages: Message[] }>(
+    `/api/conversations/${conversationId}?visitorId=${visitorId}`,
+  );
+  check(
+    "the visitor's copy loses it as well",
+    (visitorAfterDelete.data?.messages ?? []).some((m) => m.id === doomed),
+    false,
+  );
+
+  check(
+    "deleting it twice reads as missing",
+    (
+      await request(`/api/admin/conversations/${conversationId}/messages/${doomed}`, {
+        method: "DELETE",
+        token,
+      })
+    ).status,
+    404,
+  );
+  check(
+    "a message from another conversation cannot be deleted through this one",
+    (
+      await request(`/api/admin/conversations/${conversationId}/messages/msg_does_not_exist`, {
+        method: "DELETE",
+        token,
+      })
+    ).status,
+    404,
+  );
+  check(
+    "an agent cannot delete messages",
+    (
+      await request(`/api/admin/conversations/${conversationId}/messages/${keep.data?.id}`, {
+        method: "DELETE",
+        token: newAgentToken,
+      })
+    ).status,
+    401,
+  );
+
+  // Tidied away, so the counts the rest of this script asserts still describe
+  // the conversation it set up rather than this section's leftovers.
+  await request(`/api/admin/conversations/${conversationId}/messages/${keep.data?.id}`, {
+    method: "DELETE",
+    token,
+  });
 
   console.log("\n8. Deactivating an agent (soft delete)");
   const deactivated = await request<DeactivateAgentResult>(`/api/admin/agents/${agent.id}`, {
@@ -741,10 +823,14 @@ async function main(): Promise<void> {
     new Set(detail.data?.enquiries.map((e) => e.createdAt)).size,
     2,
   );
-  check("newest first", (() => {
-    const times = (detail.data?.enquiries ?? []).map((e) => Date.parse(e.createdAt));
-    return times.every((t, i) => i === 0 || times[i - 1]! >= t);
-  })(), true);
+  check(
+    "newest first",
+    (() => {
+      const times = (detail.data?.enquiries ?? []).map((e) => Date.parse(e.createdAt));
+      return times.every((t, i) => i === 0 || times[i - 1]! >= t);
+    })(),
+    true,
+  );
   check("the branch is remembered per enquiry", detail.data?.enquiries[0]?.branchName, "Peshawar");
 
   console.log("\n11f. An answered enquiry links back to its conversation");
@@ -821,11 +907,14 @@ async function main(): Promise<void> {
     );
   }
 
-
   console.log("\n11i. Labels: a custom set, applied by agents and admins alike");
   const startLabels = (await request<LabelWithUsage[]>("/api/admin/labels", { token })).data ?? [];
   const systemLabel = startLabels.find((l) => l.isSystem);
-  check("a company has exactly one built-in label", startLabels.filter((l) => l.isSystem).length, 1);
+  check(
+    "a company has exactly one built-in label",
+    startLabels.filter((l) => l.isSystem).length,
+    1,
+  );
   check("and it is the one new chats get", systemLabel?.name, "Initiated");
 
   // A fresh chat, so its labels are known exactly.
@@ -848,10 +937,9 @@ async function main(): Promise<void> {
   const labelChatId = labelChat.data?.conversation.id;
   if (!labelChatId) throw new Error("Could not open a chat to label");
 
-  const fresh = await request<AdminConversationDetail>(
-    `/api/admin/conversations/${labelChatId}`,
-    { token },
-  );
+  const fresh = await request<AdminConversationDetail>(`/api/admin/conversations/${labelChatId}`, {
+    token,
+  });
   check(
     "a new chat starts with exactly the built-in label",
     fresh.data?.labels.map((l) => l.name),
@@ -869,20 +957,24 @@ async function main(): Promise<void> {
 
   check(
     "a duplicate name is refused",
-    (await request("/api/admin/labels", {
-      method: "POST",
-      token,
-      body: JSON.stringify({ name: `Follow up ${suffix}` }),
-    })).status,
+    (
+      await request("/api/admin/labels", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ name: `Follow up ${suffix}` }),
+      })
+    ).status,
     409,
   );
   check(
     "a colour outside the palette is refused",
-    (await request("/api/admin/labels", {
-      method: "POST",
-      token,
-      body: JSON.stringify({ name: `Bad ${suffix}`, color: "chartreuse" }),
-    })).status,
+    (
+      await request("/api/admin/labels", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ name: `Bad ${suffix}`, color: "chartreuse" }),
+      })
+    ).status,
     400,
   );
   check(
@@ -899,10 +991,12 @@ async function main(): Promise<void> {
   check("labels accumulate rather than replacing", applied.data?.length, 2);
   check(
     "applying the same label twice is a no-op",
-    (await request<unknown[]>(`/api/conversations/${labelChatId}/labels/${customId}`, {
-      method: "PUT",
-      token,
-    })).data?.length,
+    (
+      await request<unknown[]>(`/api/conversations/${labelChatId}/labels/${customId}`, {
+        method: "PUT",
+        token,
+      })
+    ).data?.length,
     2,
   );
 
@@ -923,7 +1017,11 @@ async function main(): Promise<void> {
   const visitorDetail = await request<Record<string, unknown>>(
     `/api/conversations/${labelChatId}?visitorId=label-${suffix}`,
   );
-  check("the visitor's own copy of the chat carries no labels", "labels" in (visitorDetail.data ?? {}), false);
+  check(
+    "the visitor's own copy of the chat carries no labels",
+    "labels" in (visitorDetail.data ?? {}),
+    false,
+  );
   check(
     "and a visitor cannot apply one",
     (await request(`/api/conversations/${labelChatId}/labels/${customId}`, { method: "PUT" }))
@@ -935,11 +1033,7 @@ async function main(): Promise<void> {
   const stats = (await request<AdminStats>("/api/admin/stats", { token })).data;
   if (!stats) throw new Error("Could not read stats");
 
-  check(
-    "branch total grew by the one we added",
-    stats.branches.total - baseline.branches.total,
-    1,
-  );
+  check("branch total grew by the one we added", stats.branches.total - baseline.branches.total, 1);
   check(
     "active branches are unchanged, since we deactivated it",
     stats.branches.active - baseline.branches.active,

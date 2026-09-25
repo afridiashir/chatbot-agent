@@ -30,6 +30,7 @@ export const agentIdParamSchema = z.object({ agentId: idSchema });
 export const conversationIdParamSchema = z.object({ conversationId: idSchema });
 export const leadIdParamSchema = z.object({ leadId: idSchema });
 export const labelIdParamSchema = z.object({ labelId: idSchema });
+export const messageIdParamSchema = z.object({ messageId: idSchema });
 export const conversationLabelParamSchema = z.object({
   conversationId: idSchema,
   labelId: idSchema,

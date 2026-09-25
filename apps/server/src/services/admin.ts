@@ -12,6 +12,7 @@ import type {
   ConversationWithAgent,
   DeactivateAgentResult,
   DeleteConversationResult,
+  DeleteMessageResult,
   Lead,
   LeadDetail,
   LeadTablePage,
@@ -731,6 +732,67 @@ export async function deleteConversation(
     agentId: conversation.agentId,
     deletedMessages: conversation.messages.length,
     deletedAttachments: keys.length,
+  };
+}
+
+/**
+ * Removes one message, permanently.
+ *
+ * The smaller sibling of deleting the whole conversation, and deliberately as
+ * final: the reason to reach for this is that something is in the chat which
+ * must not be — a bank detail typed into the wrong window, a photo meant for
+ * somebody else — and a tombstone saying "this message was deleted" would
+ * leave the fact of it behind while helping nobody.
+ *
+ * Scoped exactly like deleting the conversation it belongs to. An admin who
+ * can already remove the entire chat is not being handed anything new by being
+ * able to remove one line of it.
+ *
+ * What the database does around it: a reply quoting this message keeps its own
+ * text and loses the quote (`SetNull`), and reactions go with it (`Cascade`).
+ */
+export async function deleteMessage(
+  conversationId: string,
+  messageId: string,
+  actor: AdminTokenPayload,
+): Promise<DeleteMessageResult & { agentId: string }> {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      conversationId: true,
+      attachment: { select: { key: true } },
+      conversation: {
+        select: {
+          agentId: true,
+          agent: { select: { branchId: true, branch: { select: { companyId: true } } } },
+        },
+      },
+    },
+  });
+
+  // Out of reach, in the wrong conversation, or gone already: all the same
+  // answer, so neither message ids nor other branches' chats can be probed.
+  if (
+    !message ||
+    message.conversationId !== conversationId ||
+    message.conversation.agent.branch.companyId !== actor.companyId ||
+    (actor.branchId !== null && message.conversation.agent.branchId !== actor.branchId)
+  ) {
+    throw notFound("Message not found");
+  }
+
+  await prisma.message.delete({ where: { id: messageId } });
+
+  // Only once the row is gone: an object with no row left is wasted space,
+  // whereas a row pointing at a missing object is a broken bubble on screen.
+  if (message.attachment) await deleteObject(message.attachment.key);
+
+  return {
+    id: messageId,
+    conversationId,
+    agentId: message.conversation.agentId,
+    deletedAttachment: Boolean(message.attachment),
   };
 }
 

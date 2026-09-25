@@ -24,6 +24,7 @@ import {
   createLabelBodySchema,
   updateLabelBodySchema,
   labelIdParamSchema,
+  messageIdParamSchema,
   transferConversationBodySchema,
 } from "@repo/validation";
 import { branchScope } from "../lib/admin-scope.js";
@@ -38,6 +39,7 @@ import {
   emitConversationClosed,
   emitConversationDeleted,
   emitConversationTransferred,
+  emitMessageDeleted,
 } from "../realtime/emit.js";
 import {
   createAvatarUpload,
@@ -50,6 +52,7 @@ import {
   createAgent,
   createBranch,
   deleteConversation,
+  deleteMessage,
   listAdmins,
   updateAdmin,
   getAdmin,
@@ -426,6 +429,36 @@ adminRouter.post(
     });
 
     sendOk(res, transfer);
+  }),
+);
+
+/**
+ * DELETE /api/admin/conversations/:id/messages/:messageId — removes one
+ * message, permanently.
+ *
+ * Scoped exactly like deleting the whole conversation: an admin who can
+ * already remove the entire chat gains nothing new by removing one line of it.
+ */
+adminRouter.delete(
+  "/conversations/:conversationId/messages/:messageId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+    const { messageId } = parseOrThrow(messageIdParamSchema, req.params, "message id");
+
+    const { agentId, ...result } = await deleteMessage(
+      conversationId,
+      messageId,
+      currentAdmin(req),
+    );
+    // Nothing of it is left to refetch, so every screen still drawing it has to
+    // let it go rather than reload.
+    emitMessageDeleted({ conversationId, messageId, agentId });
+    sendOk(res, result);
   }),
 );
 
