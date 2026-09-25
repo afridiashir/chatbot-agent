@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Branch, MaritalStatus } from "@repo/types";
 import { MARITAL_STATUSES, MARITAL_STATUS_LABELS, phoneProblem } from "@repo/types";
 import { CityPicker } from "./CityPicker.js";
+import { PhoneField } from "./PhoneField.js";
 import type { SavedVisitor } from "../lib/storage.js";
 
 export interface VisitorDetails {
@@ -164,15 +165,10 @@ export function PreChatForm({
 
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-wa-icon">Phone number</span>
-            <input
+            <PhoneField
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+92 300 1234567"
-              aria-label="Phone number"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              className={field("phone")}
+              invalid={Boolean(errors.phone)}
+              onChange={(phone) => setForm({ ...form, phone })}
             />
             {errors.phone && <span className="text-xs text-red-600">{errors.phone}</span>}
           </label>

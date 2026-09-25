@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { phoneProblem } from "@repo/types";
+import { PhoneField } from "./PhoneField.js";
 
 /**
  * The door into the widget: a phone number, and nothing else.
@@ -59,27 +60,19 @@ export function PhoneGate({
       <div className="flex flex-col gap-3 rounded-lg bg-white p-3 shadow-[0_1px_0.5px_rgb(11_20_26/0.13)]">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-wa-meta">Phone number</span>
-          <input
+          <PhoneField
             value={phone}
-            onChange={(event) => {
-              setPhone(event.target.value);
-              if (touched) setProblem(phoneProblem(event.target.value));
+            invalid={Boolean(shown)}
+            onChange={(next) => {
+              setPhone(next);
+              if (touched) setProblem(phoneProblem(next));
             }}
-            onBlur={() => {
+            onEnter={() => {
+              const bad = phoneProblem(phone);
+              setProblem(bad);
               setTouched(true);
-              setProblem(phoneProblem(phone));
+              if (!bad) onSubmit(phone.trim());
             }}
-            // `tel` brings up the number pad on a phone, which is most of them.
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            enterKeyHint="go"
-            placeholder="0300 1234567"
-            aria-label="Phone number"
-            aria-invalid={shown ? true : undefined}
-            className={`w-full rounded-lg border bg-white px-3 py-2 text-base text-wa-text placeholder:text-wa-meta/70 focus:outline-none sm:text-sm ${
-              shown ? "border-red-400" : "border-wa-divider focus:border-wa-green"
-            }`}
           />
           {shown && <span className="text-xs text-red-600">{shown}</span>}
         </label>
