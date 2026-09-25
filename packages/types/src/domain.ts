@@ -87,7 +87,16 @@ export interface Visitor {
 }
 
 /** What agents and admins are shown about a visitor. */
-export type VisitorSummary = Pick<Visitor, "id" | "name" | "phone" | "maritalStatus" | "city">;
+export type VisitorSummary = Pick<Visitor, "id" | "name" | "phone" | "maritalStatus" | "city"> & {
+  /**
+   * What the team files this person under, when they have given them one.
+   *
+   * Staff-facing only. The same shapes are served to the widget, so this is
+   * absent — not empty — for a visitor: being shown the shorthand the office
+   * keeps you under is nobody's idea of a good chat.
+   */
+  displayName?: string | null;
+};
 
 /**
  * The message a reply quotes, as shown in the small block above it. Trimmed on

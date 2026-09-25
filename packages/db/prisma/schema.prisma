@@ -203,6 +203,12 @@ model Visitor {
   /// number holds no digits at all is keyed by their own id instead of sharing
   /// an "empty" identity with every other such browser.
   phoneKey      String
+  /// What the team files this person under — "Umar -M1- 8344- LHR" — as
+  /// opposed to the name they gave us, which stays as the record of what they
+  /// said. Set by an agent, shared with the rest of the team, and never sent
+  /// to the visitor it describes. Written to every row sharing a phoneKey,
+  /// because it describes the person rather than one of their browsers.
+  displayName   String?
   /// Null on visitors recorded before the pre-chat form asked for these.
   maritalStatus MaritalStatus?
   city          String?

@@ -6,6 +6,7 @@ import {
   createUploadBodySchema,
   getConversationQuerySchema,
   lookupConversationsBodySchema,
+  renameVisitorBodySchema,
 } from "@repo/validation";
 import { resolveActor } from "../lib/actor.js";
 import { asyncHandler } from "../lib/async-handler.js";
@@ -17,6 +18,7 @@ import {
   emitConversationAssigned,
   emitConversationClosed,
   emitMessageAuthor,
+  emitVisitorRenamed,
 } from "../realtime/emit.js";
 import { requireAgent } from "../middleware/require-agent.js";
 import {
@@ -26,6 +28,7 @@ import {
   currentAdminAuthor,
   getConversation,
   lookupConversations,
+  renameVisitor,
   staffBroadcastTarget,
 } from "../services/conversations.js";
 import { createUpload } from "../services/media.js";
@@ -72,6 +75,32 @@ conversationsRouter.post(
   asyncHandler(async (req, res) => {
     const body = parseOrThrow(lookupConversationsBodySchema, req.body, "lookup");
     sendOk(res, await lookupConversations(body));
+  }),
+);
+
+/**
+ * PATCH /api/conversations/:id/visitor — what the team files this client under.
+ *
+ * The label follows the person, so every chat they have is relabelled at once
+ * and every dashboard showing one is told. Staff only; the visitor is neither
+ * allowed to set it nor ever served it.
+ */
+conversationsRouter.patch(
+  "/:conversationId/visitor",
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+    const body = parseOrThrow(renameVisitorBodySchema, req.body, "label");
+
+    const result = await renameVisitor(conversationId, body, resolveActor(req));
+    for (const id of result.conversationIds) {
+      emitVisitorRenamed(await staffBroadcastTarget(id), result.displayName);
+    }
+
+    sendOk(res, { displayName: result.displayName });
   }),
 );
 

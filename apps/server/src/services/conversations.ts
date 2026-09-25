@@ -15,6 +15,7 @@ import type {
   CreateConversationBody,
   CreateMessageBody,
   LookupConversationsBody,
+  RenameVisitorBody,
 } from "@repo/validation";
 import type { Actor } from "../lib/actor.js";
 import { conflict, forbidden, notFound } from "../lib/http.js";
@@ -246,6 +247,55 @@ const ACCESS_AGENT = {
 } as const;
 
 /**
+ * What the team files a person under.
+ *
+ * A matchmaker keeps clients as "Umar -M1- 8344- LHR" and needs that on the
+ * chat rather than in their head. It is deliberately not their `name`: what
+ * somebody told us they are called is a record, and a working label must not
+ * overwrite it — the real name stays in the contact panel beside this.
+ *
+ * Written to the person rather than the conversation, so it follows them into
+ * every chat they have and every one they open later, and to every browser
+ * they have used, because they are one person however many of those there are.
+ *
+ * Staff only: a visitor cannot set this, and is never served it.
+ */
+export async function renameVisitor(
+  conversationId: string,
+  input: RenameVisitorBody,
+  actor: Actor,
+): Promise<{ conversationIds: string[]; displayName: string | null }> {
+  if (actor.type === "VISITOR") throw forbidden("Only the team can label a client");
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      agentId: true,
+      visitorId: true,
+      agent: ACCESS_AGENT,
+      visitor: { select: { phoneKey: true } },
+    },
+  });
+  if (!conversation) throw notFound("Conversation not found");
+  await assertAccess(conversation, actor);
+
+  const { phoneKey } = conversation.visitor;
+  await prisma.visitor.updateMany({
+    where: { phoneKey },
+    data: { displayName: input.displayName },
+  });
+
+  // Every chat this person has, so each dashboard showing one can relabel its
+  // row rather than wait for a refresh.
+  const affected = await prisma.conversation.findMany({
+    where: { visitor: { phoneKey } },
+    select: { id: true },
+  });
+
+  return { conversationIds: affected.map((row) => row.id), displayName: input.displayName };
+}
+
+/**
  * Cheap ownership check for socket room joins — avoids loading the whole
  * transcript just to decide whether the caller may listen.
  */
@@ -278,10 +328,11 @@ export async function getConversation(
 
   await assertAccess(conversation, actor);
 
-  // Staff see who really typed each message; a visitor is served the same
-  // endpoint and must not, so the key is absent rather than empty for them.
+  // Staff see who really typed each message, and what the team files this
+  // person under; a visitor is served the same endpoint and must not, so both
+  // are absent rather than empty for them.
   return {
-    ...toConversationDetail(conversation),
+    ...toConversationDetail(conversation, actor.type !== "VISITOR"),
     ...(actor.type === "VISITOR"
       ? {}
       : { adminAuthored: await adminAuthors(conversation.messages) }),

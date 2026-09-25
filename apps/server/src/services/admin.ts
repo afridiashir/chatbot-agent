@@ -573,7 +573,7 @@ export async function getAnyConversation(
   }
 
   return {
-    ...toConversationDetail(conversation),
+    ...toConversationDetail(conversation, true),
     branch: { id: conversation.agent.branch.id, name: conversation.agent.branch.name },
     labels: toLabelRefs(conversation.labels),
     // Always present here: this shape only ever reaches an admin.

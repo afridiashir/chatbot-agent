@@ -380,7 +380,7 @@ function Dashboard({
                       <span
                         className={cn("truncate text-sm", unread ? "font-semibold" : "font-medium")}
                       >
-                        {conversation.visitor.name}
+                        {conversation.visitor.displayName || conversation.visitor.name}
                       </span>
                       <span
                         className={cn(
@@ -497,6 +497,11 @@ function Dashboard({
           }
           agentId={agent.id}
           token={token}
+          onRenameVisitor={(displayName) =>
+            inbox.selectedId
+              ? inbox.renameVisitor(inbox.selectedId, displayName)
+              : Promise.resolve()
+          }
           connected={inbox.connected}
           visitorTyping={inbox.selectedId ? Boolean(inbox.typingIn[inbox.selectedId]) : false}
           visitorOnline={inbox.selectedId ? inbox.visitorOnline[inbox.selectedId] : undefined}

@@ -44,6 +44,7 @@ import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
 import { MessageText } from "@/components/MessageText";
 import { ShareColleagueDialog } from "@/components/ShareColleagueDialog";
+import { VisitorName } from "@/components/VisitorName";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
 import { loadDrafts, saveDraft, type QueuedMessage } from "@/lib/outbox";
@@ -78,6 +79,8 @@ interface ConversationViewProps {
   /** The signed-in agent, for offering their own colleagues to share. */
   agentId?: string;
   token?: string;
+  /** Files this client under the team's own name for them. */
+  onRenameVisitor?: (displayName: string) => Promise<void> | void;
   /** Sent but not yet stored by the server. */
   pending: QueuedMessage[];
   onSend: (content: string) => Promise<void>;
@@ -403,6 +406,7 @@ export function ConversationView({
   visitorOnline,
   agentId,
   token,
+  onRenameVisitor,
   pending,
   onSend,
   onSendMedia,
@@ -572,7 +576,18 @@ export function ConversationView({
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{detail.visitor.name}</p>
+          {onRenameVisitor ? (
+            <VisitorName
+              name={detail.visitor.name}
+              displayName={detail.visitor.displayName}
+              onRename={onRenameVisitor}
+              className="text-sm font-semibold"
+            />
+          ) : (
+            <p className="truncate text-sm font-semibold">
+              {detail.visitor.displayName || detail.visitor.name}
+            </p>
+          )}
           {visitorTyping ? (
             <p className="text-xs font-medium text-success">typing...</p>
           ) : visitorOnline ? (

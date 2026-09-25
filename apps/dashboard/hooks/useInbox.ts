@@ -47,6 +47,11 @@ export interface Inbox {
   labels: Label[];
   /** Puts a label on the open conversation, or takes it off. */
   toggleLabel: (conversationId: string, labelId: string, next: "on" | "off") => Promise<void>;
+  /**
+   * What the team files this client under. Empty clears it. It follows the
+   * person, so every chat of theirs is relabelled at once.
+   */
+  renameVisitor: (conversationId: string, displayName: string) => Promise<void>;
   /** Conversation ids where the visitor is currently typing. */
   typingIn: Record<string, boolean>;
   /**
@@ -292,6 +297,19 @@ export function useInbox(
       if (payload.senderType === "VISITOR") {
         setVisitorTyping(payload.conversationId, payload.isTyping);
       }
+    });
+
+    socket.on("visitor:renamed", ({ conversationId, displayName }) => {
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === conversationId ? { ...row, visitor: { ...row.visitor, displayName } } : row,
+        ),
+      );
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, visitor: { ...current.visitor, displayName } }
+          : current,
+      );
     });
 
     socket.on("visitor:status", ({ conversationId, isOnline }) => {
@@ -663,6 +681,23 @@ export function useInbox(
     [token],
   );
 
+  const renameVisitor = useCallback(
+    async (conversationId: string, displayName: string) => {
+      try {
+        await api(`/api/conversations/${conversationId}/visitor`, {
+          method: "PATCH",
+          token,
+          body: JSON.stringify({ displayName: displayName.trim() || null }),
+        });
+        // The broadcast comes back to this socket too and is what updates the
+        // rows, including the other chats this person has.
+      } catch {
+        setError("Could not save that name");
+      }
+    },
+    [token],
+  );
+
   const setOnline = useCallback(
     (isOnline: boolean) =>
       api<Agent>(`/api/agents/${agentId}/status`, {
@@ -689,6 +724,7 @@ export function useInbox(
     setOnline,
     labels,
     toggleLabel,
+    renameVisitor,
     typingIn,
     visitorOnline,
     notifyTyping,

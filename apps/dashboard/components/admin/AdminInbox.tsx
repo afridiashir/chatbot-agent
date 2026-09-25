@@ -46,6 +46,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { keepConnected } from "@/lib/socket";
+import { VisitorName } from "@/components/VisitorName";
 import { API_URL } from "@/lib/config";
 import { formatListTime, isNewDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -341,6 +342,20 @@ export function AdminInbox({
       );
     });
 
+    socket.on("visitor:renamed", ({ conversationId, displayName }) => {
+      setRows(
+        (current) =>
+          current?.map((row) =>
+            row.id === conversationId ? { ...row, visitor: { ...row.visitor, displayName } } : row,
+          ) ?? current,
+      );
+      setDetail((current) =>
+        current && current.id === conversationId
+          ? { ...current, visitor: { ...current.visitor, displayName } }
+          : current,
+      );
+    });
+
     socket.on("visitor:status", ({ conversationId, isOnline }) => {
       setVisitorOnline((current) =>
         current[conversationId] === isOnline ? current : { ...current, [conversationId]: isOnline },
@@ -478,6 +493,23 @@ export function AdminInbox({
       );
     } finally {
       setTransferring(false);
+    }
+  }
+
+  /**
+   * Filing a client under what the team calls them. Reaches every chat that
+   * person has, and comes back through the socket, which is what updates the
+   * rows — including the ones this admin is not looking at.
+   */
+  async function renameVisitor(conversationId: string, displayName: string) {
+    try {
+      await api(`/api/conversations/${conversationId}/visitor`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ displayName: displayName.trim() || null }),
+      });
+    } catch {
+      setListError("Could not save that name");
     }
   }
 
@@ -664,7 +696,11 @@ export function AdminInbox({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">
-                    {detail?.visitor.name ?? selectedRow?.visitor.name ?? "Loading…"}
+                    {detail?.visitor.displayName ||
+                      detail?.visitor.name ||
+                      selectedRow?.visitor.displayName ||
+                      selectedRow?.visitor.name ||
+                      "Loading…"}
                   </span>
                   <span className="block truncate text-xs text-chat-meta">
                     {selectedTyping ? (
@@ -850,7 +886,11 @@ export function AdminInbox({
               </div>
 
               {showInfo && detail && (
-                <ContactInfo detail={detail} onClose={() => setShowInfo(false)} />
+                <ContactInfo
+                  detail={detail}
+                  onRename={renameVisitor}
+                  onClose={() => setShowInfo(false)}
+                />
               )}
             </div>
           </>
@@ -1074,7 +1114,9 @@ function ChatRow({
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 border-b py-3">
         <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[15px] font-medium">{row.visitor.name}</span>
+          <span className="truncate text-[15px] font-medium">
+            {row.visitor.displayName || row.visitor.name}
+          </span>
           <span
             className={cn(
               "shrink-0 text-[11px]",
@@ -1132,9 +1174,11 @@ function ChatRow({
 
 function ContactInfo({
   detail,
+  onRename,
   onClose,
 }: {
   detail: AdminConversationDetail;
+  onRename: (conversationId: string, displayName: string) => Promise<void>;
   onClose: () => void;
 }) {
   return (
@@ -1164,6 +1208,15 @@ function ContactInfo({
           />
           <p className="mt-3 text-lg font-semibold">{detail.visitor.name}</p>
           <p className="text-sm text-chat-meta">{detail.visitor.phone}</p>
+          {/* What the team files them under. Here rather than in the header,
+              which is one big button that opens this panel — an input cannot
+              live inside it. */}
+          <VisitorName
+            name={detail.visitor.name}
+            displayName={detail.visitor.displayName}
+            onRename={(displayName) => onRename(detail.id, displayName)}
+            className="mt-1 justify-center text-sm text-chat-meta"
+          />
         </div>
 
         <InfoSection title="Contact">

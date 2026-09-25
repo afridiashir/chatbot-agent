@@ -207,13 +207,22 @@ export function toMessage(
   };
 }
 
-export function toVisitorSummary(row: VisitorRow): VisitorSummary {
+/**
+ * `forStaff` adds the label the team files this person under.
+ *
+ * Off by default, and every visitor-facing path simply leaves it that way. A
+ * staff path that forgets to ask loses a label on screen; a visitor-facing one
+ * that forgot to opt out would show somebody the shorthand the office keeps
+ * them under, so the default is the one that cannot embarrass anybody.
+ */
+export function toVisitorSummary(row: VisitorRow, forStaff = false): VisitorSummary {
   return {
     id: row.id,
     name: row.name,
     phone: row.phone,
     maritalStatus: row.maritalStatus,
     city: row.city,
+    ...(forStaff ? { displayName: row.displayName } : {}),
   };
 }
 
@@ -231,6 +240,7 @@ export function toConversation(row: ConversationRow): Conversation {
 
 export function toConversationWithAgent(
   row: ConversationRow & { agent: AgentRow; visitor: VisitorRow },
+  forStaff = false,
 ): ConversationWithAgent {
   return {
     ...toConversation(row),
@@ -241,15 +251,16 @@ export function toConversationWithAgent(
       isOnline: row.agent.isOnline,
       avatarUrl: avatarPath(row.agent),
     },
-    visitor: toVisitorSummary(row.visitor),
+    visitor: toVisitorSummary(row.visitor, forStaff),
   };
 }
 
 export function toConversationDetail(
   row: ConversationRow & { agent: AgentRow; visitor: VisitorRow; messages: MessageRow[] },
+  forStaff = false,
 ): ConversationDetail {
   return {
-    ...toConversationWithAgent(row),
+    ...toConversationWithAgent(row, forStaff),
     messages: row.messages.map(toMessage),
   };
 }
@@ -298,7 +309,9 @@ export function toConversationSummary(
   const [lastMessage] = row.messages;
   return {
     ...toConversation(row),
-    visitor: toVisitorSummary(row.visitor),
+    // Always: this shape carries the team's labels too, so it is staff-only by
+    // construction and never reaches the widget.
+    visitor: toVisitorSummary(row.visitor, true),
     lastMessage: lastMessage ? toMessage(lastMessage) : null,
     messageCount: row._count.messages,
     unreadCount,

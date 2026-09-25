@@ -557,6 +557,90 @@ async function main(): Promise<void> {
     401,
   );
 
+  console.log("\n13. The team files a client under their own name for them");
+  // A matchmaker keeps people as "Umar -M1- 8344- LHR". It is the person's
+  // label, not the conversation's, and not something the person is shown.
+  const labelPhone = `+92 300 ${String(Date.now()).slice(-7)}`;
+  const labelDevice = nextVisitorId();
+  const labelled = {
+    name: "Umar Farooq",
+    phone: labelPhone,
+    maritalStatus: "SINGLE" as const,
+    city: "Lahore",
+  };
+
+  await setOnline(BILAL, true);
+  const firstWith = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: labelDevice, agentId: BILAL, visitor: labelled }),
+  });
+  const secondWith = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: labelDevice, agentId: HAMZA, visitor: labelled }),
+  });
+  const chatA = firstWith.data?.available ? firstWith.data.conversation.id : "";
+  const chatB = secondWith.data?.available ? secondWith.data.conversation.id : "";
+
+  const named = await request<{ displayName: string | null }>(
+    `/api/conversations/${chatA}/visitor`,
+    {
+      method: "PATCH",
+      token: bilalToken,
+      body: JSON.stringify({ displayName: "Umar -M1- 8344- LHR" }),
+    },
+  );
+  check("an agent can label their client", named.data?.displayName, "Umar -M1- 8344- LHR");
+
+  const inbox = await request<ConversationSummary[]>(`/api/agents/${BILAL}/conversations`, {
+    token: bilalToken,
+  });
+  const row = inbox.data?.find((entry) => entry.id === chatA);
+  check("it shows in their inbox", row?.visitor.displayName, "Umar -M1- 8344- LHR");
+  check("and the name they gave is untouched beside it", row?.visitor.name, "Umar Farooq");
+
+  // The label is the person's, so the other agent's chat carries it too.
+  const hamzaInbox = await request<ConversationSummary[]>(`/api/agents/${HAMZA}/conversations`, {
+    token: await signIn(HAMZA),
+  });
+  check(
+    "their other chat is labelled too, without being told twice",
+    hamzaInbox.data?.find((entry) => entry.id === chatB)?.visitor.displayName,
+    "Umar -M1- 8344- LHR",
+  );
+
+  // And the person it describes is never shown it.
+  const theirOwnCopy = await request<Record<string, unknown>>(
+    `/api/conversations/${chatA}?visitorId=${labelDevice}`,
+  );
+  check(
+    "the visitor's own copy does not carry it",
+    "displayName" in ((theirOwnCopy.data?.visitor as Record<string, unknown>) ?? {}),
+    false,
+  );
+  check(
+    "and the shorthand appears nowhere in it",
+    JSON.stringify(theirOwnCopy.data ?? {}).includes("M1- 8344"),
+    false,
+  );
+  // 401 rather than 403: the endpoint takes no visitor id at all, so there is
+  // no way for a visitor to be the caller in the first place.
+  check(
+    "a visitor cannot set one either",
+    (
+      await request(`/api/conversations/${chatA}/visitor`, {
+        method: "PATCH",
+        body: JSON.stringify({ displayName: "nice try", visitorId: labelDevice }),
+      })
+    ).status,
+    401,
+  );
+
+  const cleared = await request<{ displayName: string | null }>(
+    `/api/conversations/${chatA}/visitor`,
+    { method: "PATCH", token: bilalToken, body: JSON.stringify({ displayName: "" }) },
+  );
+  check("an empty label clears it", cleared.data?.displayName, null);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   console.log("Run `pnpm db:seed` to restore the demo data.\n");
   if (failed > 0) process.exitCode = 1;

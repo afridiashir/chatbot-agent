@@ -327,6 +327,21 @@ export const lookupConversationsBodySchema = z.object({
   agentId: idSchema.optional(),
 });
 
+/**
+ * PATCH /api/conversations/:id/visitor — what the team files this person under.
+ *
+ * Empty clears it, which is why this is nullable rather than optional: "no
+ * label" has to be sayable, and leaving the field out would mean "unchanged".
+ */
+export const renameVisitorBodySchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .max(60, "That label is too long")
+    .nullable()
+    .transform((value) => (value ? value : null)),
+});
+
 export const getConversationQuerySchema = z.object({
   /** Visitors must prove ownership of the conversation they are reading. */
   visitorId: visitorIdSchema.optional(),
@@ -459,6 +474,7 @@ export type VisitorDetails = z.infer<typeof visitorDetailsSchema>;
 export type CreateMessageBody = z.infer<typeof createMessageBodySchema>;
 export type CreateUploadBody = z.infer<typeof createUploadBodySchema>;
 export type LookupConversationsBody = z.infer<typeof lookupConversationsBodySchema>;
+export type RenameVisitorBody = z.infer<typeof renameVisitorBodySchema>;
 export type SocketAuthInput = z.infer<typeof socketAuthSchema>;
 export type SocketReactionPayload = z.infer<typeof socketReactionPayloadSchema>;
 export type PushSubscriptionBody = z.infer<typeof pushSubscriptionBodySchema>;

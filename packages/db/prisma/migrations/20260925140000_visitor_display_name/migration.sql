@@ -1,0 +1,11 @@
+-- What the team calls a client, as opposed to the name they gave us.
+--
+-- A matchmaker files people the way they can work with — "Umar -M1- 8344- LHR"
+-- — and needs that on the chat rather than in their head. It is deliberately
+-- separate from `name`: the name someone submitted is a record and must not be
+-- overwritten by a working label.
+--
+-- It belongs to the person, not the browser, so it is written to every Visitor
+-- row sharing a phoneKey. Staff-facing only; it is never serialised to the
+-- visitor it describes.
+ALTER TABLE "Visitor" ADD COLUMN "displayName" TEXT;

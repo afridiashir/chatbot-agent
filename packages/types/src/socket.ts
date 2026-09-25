@@ -138,6 +138,15 @@ export interface ServerToClientEvents {
     author: MessageAuthor;
   }) => void;
   /**
+   * The team has relabelled this person — "Umar -M1- 8344- LHR".
+   *
+   * Staff rooms only, like labels: it is the office's shorthand for a client
+   * and the client has no business reading it. Sent once per chat they have,
+   * because the label belongs to the person and every row showing them changes
+   * at the same moment.
+   */
+  "visitor:renamed": (payload: { conversationId: string; displayName: string | null }) => void;
+  /**
    * Whether the visitor has the chat open right now, for the staff side only.
    *
    * Derived from the sockets in the conversation's room rather than stored: a

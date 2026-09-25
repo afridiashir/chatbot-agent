@@ -291,6 +291,22 @@ export function emitAgentProfile(agent: Agent, conversationIds: string[]): void 
 }
 
 /**
+ * The team's label for a client changed.
+ *
+ * Staff rooms only, for the same reason labels are: this is the office's
+ * shorthand, and the conversation room holds the person it describes.
+ */
+export function emitVisitorRenamed(
+  target: { conversationId: string; agentId: string; branchId: string; companyId: string },
+  displayName: string | null,
+): void {
+  io?.to(rooms.agent(target.agentId))
+    .to(rooms.adminCompany(target.companyId))
+    .to(rooms.adminBranch(target.branchId))
+    .emit("visitor:renamed", { conversationId: target.conversationId, displayName });
+}
+
+/**
  * Whether the visitor is sitting in the chat right now.
  *
  * Staff rooms only, like labels: it tells an agent whether the person is there
