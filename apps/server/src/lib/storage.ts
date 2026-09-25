@@ -99,6 +99,13 @@ export function presignDownload(input: {
   contentType: string;
   fileName: string;
   expiresSeconds: number;
+  /**
+   * `attachment` hands the file to the browser to save instead of drawing it
+   * in the page. Documents are served that way: it is what the reader wants
+   * from a spreadsheet, and it means a file that turns out to be markup has
+   * nowhere to run.
+   */
+  disposition?: "inline" | "attachment";
 }): Promise<string> {
   const safeName = input.fileName.replace(/["\\\r\n]/g, "_");
   return getSignedUrl(
@@ -107,7 +114,7 @@ export function presignDownload(input: {
       Bucket,
       Key: input.key,
       ResponseContentType: input.contentType,
-      ResponseContentDisposition: `inline; filename="${safeName}"`,
+      ResponseContentDisposition: `${input.disposition ?? "inline"}; filename="${safeName}"`,
       ResponseCacheControl: "private, max-age=300",
     }),
     { expiresIn: input.expiresSeconds },

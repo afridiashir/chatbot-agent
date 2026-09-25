@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Clock,
   FileAudio,
+  FileText,
   Film,
   Mic,
   Paperclip,
@@ -1056,6 +1057,8 @@ function Composer({
               <img src={staged.previewUrl} alt="" className="size-full object-cover" />
             ) : staged.kind === "VIDEO" ? (
               <Film className="size-6 text-chat-meta" aria-hidden />
+            ) : staged.kind === "FILE" ? (
+              <FileText className="size-6 text-chat-meta" aria-hidden />
             ) : (
               <FileAudio className="size-6 text-chat-meta" aria-hidden />
             )}

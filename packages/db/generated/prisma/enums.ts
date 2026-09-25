@@ -40,7 +40,8 @@ export const AttachmentKind = {
   IMAGE: 'IMAGE',
   VIDEO: 'VIDEO',
   AUDIO: 'AUDIO',
-  VOICE: 'VOICE'
+  VOICE: 'VOICE',
+  FILE: 'FILE'
 } as const
 
 export type AttachmentKind = (typeof AttachmentKind)[keyof typeof AttachmentKind]

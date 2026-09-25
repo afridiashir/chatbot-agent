@@ -8,6 +8,7 @@ export const AttachmentKind = {
   VIDEO: "VIDEO",
   AUDIO: "AUDIO",
   VOICE: "VOICE",
+  FILE: "FILE",
 } as const;
 export type AttachmentKind = (typeof AttachmentKind)[keyof typeof AttachmentKind];
 
@@ -47,6 +48,31 @@ export const MEDIA_RULES: Record<
     mimeTypes: ["audio/webm", "audio/ogg", "audio/mp4"],
     maxBytes: { AGENT: 10 * MB, VISITOR: 10 * MB },
   },
+  /**
+   * Documents. Nothing here is ever rendered in the page — a file is handed
+   * over as a download — which is why the list can be this broad without the
+   * worry that governs the others.
+   *
+   * What is deliberately absent: anything a browser would treat as markup or
+   * script. `text/html`, SVG and XML are not documents as far as this is
+   * concerned, whatever they are called on disk.
+   */
+  FILE: {
+    mimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/zip",
+      "application/x-zip-compressed",
+      "text/plain",
+      "text/csv",
+    ],
+    maxBytes: { AGENT: 25 * MB, VISITOR: 10 * MB },
+  },
 };
 
 /** How many bars a voice-note waveform is stored with. */
@@ -64,10 +90,16 @@ export const VOICE_MAX_MS = 5 * 60 * 1000;
 /** `audio/webm;codecs=opus` → `audio/webm`. Rules are matched on the base type. */
 export const baseMimeType = (mimeType: string) => mimeType.split(";")[0]!.trim().toLowerCase();
 
-/** The kind a picked file belongs to, or null if it cannot be sent. */
+/**
+ * The kind a picked file belongs to, or null if it cannot be sent.
+ *
+ * `FILE` is tried last on purpose: it is the catch-all for everything that is
+ * not played or displayed, and a type that belongs to one of the others should
+ * reach that one.
+ */
 export function kindForFile(mimeType: string): Exclude<AttachmentKind, "VOICE"> | null {
   const base = baseMimeType(mimeType);
-  for (const kind of ["IMAGE", "VIDEO", "AUDIO"] as const) {
+  for (const kind of ["IMAGE", "VIDEO", "AUDIO", "FILE"] as const) {
     if (MEDIA_RULES[kind].mimeTypes.includes(base)) return kind;
   }
   return null;
@@ -78,6 +110,11 @@ export const ATTACHMENT_ACCEPT = [
   ...MEDIA_RULES.IMAGE.mimeTypes,
   ...MEDIA_RULES.VIDEO.mimeTypes,
   ...MEDIA_RULES.AUDIO.mimeTypes,
+  ...MEDIA_RULES.FILE.mimeTypes,
+  // Extensions as well as types: Windows reports .csv as several different
+  // things depending on what is installed, and a file picker that silently
+  // greys out a spreadsheet is worse than one that lets the server refuse it.
+  ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt,.csv",
 ].join(",");
 
 export const formatBytes = (bytes: number) =>
@@ -116,6 +153,7 @@ export function describeAttachment(kind: AttachmentKind, durationMs?: number | n
   if (kind === "IMAGE") return "📷 Photo";
   if (kind === "VIDEO") return "🎥 Video";
   if (kind === "AUDIO") return "🎵 Audio";
+  if (kind === "FILE") return "📄 File";
   const seconds = Math.round((durationMs ?? 0) / 1000);
   return `🎤 Voice message${seconds ? ` (${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")})` : ""}`;
 }

@@ -81,6 +81,33 @@ export function MessageMedia({
     );
   }
 
+  if (attachment.kind === "FILE") {
+    return (
+      <a
+        href={src}
+        // Signed, short-lived, and returned with a download disposition, so
+        // this saves the file rather than opening it in the page.
+        download={attachment.fileName}
+        className="flex w-60 max-w-full items-center gap-2.5 rounded-md p-1.5 no-underline transition hover:bg-black/[0.04]"
+      >
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/10 text-[11px] font-semibold tracking-wide text-wa-meta uppercase"
+          aria-hidden="true"
+        >
+          {extensionOf(attachment.fileName)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-medium text-wa-text">
+            {attachment.fileName}
+          </span>
+          <span className="block text-[11px] text-wa-meta">
+            {formatBytes(attachment.size)} · Download
+          </span>
+        </span>
+      </a>
+    );
+  }
+
   if (attachment.kind === "VOICE") {
     return (
       <VoicePlayer
@@ -270,4 +297,14 @@ function VoicePlayer({
       {outgoing && photo}
     </div>
   );
+}
+
+/**
+ * The three or four letters on the tile. Better than one icon for everything:
+ * the reader can tell a PDF from a spreadsheet without opening either.
+ */
+function extensionOf(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  const extension = dot > 0 ? fileName.slice(dot + 1) : "";
+  return extension.length >= 1 && extension.length <= 4 ? extension : "FILE";
 }

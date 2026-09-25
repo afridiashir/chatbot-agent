@@ -43,7 +43,9 @@ const invalid = (message: string, field = "attachment") =>
 const uploadClaims = z.object({
   typ: z.literal("upload"),
   key: z.string(),
-  kind: z.enum(["IMAGE", "VIDEO", "AUDIO", "VOICE"]),
+  // From the shared list, so a kind added there does not have to be remembered
+  // here as well.
+  kind: z.enum(Object.keys(MEDIA_RULES) as [AttachmentKind, ...AttachmentKind[]]),
   mimeType: z.string(),
   fileName: z.string(),
   conversationId: z.string(),
@@ -96,6 +98,30 @@ export function looksLike(mimeType: string, bytes: Uint8Array): boolean {
       return ascii(bytes, "ID3") || (bytes[0] === 0xff && ((bytes[1] ?? 0) & 0xe0) === 0xe0);
     case "audio/aac":
       return bytes[0] === 0xff && ((bytes[1] ?? 0) & 0xf6) === 0xf0;
+
+    // Documents. The check is weaker here by nature — a spreadsheet and an
+    // archive are the same ZIP container, and a text file has no signature at
+    // all — but it matters less: a file is served as a download and never
+    // rendered, so one that is secretly markup has nowhere to run.
+    case "application/pdf":
+      return ascii(bytes, "%PDF");
+    case "application/zip":
+    case "application/x-zip-compressed":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      // "PK" — every Office file since 2007 is a ZIP, as is a plain archive.
+      return startsWith(bytes, [0x50, 0x4b]);
+    case "application/msword":
+    case "application/vnd.ms-excel":
+    case "application/vnd.ms-powerpoint":
+      // The old OLE compound document, which all three share.
+      return startsWith(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    case "text/plain":
+    case "text/csv":
+      // Nothing to check: text is whatever bytes it happens to be.
+      return true;
+
     default:
       return false;
   }
@@ -263,5 +289,9 @@ export async function resolveMedia(attachmentId: string, sig: string): Promise<s
     contentType: attachment.mimeType,
     fileName: attachment.fileName,
     expiresSeconds: DOWNLOAD_URL_SECONDS,
+    // A photo or a video is meant to be seen in the page; a document is meant
+    // to be kept, and serving it as a download is also what stops one that is
+    // secretly markup from being rendered by the browser.
+    disposition: attachment.kind === "FILE" ? "attachment" : "inline",
   });
 }

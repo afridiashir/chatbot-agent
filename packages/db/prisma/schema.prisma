@@ -364,6 +364,10 @@ enum AttachmentKind {
   AUDIO
   /// Recorded in the chat, played back as a voice-note bubble.
   VOICE
+  /// A document — PDF, spreadsheet, archive. Never rendered in the page: it is
+  /// handed over as a download, which is both what the reader wants and what
+  /// keeps a file that is secretly markup from running anywhere.
+  FILE
 }
 
 /// A file in object storage, belonging to exactly one message. The bytes live in

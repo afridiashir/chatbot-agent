@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { LABEL_COLORS, MARITAL_STATUSES, PAKISTAN_CITIES, phoneProblem } from "@repo/types";
+import {
+  LABEL_COLORS,
+  MARITAL_STATUSES,
+  MEDIA_RULES,
+  PAKISTAN_CITIES,
+  phoneProblem,
+} from "@repo/types";
+import type { AttachmentKind } from "@repo/types";
 import {
   clientIdSchema,
   conversationStatusSchema,
@@ -378,7 +385,9 @@ export const avatarUploadBodySchema = z.object({
 export const setAvatarBodySchema = z.object({ uploadToken: z.string().min(1).max(4000) });
 
 export const createUploadBodySchema = z.object({
-  kind: z.enum(["IMAGE", "VIDEO", "AUDIO", "VOICE"]),
+  // Taken from the shared list rather than repeated, so a kind added there is
+  // sendable here without a second edit that is easy to forget.
+  kind: z.enum(Object.keys(MEDIA_RULES) as [AttachmentKind, ...AttachmentKind[]]),
   fileName: z.string().trim().min(1).max(200),
   mimeType: z.string().trim().min(3).max(120),
   size: z.number().int().positive(),

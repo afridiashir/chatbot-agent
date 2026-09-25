@@ -766,13 +766,15 @@ export function ChatPanel({
 
   const error = mediaError ?? recorder.error ?? chatError;
 
-  const previewing = staged !== null && staged.kind !== "AUDIO";
+  // Only what can actually be shown gets the big preview; audio and documents
+  // take the compact card above the composer instead.
+  const previewing = staged !== null && staged.kind !== "AUDIO" && staged.kind !== "FILE";
 
   return (
     <>
       {viewing && <MediaViewer apiUrl={apiUrl} media={viewing} onClose={closeViewer} />}
 
-      {staged && staged.kind !== "AUDIO" && (
+      {staged && previewing && staged.kind !== "AUDIO" && staged.kind !== "FILE" && (
         <StagedPreview
           file={staged.file}
           kind={staged.kind}
@@ -939,7 +941,7 @@ export function ChatPanel({
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-wa-panel text-lg"
                 aria-hidden="true"
               >
-                🎵
+                {staged.kind === "FILE" ? "📄" : "🎵"}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-wa-text">{staged.file.name}</p>
