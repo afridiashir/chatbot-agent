@@ -24,6 +24,7 @@ import {
 import { formatClock, formatDayLabel, isNewDay } from "../lib/format.js";
 import { isJumboEmoji } from "../lib/emoji.js";
 import { checkVisitorFile } from "../lib/media.js";
+import { copyText } from "../lib/clipboard.js";
 import { EmojiPicker } from "./EmojiPicker.js";
 import { MediaViewer, type ViewedMedia } from "./MediaViewer.js";
 import { MessageMedia } from "./MessageMedia.js";
@@ -191,6 +192,13 @@ function MessageBubble({
   const swipe = useSwipeReply(canReply, () => onReply(message));
   // Touch screens hold the message down; a pointer hovers it instead.
   const longPress = useLongPress(() => canReply && onOpenReactions(message.id));
+  /** Says so briefly, because a copy that says nothing looks like a miss. */
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
   const mine = message.reactions.find((r) => r.senderType === "VISITOR")?.emoji ?? null;
 
   return (
@@ -218,8 +226,10 @@ function MessageBubble({
         longPress.onTouchCancel();
       }}
       onContextMenu={(event) => {
-        // Only on touch: a right-click with a mouse still offers copy.
-        if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault();
+        // Only on touch, and only where a long press opens our own menu in its
+        // place: a right-click with a mouse still offers copy, and a chat that
+        // has ended keeps the phone's own menu rather than losing both.
+        if (canReply && window.matchMedia("(pointer: coarse)").matches) event.preventDefault();
       }}
     >
       {reacting && (
@@ -232,8 +242,27 @@ function MessageBubble({
             }}
             onMore={() => onMoreEmoji(message.id)}
             onClose={onCloseReactions}
+            onCopy={
+              message.content
+                ? () => {
+                    void copyText(message.content).then((ok) => {
+                      setCopied(ok);
+                      onCloseReactions();
+                    });
+                  }
+                : undefined
+            }
           />
         </div>
+      )}
+
+      {copied && (
+        <span
+          role="status"
+          className="absolute -top-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-wa-text/85 px-2 py-0.5 text-[11px] font-medium text-white"
+        >
+          Copied
+        </span>
       )}
 
       {/* Appears from under the bubble as it is dragged aside. */}

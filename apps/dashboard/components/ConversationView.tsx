@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { LIVE_BARS, formatDuration, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { useLongPress } from "@/hooks/useLongPress";
+import { copyText } from "@/lib/clipboard";
 import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
@@ -205,6 +206,13 @@ export function Bubble({
   const bareVoice = media?.kind === "VOICE" && !message.content;
   const swipe = useSwipeReply(Boolean(onReply), () => onReply?.(message));
   const longPress = useLongPress(() => onOpenReactions?.(message.id));
+  /** Says so briefly, because a copy that says nothing looks like a miss. */
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
   const mine = message.reactions.find((r) => r.senderType === "AGENT")?.emoji ?? null;
   const quoteName = (quote: MessageQuote) =>
     quote.senderType === "AGENT" ? (names?.agent ?? "Agent") : (names?.visitor ?? "Visitor");
@@ -236,8 +244,12 @@ export function Bubble({
         longPress.onTouchCancel();
       }}
       onContextMenu={(event) => {
-        // Only on touch: a right-click with a mouse still offers copy.
-        if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault();
+        // Only on touch, and only where a long press opens our own menu in its
+        // place: a right-click with a mouse still offers copy, and a read-only
+        // transcript keeps the phone's own menu rather than losing both.
+        if (onOpenReactions && window.matchMedia("(pointer: coarse)").matches) {
+          event.preventDefault();
+        }
       }}
     >
       {reacting && onReact && (
@@ -250,9 +262,28 @@ export function Bubble({
             }}
             onMore={() => onMoreEmoji?.(message.id)}
             onClose={() => onCloseReactions?.()}
+            onCopy={
+              message.content
+                ? () => {
+                    void copyText(message.content).then((ok) => {
+                      setCopied(ok);
+                      onCloseReactions?.();
+                    });
+                  }
+                : undefined
+            }
           />
         </div>
       )}
+      {copied && (
+        <span
+          role="status"
+          className="absolute -top-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-medium text-background"
+        >
+          Copied
+        </span>
+      )}
+
       {swipe.swiping && (
         <span
           aria-hidden

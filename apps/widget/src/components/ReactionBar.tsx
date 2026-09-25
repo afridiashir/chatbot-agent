@@ -10,12 +10,18 @@ export function ReactionBar({
   onPick,
   onMore,
   onClose,
+  onCopy,
 }: {
   /** This side's current reaction, so it can be shown as selected. */
   mine: string | null;
   onPick: (emoji: string) => void;
   onMore: () => void;
   onClose: () => void;
+  /**
+   * Copies the message's text. Absent when there is none to copy, which is
+   * what leaves the button off a photo or a voice note.
+   */
+  onCopy?: () => void;
 }) {
   return (
     <div
@@ -55,6 +61,31 @@ export function ReactionBar({
           <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
+
+      {/* The phone's own "copy" is suppressed on this bubble, so it is offered
+          here instead. */}
+      {onCopy && (
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onCopy}
+          aria-label="Copy text"
+          title="Copy"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 text-wa-icon transition hover:bg-black/10"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M5 15V5a2 2 0 0 1 2-2h8" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
