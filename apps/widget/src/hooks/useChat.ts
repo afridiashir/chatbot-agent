@@ -101,6 +101,11 @@ export interface ChatController {
   back: () => void;
   /** Starts a chat: with the agent whose link this is, or with whoever is free. */
   startNew: () => void;
+  /**
+   * Opens a chat with one named agent, starting it if there is none — what a
+   * colleague's link shared into a conversation does.
+   */
+  openAgent: (agentId: string) => Promise<void>;
   startChat: (visitor: VisitorDetails) => Promise<void>;
   sendMessage: (content: string, replyToId?: string) => Promise<void>;
   /** Adds, replaces or removes this visitor's reaction; null takes it back. */
@@ -699,6 +704,51 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     [config.apiUrl, config.agentId, config.branchId, visitorId, fetchList, openThread, threadFor],
   );
 
+  /**
+   * The chat with one named agent, whether or not it exists yet.
+   *
+   * An agent can hand a visitor on by sending a colleague's link; tapping it
+   * should land them in that conversation rather than in a form. Their details
+   * are already known by then — they are mid-chat — so nothing is asked again.
+   */
+  const openAgent = useCallback(
+    async (agentId: string) => {
+      const existing = threadFor(agentId, conversations);
+      if (existing.length > 0) {
+        await openThread(existing);
+        return;
+      }
+
+      const details = savedVisitor;
+      if (!details) {
+        // Nothing to start one with. The form knows what to ask for.
+        setPhase("form");
+        return;
+      }
+
+      setPhase("starting");
+      setError(null);
+      try {
+        const result = await apiFetch<AssignmentResult>(config.apiUrl, "/api/conversations", {
+          method: "POST",
+          body: JSON.stringify({ agentId, visitorId, visitor: details }),
+        });
+        if (!result.available) {
+          setPhase("unavailable");
+          setError(result.message);
+          return;
+        }
+        const refreshed = await fetchList(details.phone).catch(() => null);
+        const thread = refreshed ? threadFor(agentId, refreshed.conversations) : [];
+        await openThread(thread.length > 0 ? thread : [result.conversation.id]);
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Could not open that chat");
+        setPhase("list");
+      }
+    },
+    [conversations, threadFor, openThread, savedVisitor, config.apiUrl, visitorId, fetchList],
+  );
+
   const sendMessage = useCallback(
     (content: string, replyToId?: string) =>
       new Promise<void>((resolve) => {
@@ -827,6 +877,7 @@ export function useChat(config: WidgetConfig, visible: boolean): ChatController 
     open,
     back,
     startNew,
+    openAgent,
     startChat,
     sendMessage,
     sendMedia,

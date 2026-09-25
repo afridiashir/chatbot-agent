@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Smile,
   Trash2,
+  UserRoundPlus,
   X,
 } from "lucide-react";
 import {
@@ -42,6 +43,7 @@ import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
 import { MessageText } from "@/components/MessageText";
+import { ShareColleagueDialog } from "@/components/ShareColleagueDialog";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
 import { loadDrafts, saveDraft, type QueuedMessage } from "@/lib/outbox";
@@ -73,6 +75,9 @@ interface ConversationViewProps {
   visitorTyping: boolean;
   /** Whether the visitor has the chat open. Undefined until the server says. */
   visitorOnline?: boolean;
+  /** The signed-in agent, for offering their own colleagues to share. */
+  agentId?: string;
+  token?: string;
   /** Sent but not yet stored by the server. */
   pending: QueuedMessage[];
   onSend: (content: string) => Promise<void>;
@@ -396,6 +401,8 @@ export function ConversationView({
   connected,
   visitorTyping,
   visitorOnline,
+  agentId,
+  token,
   pending,
   onSend,
   onSendMedia,
@@ -406,6 +413,8 @@ export function ConversationView({
 }: ConversationViewProps) {
   const [draft, setDraft] = useState("");
   const [closing, setClosing] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [sharingBusy, setSharingBusy] = useState(false);
   /** The message being replied to, shown above the box until sent or dropped. */
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   /** Briefly highlighted after jumping to it from a quote. */
@@ -595,12 +604,45 @@ export function ConversationView({
           className="hidden shrink-0 justify-end md:flex md:max-w-80"
         />
 
+        {!isClosed && agentId && token && (
+          <button
+            type="button"
+            onClick={() => setSharing(true)}
+            aria-label="Share a colleague"
+            title="Share a colleague"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <UserRoundPlus className="size-5" />
+          </button>
+        )}
+
         {!isClosed && (
           <Button variant="outline" size="sm" onClick={handleClose} disabled={closing}>
             {closing ? "Closing..." : "Close conversation"}
           </Button>
         )}
       </header>
+
+      {agentId && token && (
+        <ShareColleagueDialog
+          open={sharing}
+          agentId={agentId}
+          token={token}
+          sending={sharingBusy}
+          onClose={() => (sharingBusy ? undefined : setSharing(false))}
+          onSend={async (message) => {
+            setSharingBusy(true);
+            try {
+              // Sent as an ordinary message, because that is what it is: the
+              // link is made tappable by the same rule as any other.
+              await onSend(message);
+              setSharing(false);
+            } finally {
+              setSharingBusy(false);
+            }
+          }}
+        />
+      )}
 
       {/*
         The same bar again, on its own row, for phones. The header has a back

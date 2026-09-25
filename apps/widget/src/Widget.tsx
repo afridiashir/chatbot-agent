@@ -208,6 +208,7 @@ export function Widget({ config }: { config: WidgetConfig }) {
           onSendMedia={chat.sendMedia}
           onTyping={chat.notifyTyping}
           onStartOver={chat.startOver}
+          onOpenAgent={(agentId) => void chat.openAgent(agentId)}
         />
       )}
     </section>

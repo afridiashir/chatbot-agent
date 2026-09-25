@@ -6,6 +6,49 @@ import { forbidden, notFound, unauthorized } from "../lib/http.js";
 import { avatarPath, toAgent } from "../lib/serialize.js";
 
 /**
+ * The colleagues an agent may hand a visitor on to.
+ *
+ * Their own branch only, and only the people a visitor could actually reach:
+ * deactivated accounts are left out, as is the agent themselves — offering to
+ * introduce someone to yourself is not a handover.
+ *
+ * Deliberately the visitor-facing card rather than the staff record: this is
+ * shared into a chat, and a colleague's email address is also their login.
+ */
+export async function listColleagues(
+  agentId: string,
+  actor: AgentTokenPayload,
+): Promise<PublicAgentProfile[]> {
+  if (actor.agentId !== agentId) throw forbidden("You can only list your own colleagues");
+
+  const rows = await prisma.agent.findMany({
+    where: {
+      branchId: actor.branchId,
+      isActive: true,
+      id: { not: agentId },
+      branch: { isActive: true },
+    },
+    // Whoever can answer right now comes first; the rest read alphabetically.
+    orderBy: [{ isOnline: "desc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      avatarKey: true,
+      isOnline: true,
+      branch: { select: { id: true, name: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    avatarUrl: avatarPath(row),
+    isOnline: row.isOnline,
+    branch: { id: row.branch.id, name: row.branch.name },
+  }));
+}
+
+/**
  * The card a visitor sees when opening an agent's chat link. Deactivated
  * agents, and agents of a deactivated branch, read as missing.
  */

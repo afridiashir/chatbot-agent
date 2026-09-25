@@ -12,7 +12,7 @@ import { sendOk } from "../lib/http.js";
 import { parseOrThrow } from "../lib/validate.js";
 import { currentAgent, requireAgent } from "../middleware/require-agent.js";
 import { emitAgentProfile, emitAgentStatus } from "../realtime/emit.js";
-import { getPublicAgentProfile, setAgentStatus } from "../services/agents.js";
+import { getPublicAgentProfile, listColleagues, setAgentStatus } from "../services/agents.js";
 import {
   createAvatarUpload,
   openConversationIds,
@@ -37,6 +37,21 @@ agentsRouter.get(
 );
 
 /** PATCH /api/agents/:agentId/status — the online/offline toggle. */
+/**
+ * GET /api/agents/:agentId/colleagues — who this agent can hand a visitor to.
+ *
+ * Their own branch, and their own id only: an agent has no business listing
+ * another branch's staff, and this is read to be shared into a chat.
+ */
+agentsRouter.get(
+  "/:agentId/colleagues",
+  requireAgent,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    sendOk(res, await listColleagues(agentId, currentAgent(req)));
+  }),
+);
+
 agentsRouter.patch(
   "/:agentId/status",
   requireAgent,
@@ -69,7 +84,10 @@ agentsRouter.put(
   asyncHandler(async (req, res) => {
     const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
     const { uploadToken } = parseOrThrow(setAvatarBodySchema, req.body, "photo");
-    const agent = await setAvatar(agentId, uploadToken, { kind: "agent", agent: currentAgent(req) });
+    const agent = await setAvatar(agentId, uploadToken, {
+      kind: "agent",
+      agent: currentAgent(req),
+    });
     emitAgentProfile(agent, await openConversationIds(agentId));
     sendOk(res, agent);
   }),

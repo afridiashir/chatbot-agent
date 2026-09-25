@@ -495,6 +495,8 @@ function Dashboard({
           onToggleLabel={(labelId, next) =>
             inbox.selectedId && void inbox.toggleLabel(inbox.selectedId, labelId, next)
           }
+          agentId={agent.id}
+          token={token}
           connected={inbox.connected}
           visitorTyping={inbox.selectedId ? Boolean(inbox.typingIn[inbox.selectedId]) : false}
           visitorOnline={inbox.selectedId ? inbox.visitorOnline[inbox.selectedId] : undefined}

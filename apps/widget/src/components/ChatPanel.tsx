@@ -30,6 +30,25 @@ import { MessageMedia } from "./MessageMedia.js";
 import { MessageText } from "./MessageText.js";
 import { LiveWaveform } from "./Waveform.js";
 
+/**
+ * The agent id in one of our own chat links, or null for any other address.
+ *
+ * Matched on the shape rather than the host: the widget is embedded on other
+ * people's sites and reached through several names — localhost in development,
+ * the hosted page in production — and what identifies the link is that it is a
+ * chat page naming an agent.
+ */
+function ourAgentLink(href: string): string | null {
+  try {
+    const url = new URL(href, window.location.href);
+    if (!url.pathname.endsWith("/chat")) return null;
+    const agentId = url.searchParams.get("agent");
+    return agentId && /^[A-Za-z0-9_-]{1,64}$/.test(agentId) ? agentId : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface VisitorMediaSend {
   kind: AttachmentKind;
   file: Blob;
@@ -67,6 +86,8 @@ interface ChatPanelProps {
   onSendMedia: (media: VisitorMediaSend) => Promise<void>;
   onTyping: () => void;
   onStartOver: () => void;
+  /** Opens a colleague's chat in place, when one is shared into this one. */
+  onOpenAgent?: (agentId: string) => void;
 }
 
 /** Three dots, animated with a staggered delay so they ripple. */
@@ -391,6 +412,7 @@ export function ChatPanel({
   onSendMedia,
   onTyping,
   onStartOver,
+  onOpenAgent,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -732,6 +754,25 @@ export function ChatPanel({
       )}
 
       <div
+        /*
+         * An agent sharing a colleague sends their chat link. Opening it in a
+         * new tab would take the visitor out of the conversation they are in
+         * and make them identify themselves again, when the widget can simply
+         * open that chat here — it already holds more than one.
+         *
+         * One handler on the list rather than a prop threaded down to every
+         * bubble: the link is an ordinary anchor drawn by `MessageText`, and
+         * this only has to notice it was ours.
+         */
+        onClickCapture={(event) => {
+          if (!onOpenAgent) return;
+          const anchor = (event.target as HTMLElement).closest?.("a");
+          const href = anchor?.getAttribute("href");
+          const agentId = href ? ourAgentLink(href) : null;
+          if (!agentId) return;
+          event.preventDefault();
+          onOpenAgent(agentId);
+        }}
         className={`wa-canvas flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-2 ${previewing ? "hidden" : "flex"}`}
       >
         {messages.length === 0 && (

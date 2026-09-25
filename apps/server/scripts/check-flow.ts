@@ -20,6 +20,7 @@ import type {
   Conversation,
   ConversationSummary,
   Message,
+  PublicAgentProfile,
   VisitorLookupResult,
   ServerToClientEvents,
 } from "@repo/types";
@@ -78,8 +79,7 @@ async function request<T>(
     },
   });
   const body = (await res.json()) as
-    | { ok: true; data: T }
-    | { ok: false; error: { message: string } };
+    { ok: true; data: T } | { ok: false; error: { message: string } };
 
   return body.ok
     ? { status: res.status, data: body.data }
@@ -183,7 +183,10 @@ function waitFor<E extends keyof ServerToClientEvents>(
   timeoutMs = 5000,
 ): Promise<Parameters<ServerToClientEvents[E]>[0]> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${String(event)}`)), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error(`timed out waiting for ${String(event)}`)),
+      timeoutMs,
+    );
     socket.once(event, ((payload: unknown) => {
       clearTimeout(timer);
       resolve(payload as Parameters<ServerToClientEvents[E]>[0]);
@@ -332,7 +335,11 @@ async function main(): Promise<void> {
 
   console.log("\n8. Refresh mid-chat resumes the same conversation");
   const resumed = await startChat(visitorId);
-  check("same conversation is returned", resumed.data?.available && resumed.data.conversation.id, conversation.id);
+  check(
+    "same conversation is returned",
+    resumed.data?.available && resumed.data.conversation.id,
+    conversation.id,
+  );
   check("flagged as resumed", resumed.data?.available && resumed.data.resumed, true);
   check("resume answers 200, not 201", resumed.status, 200);
 
@@ -394,7 +401,11 @@ async function main(): Promise<void> {
     token: bilalToken,
   });
   check("status becomes CLOSED", closed.data?.status, "CLOSED");
-  check("visitor is notified in real time", ((await visitorNotified) as Conversation).status, "CLOSED");
+  check(
+    "visitor is notified in real time",
+    ((await visitorNotified) as Conversation).status,
+    "CLOSED",
+  );
 
   console.log("\n10. A closed chat stops counting and stops accepting messages");
   check("Bilal is back to zero active", await loads(), {
@@ -482,7 +493,11 @@ async function main(): Promise<void> {
     method: "POST",
     body: JSON.stringify({
       visitorId: strangerDevice,
-      visitor: { ...person, name: "Someone Else", phone: `+92 302 ${String(Date.now()).slice(-7)}` },
+      visitor: {
+        ...person,
+        name: "Someone Else",
+        phone: `+92 302 ${String(Date.now()).slice(-7)}`,
+      },
     }),
   });
   check(
@@ -506,6 +521,40 @@ async function main(): Promise<void> {
       })
     ).status,
     400,
+  );
+
+  console.log("\n12. An agent can hand a visitor to a colleague");
+  // What the "share a colleague" picker is filled from. It goes into a chat, so
+  // it is the visitor-facing card and nothing more.
+  const mine = await request<PublicAgentProfile[]>(`/api/agents/${BILAL}/colleagues`, {
+    token: bilalToken,
+  });
+  const offered = (mine.data ?? []).map((agent) => agent.name).sort();
+  check("the list is their own branch", offered, ["Ahmed Raza", "Hamza Iqbal", "Usman Sheikh"]);
+  check("it does not offer them themselves", offered.includes("Bilal Khan"), false);
+  check("nor anybody from another branch", offered.includes("Sana Gul"), false);
+  check(
+    "and it carries no email address, which is also a login",
+    JSON.stringify(mine.data ?? []).includes("@"),
+    false,
+  );
+  check(
+    "whoever is free is offered first",
+    (mine.data ?? []).every((agent, index, all) =>
+      index === 0 ? true : Number(all[index - 1]!.isOnline) >= Number(agent.isOnline),
+    ),
+    true,
+  );
+
+  check(
+    "an agent cannot list somebody else's colleagues",
+    (await request(`/api/agents/${HAMZA}/colleagues`, { token: bilalToken })).status,
+    403,
+  );
+  check(
+    "and a visitor cannot list them at all",
+    (await request(`/api/agents/${BILAL}/colleagues`)).status,
+    401,
   );
 
   console.log(`\n${passed} passed, ${failed} failed`);
