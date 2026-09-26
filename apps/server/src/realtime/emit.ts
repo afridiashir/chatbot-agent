@@ -253,6 +253,18 @@ export function emitMessageDeleted(message: {
 }
 
 /**
+ * A closed chat is open again.
+ *
+ * The same audience as closing it: the visitor, so their composer comes back,
+ * and the agent, so the row moves out of their Closed tab.
+ */
+export function emitConversationReopened(conversation: Conversation): void {
+  io?.to(rooms.conversation(conversation.id))
+    .to(rooms.agent(conversation.agentId))
+    .emit("conversation:reopened", conversation);
+}
+
+/**
  * The chat is gone for good. Sent to the room before everyone is dropped from
  * it, and to the agent's dashboard so the row leaves their inbox.
  */
@@ -320,12 +332,12 @@ export function emitAgentProfile(agent: Agent, conversationIds: string[]): void 
  */
 export function emitVisitorRenamed(
   target: { conversationId: string; agentId: string; branchId: string; companyId: string },
-  displayName: string | null,
+  visitor: { displayName: string | null; name: string },
 ): void {
   io?.to(rooms.agent(target.agentId))
     .to(rooms.adminCompany(target.companyId))
     .to(rooms.adminBranch(target.branchId))
-    .emit("visitor:renamed", { conversationId: target.conversationId, displayName });
+    .emit("visitor:renamed", { conversationId: target.conversationId, ...visitor });
 }
 
 /**
@@ -340,8 +352,13 @@ export function emitVisitorStatus(
   target: { conversationId: string; agentId: string; branchId: string; companyId: string },
   isOnline: boolean,
   only?: AppSocket,
+  lastSeenAt?: Date | null,
 ): void {
-  const payload = { conversationId: target.conversationId, isOnline };
+  const payload = {
+    conversationId: target.conversationId,
+    isOnline,
+    lastSeenAt: lastSeenAt ? lastSeenAt.toISOString() : null,
+  };
   if (only) {
     only.emit("visitor:status", payload);
     return;

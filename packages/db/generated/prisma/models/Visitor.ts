@@ -37,6 +37,7 @@ export type VisitorMinAggregateOutputType = {
   displayName: string | null
   maritalStatus: $Enums.MaritalStatus | null
   city: string | null
+  lastSeenAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -49,6 +50,7 @@ export type VisitorMaxAggregateOutputType = {
   displayName: string | null
   maritalStatus: $Enums.MaritalStatus | null
   city: string | null
+  lastSeenAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -61,6 +63,7 @@ export type VisitorCountAggregateOutputType = {
   displayName: number
   maritalStatus: number
   city: number
+  lastSeenAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -75,6 +78,7 @@ export type VisitorMinAggregateInputType = {
   displayName?: true
   maritalStatus?: true
   city?: true
+  lastSeenAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -87,6 +91,7 @@ export type VisitorMaxAggregateInputType = {
   displayName?: true
   maritalStatus?: true
   city?: true
+  lastSeenAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -99,6 +104,7 @@ export type VisitorCountAggregateInputType = {
   displayName?: true
   maritalStatus?: true
   city?: true
+  lastSeenAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -184,6 +190,7 @@ export type VisitorGroupByOutputType = {
   displayName: string | null
   maritalStatus: $Enums.MaritalStatus | null
   city: string | null
+  lastSeenAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: VisitorCountAggregateOutputType | null
@@ -217,6 +224,7 @@ export type VisitorWhereInput = {
   displayName?: Prisma.StringNullableFilter<"Visitor"> | string | null
   maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Visitor"> | $Enums.MaritalStatus | null
   city?: Prisma.StringNullableFilter<"Visitor"> | string | null
+  lastSeenAt?: Prisma.DateTimeNullableFilter<"Visitor"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
@@ -231,6 +239,7 @@ export type VisitorOrderByWithRelationInput = {
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
   maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   city?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
@@ -248,6 +257,7 @@ export type VisitorWhereUniqueInput = Prisma.AtLeast<{
   displayName?: Prisma.StringNullableFilter<"Visitor"> | string | null
   maritalStatus?: Prisma.EnumMaritalStatusNullableFilter<"Visitor"> | $Enums.MaritalStatus | null
   city?: Prisma.StringNullableFilter<"Visitor"> | string | null
+  lastSeenAt?: Prisma.DateTimeNullableFilter<"Visitor"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Visitor"> | Date | string
   conversations?: Prisma.ConversationListRelationFilter
@@ -262,6 +272,7 @@ export type VisitorOrderByWithAggregationInput = {
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
   maritalStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   city?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.VisitorCountOrderByAggregateInput
@@ -280,6 +291,7 @@ export type VisitorScalarWhereWithAggregatesInput = {
   displayName?: Prisma.StringNullableWithAggregatesFilter<"Visitor"> | string | null
   maritalStatus?: Prisma.EnumMaritalStatusNullableWithAggregatesFilter<"Visitor"> | $Enums.MaritalStatus | null
   city?: Prisma.StringNullableWithAggregatesFilter<"Visitor"> | string | null
+  lastSeenAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Visitor"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Visitor"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Visitor"> | Date | string
 }
@@ -292,6 +304,7 @@ export type VisitorCreateInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
@@ -306,6 +319,7 @@ export type VisitorUncheckedCreateInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
@@ -320,6 +334,7 @@ export type VisitorUpdateInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
@@ -334,6 +349,7 @@ export type VisitorUncheckedUpdateInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
@@ -348,6 +364,7 @@ export type VisitorCreateManyInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -360,6 +377,7 @@ export type VisitorUpdateManyMutationInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -372,6 +390,7 @@ export type VisitorUncheckedUpdateManyInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -384,6 +403,7 @@ export type VisitorCountOrderByAggregateInput = {
   displayName?: Prisma.SortOrder
   maritalStatus?: Prisma.SortOrder
   city?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -396,6 +416,7 @@ export type VisitorMaxOrderByAggregateInput = {
   displayName?: Prisma.SortOrder
   maritalStatus?: Prisma.SortOrder
   city?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -408,6 +429,7 @@ export type VisitorMinOrderByAggregateInput = {
   displayName?: Prisma.SortOrder
   maritalStatus?: Prisma.SortOrder
   city?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -420,6 +442,10 @@ export type VisitorScalarRelationFilter = {
 export type VisitorNullableScalarRelationFilter = {
   is?: Prisma.VisitorWhereInput | null
   isNot?: Prisma.VisitorWhereInput | null
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type VisitorCreateNestedOneWithoutConversationsInput = {
@@ -460,6 +486,7 @@ export type VisitorCreateWithoutConversationsInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutVisitorInput
@@ -473,6 +500,7 @@ export type VisitorUncheckedCreateWithoutConversationsInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutVisitorInput
@@ -502,6 +530,7 @@ export type VisitorUpdateWithoutConversationsInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutVisitorNestedInput
@@ -515,6 +544,7 @@ export type VisitorUncheckedUpdateWithoutConversationsInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutVisitorNestedInput
@@ -528,6 +558,7 @@ export type VisitorCreateWithoutPushSubscriptionsInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutVisitorInput
@@ -541,6 +572,7 @@ export type VisitorUncheckedCreateWithoutPushSubscriptionsInput = {
   displayName?: string | null
   maritalStatus?: $Enums.MaritalStatus | null
   city?: string | null
+  lastSeenAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutVisitorInput
@@ -570,6 +602,7 @@ export type VisitorUpdateWithoutPushSubscriptionsInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutVisitorNestedInput
@@ -583,6 +616,7 @@ export type VisitorUncheckedUpdateWithoutPushSubscriptionsInput = {
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   maritalStatus?: Prisma.NullableEnumMaritalStatusFieldUpdateOperationsInput | $Enums.MaritalStatus | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutVisitorNestedInput
@@ -636,6 +670,7 @@ export type VisitorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   displayName?: boolean
   maritalStatus?: boolean
   city?: boolean
+  lastSeenAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
@@ -651,6 +686,7 @@ export type VisitorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   displayName?: boolean
   maritalStatus?: boolean
   city?: boolean
+  lastSeenAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["visitor"]>
@@ -663,6 +699,7 @@ export type VisitorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   displayName?: boolean
   maritalStatus?: boolean
   city?: boolean
+  lastSeenAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["visitor"]>
@@ -675,11 +712,12 @@ export type VisitorSelectScalar = {
   displayName?: boolean
   maritalStatus?: boolean
   city?: boolean
+  lastSeenAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type VisitorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "phoneKey" | "displayName" | "maritalStatus" | "city" | "createdAt" | "updatedAt", ExtArgs["result"]["visitor"]>
+export type VisitorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "phoneKey" | "displayName" | "maritalStatus" | "city" | "lastSeenAt" | "createdAt" | "updatedAt", ExtArgs["result"]["visitor"]>
 export type VisitorInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversations?: boolean | Prisma.Visitor$conversationsArgs<ExtArgs>
   pushSubscriptions?: boolean | Prisma.Visitor$pushSubscriptionsArgs<ExtArgs>
@@ -718,6 +756,12 @@ export type $VisitorPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      */
     maritalStatus: $Enums.MaritalStatus | null
     city: string | null
+    /**
+     * When the last of this browser's sockets left a chat. Presence itself is
+     * live and unstored; this is the memory of when it last ended, which is
+     * what "last seen" is made of. Null until they have been away once.
+     */
+    lastSeenAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["visitor"]>
@@ -1152,6 +1196,7 @@ export interface VisitorFieldRefs {
   readonly displayName: Prisma.FieldRef<"Visitor", 'String'>
   readonly maritalStatus: Prisma.FieldRef<"Visitor", 'MaritalStatus'>
   readonly city: Prisma.FieldRef<"Visitor", 'String'>
+  readonly lastSeenAt: Prisma.FieldRef<"Visitor", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Visitor", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Visitor", 'DateTime'>
 }

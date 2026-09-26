@@ -25,18 +25,22 @@ export function VisitorName({
   name: string;
   /** What the team filed them under, when they have. */
   displayName?: string | null;
-  onRename: (displayName: string) => Promise<void> | void;
+  onRename: (displayName: string, name?: string) => Promise<void> | void;
   className?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(displayName ?? "");
+  /** The name they gave, correctable: a form records typos like any other. */
+  const [nameDraft, setNameDraft] = useState(name);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Someone else may have relabelled them while this was closed.
   useEffect(() => {
-    if (!editing) setDraft(displayName ?? "");
-  }, [displayName, editing]);
+    if (editing) return;
+    setDraft(displayName ?? "");
+    setNameDraft(name);
+  }, [displayName, name, editing]);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
@@ -46,7 +50,7 @@ export function VisitorName({
     if (saving) return;
     setSaving(true);
     try {
-      await onRename(draft);
+      await onRename(draft, nameDraft.trim() === name ? undefined : nameDraft.trim());
       setEditing(false);
     } finally {
       setSaving(false);
@@ -71,44 +75,63 @@ export function VisitorName({
   }
 
   return (
-    <span className={cn("flex min-w-0 items-center gap-1", className)}>
-      <input
-        ref={inputRef}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") void save();
-          if (event.key === "Escape") {
+    <span className={cn("flex min-w-0 flex-col gap-1", className)}>
+      <span className="flex min-w-0 items-center gap-1">
+        <input
+          value={nameDraft}
+          onChange={(event) => setNameDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void save();
+            if (event.key === "Escape") {
+              setNameDraft(name);
+              setEditing(false);
+            }
+          }}
+          maxLength={80}
+          placeholder="Their name"
+          aria-label="Name"
+          className="min-w-0 flex-1 rounded border bg-background px-1.5 py-0.5 text-sm font-normal focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+        />
+      </span>
+      <span className="flex min-w-0 items-center gap-1">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void save();
+            if (event.key === "Escape") {
+              setDraft(displayName ?? "");
+              setEditing(false);
+            }
+          }}
+          maxLength={60}
+          // The example the whole feature exists for.
+          placeholder="Umar -M1- 8344- LHR"
+          aria-label={`Label for ${name}`}
+          className="min-w-0 flex-1 rounded border bg-background px-1.5 py-0.5 text-sm font-normal focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          aria-label="Save label"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-success transition hover:bg-accent disabled:opacity-40"
+        >
+          <Check className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setDraft(displayName ?? "");
             setEditing(false);
-          }
-        }}
-        maxLength={60}
-        // The example the whole feature exists for.
-        placeholder="Umar -M1- 8344- LHR"
-        aria-label={`Label for ${name}`}
-        className="min-w-0 flex-1 rounded border bg-background px-1.5 py-0.5 text-sm font-normal focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-      />
-      <button
-        type="button"
-        onClick={() => void save()}
-        disabled={saving}
-        aria-label="Save label"
-        className="flex size-6 shrink-0 items-center justify-center rounded-full text-success transition hover:bg-accent disabled:opacity-40"
-      >
-        <Check className="size-3.5" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setDraft(displayName ?? "");
-          setEditing(false);
-        }}
-        aria-label="Cancel"
-        className="flex size-6 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-accent"
-      >
-        <X className="size-3.5" aria-hidden />
-      </button>
+          }}
+          aria-label="Cancel"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-accent"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      </span>
     </span>
   );
 }

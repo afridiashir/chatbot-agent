@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
+import { prisma } from "@repo/db";
 import { rooms } from "@repo/types";
 import {
   socketAuthSchema,
@@ -117,7 +118,23 @@ function conversationIdOf(room: string): string | null {
 async function visitorLeft(conversationId: string, socketId: string): Promise<void> {
   try {
     if ((await visitorsIn(conversationId, socketId)) > 0) return;
-    emitVisitorStatus(await staffBroadcastTarget(conversationId), false);
+
+    // The moment they stopped being here, which is what "last seen" means.
+    // Written to every browser of theirs: it describes the person, and the one
+    // that just closed is not necessarily the one staff are looking at.
+    const lastSeenAt = new Date();
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { visitor: { select: { phoneKey: true } } },
+    });
+    if (conversation) {
+      await prisma.visitor.updateMany({
+        where: { phoneKey: conversation.visitor.phoneKey },
+        data: { lastSeenAt },
+      });
+    }
+
+    emitVisitorStatus(await staffBroadcastTarget(conversationId), false, undefined, lastSeenAt);
   } catch (error) {
     if (!(error instanceof HttpError)) console.error("[socket] visitor presence", error);
   }
@@ -152,11 +169,16 @@ function registerHandlers(socket: AppSocket): void {
         } else {
           // A dashboard joining needs the state as it already is, not only
           // changes to it, or the chat it opens looks like nobody is there.
-          emitVisitorStatus(
-            await staffBroadcastTarget(conversationId),
-            (await visitorsIn(conversationId)) > 0,
-            socket,
-          );
+          const here = (await visitorsIn(conversationId)) > 0;
+          const known = here
+            ? null
+            : ((
+                await prisma.conversation.findUnique({
+                  where: { id: conversationId },
+                  select: { visitor: { select: { lastSeenAt: true } } },
+                })
+              )?.visitor.lastSeenAt ?? null);
+          emitVisitorStatus(await staffBroadcastTarget(conversationId), here, socket, known);
         }
       } catch (error) {
         ack?.(toAckError(error));

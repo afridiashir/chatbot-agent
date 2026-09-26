@@ -54,6 +54,8 @@ export interface Admin {
 
 export interface Agent {
   id: string;
+  /** A number visitors may reach them on. Null when they have not given one. */
+  phone?: string | null;
   branchId: string;
   name: string;
   email: string;
@@ -88,6 +90,11 @@ export interface Visitor {
 
 /** What agents and admins are shown about a visitor. */
 export type VisitorSummary = Pick<Visitor, "id" | "name" | "phone" | "maritalStatus" | "city"> & {
+  /**
+   * When they last had a chat open, for "last seen" beside an offline dot.
+   * Staff-facing, like the label below it, and absent for a visitor.
+   */
+  lastSeenAt?: string | null;
   /**
    * What the team files this person under, when they have given them one.
    *
@@ -156,7 +163,9 @@ export interface Conversation {
 
 /** Conversation enriched with the joined agent — what the widget/dashboard render. */
 export interface ConversationWithAgent extends Conversation {
-  agent: Pick<Agent, "id" | "name" | "branchId" | "isOnline" | "avatarUrl">;
+  // `phone` among them: the visitor is shown the number of whoever is
+  // answering, which is the point of collecting it.
+  agent: Pick<Agent, "id" | "name" | "phone" | "branchId" | "isOnline" | "avatarUrl">;
   visitor: VisitorSummary;
 }
 

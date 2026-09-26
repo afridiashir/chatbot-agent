@@ -30,6 +30,22 @@ export const citySchema = z
   .min(2, "Choose your city")
   .max(60, "That city name is too long");
 
+/**
+ * A phone number, checked by the rule the widget shows its own errors from, so
+ * the form and the API cannot disagree about what a number is.
+ *
+ * It is the identity a visitor is found by now — it decides which chats they
+ * are shown — which is why it is no longer merely "looks like a number".
+ */
+export const phoneSchema = z
+  .string()
+  .trim()
+  .max(24, "That number looks too long")
+  .superRefine((value, ctx) => {
+    const problem = phoneProblem(value);
+    if (problem) ctx.addIssue({ code: "custom", message: problem });
+  });
+
 /* ---------------------------------- params --------------------------------- */
 
 export const branchIdParamSchema = z.object({ branchId: idSchema });
@@ -116,11 +132,24 @@ export const updateBranchBodySchema = z
     { message: "Provide something to change" },
   );
 
+/**
+ * An agent's own number, which the widget offers to visitors.
+ *
+ * Optional, and empty clears it: not every agent has one to hand out, and one
+ * that was given can be taken back. Held to the same shape as a visitor's,
+ * because it is dialled and messaged in exactly the same way.
+ */
+export const agentPhoneSchema = phoneSchema
+  .nullable()
+  .optional()
+  .transform((value) => (value ? value : null));
+
 export const createAgentBodySchema = z.object({
   branchId: idSchema,
   name: nameSchema,
   email: z.email("Enter a valid email address"),
   password: passwordSchema,
+  phone: agentPhoneSchema,
 });
 
 export const updateAgentBodySchema = z
@@ -130,6 +159,7 @@ export const updateAgentBodySchema = z
     branchId: idSchema.optional(),
     isActive: z.boolean().optional(),
     password: passwordSchema.optional(),
+    phone: agentPhoneSchema,
   })
   .refine((body) => Object.values(body).some((value) => value !== undefined), {
     message: "Provide something to change",
@@ -270,22 +300,6 @@ export const listAgentConversationsQuerySchema = z.object({
 /* -------------------------------- visitors --------------------------------- */
 
 /**
- * A phone number, checked by the rule the widget shows its own errors from, so
- * the form and the API cannot disagree about what a number is.
- *
- * It is the identity a visitor is found by now — it decides which chats they
- * are shown — which is why it is no longer merely "looks like a number".
- */
-export const phoneSchema = z
-  .string()
-  .trim()
-  .max(24, "That number looks too long")
-  .superRefine((value, ctx) => {
-    const problem = phoneProblem(value);
-    if (problem) ctx.addIssue({ code: "custom", message: problem });
-  });
-
-/**
  * Collected by the widget's pre-chat form.
  *
  * Marital status stays a closed set: it exists to be filtered and grouped in
@@ -348,6 +362,12 @@ export const renameVisitorBodySchema = z.object({
     .max(60, "That label is too long")
     .nullable()
     .transform((value) => (value ? value : null)),
+  /**
+   * The name they gave, corrected. Optional because most edits are only to the
+   * label; when it is sent it replaces what the form recorded, which is the
+   * point — a typo in a client's name should be fixable.
+   */
+  name: nameSchema.optional(),
 });
 
 export const getConversationQuerySchema = z.object({

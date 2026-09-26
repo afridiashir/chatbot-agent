@@ -105,6 +105,10 @@ model Agent {
   branchId     String
   name         String
   email        String   @unique
+  /// A number the visitor may call or message this agent on. Optional: not
+  /// every agent has one to hand out, and the widget only offers it when set.
+  /// Unlike an email — which is also a login — this is meant to be public.
+  phone        String?
   passwordHash String
   /// Profile photo in the media bucket. Null shows generated initials instead.
   avatarKey    String?
@@ -212,6 +216,10 @@ model Visitor {
   /// Null on visitors recorded before the pre-chat form asked for these.
   maritalStatus MaritalStatus?
   city          String?
+  /// When the last of this browser's sockets left a chat. Presence itself is
+  /// live and unstored; this is the memory of when it last ended, which is
+  /// what "last seen" is made of. Null until they have been away once.
+  lastSeenAt    DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

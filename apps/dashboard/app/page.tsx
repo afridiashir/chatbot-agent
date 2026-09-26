@@ -497,11 +497,13 @@ function Dashboard({
           }
           agentId={agent.id}
           token={token}
-          onRenameVisitor={(displayName) =>
+          onRenameVisitor={(displayName, name) =>
             inbox.selectedId
-              ? inbox.renameVisitor(inbox.selectedId, displayName)
+              ? inbox.renameVisitor(inbox.selectedId, displayName, name)
               : Promise.resolve()
           }
+          onReopen={inbox.reopen}
+          visitorLastSeen={inbox.selectedId ? inbox.visitorLastSeen[inbox.selectedId] : undefined}
           connected={inbox.connected}
           visitorTyping={inbox.selectedId ? Boolean(inbox.typingIn[inbox.selectedId]) : false}
           visitorOnline={inbox.selectedId ? inbox.visitorOnline[inbox.selectedId] : undefined}

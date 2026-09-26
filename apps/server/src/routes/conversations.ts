@@ -16,6 +16,7 @@ import { parseOrThrow } from "../lib/validate.js";
 import {
   announceMessage,
   emitConversationAssigned,
+  emitConversationReopened,
   emitConversationClosed,
   emitMessageAuthor,
   emitVisitorRenamed,
@@ -29,6 +30,7 @@ import {
   getConversation,
   lookupConversations,
   renameVisitor,
+  reopenConversation,
   staffBroadcastTarget,
 } from "../services/conversations.js";
 import { createUpload } from "../services/media.js";
@@ -97,10 +99,13 @@ conversationsRouter.patch(
 
     const result = await renameVisitor(conversationId, body, resolveActor(req));
     for (const id of result.conversationIds) {
-      emitVisitorRenamed(await staffBroadcastTarget(id), result.displayName);
+      emitVisitorRenamed(await staffBroadcastTarget(id), {
+        displayName: result.displayName,
+        name: result.name,
+      });
     }
 
-    sendOk(res, { displayName: result.displayName });
+    sendOk(res, { displayName: result.displayName, name: result.name });
   }),
 );
 
@@ -189,6 +194,30 @@ conversationsRouter.post(
 
     const conversation = await closeConversation(conversationId, resolveActor(req));
     emitConversationClosed(conversation);
+    sendOk(res, conversation);
+  }),
+);
+
+/**
+ * POST /api/conversations/:conversationId/reopen — CLOSED -> ACTIVE.
+ *
+ * A chat closed by mistake, or one the visitor has come back to. The
+ * transcript stays where it is rather than a second chat starting beside it.
+ *
+ * Staff only, and not behind `requireAgent`: an admin may reopen a chat in
+ * their scope, exactly as they may close an agent's by deactivating them.
+ */
+conversationsRouter.post(
+  "/:conversationId/reopen",
+  asyncHandler(async (req, res) => {
+    const { conversationId } = parseOrThrow(
+      conversationIdParamSchema,
+      req.params,
+      "conversation id",
+    );
+
+    const conversation = await reopenConversation(conversationId, resolveActor(req));
+    emitConversationReopened(conversation);
     sendOk(res, conversation);
   }),
 );

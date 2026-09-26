@@ -29,6 +29,7 @@ export type AgentMinAggregateOutputType = {
   branchId: string | null
   name: string | null
   email: string | null
+  phone: string | null
   passwordHash: string | null
   avatarKey: string | null
   isOnline: boolean | null
@@ -42,6 +43,7 @@ export type AgentMaxAggregateOutputType = {
   branchId: string | null
   name: string | null
   email: string | null
+  phone: string | null
   passwordHash: string | null
   avatarKey: string | null
   isOnline: boolean | null
@@ -55,6 +57,7 @@ export type AgentCountAggregateOutputType = {
   branchId: number
   name: number
   email: number
+  phone: number
   passwordHash: number
   avatarKey: number
   isOnline: number
@@ -70,6 +73,7 @@ export type AgentMinAggregateInputType = {
   branchId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
   avatarKey?: true
   isOnline?: true
@@ -83,6 +87,7 @@ export type AgentMaxAggregateInputType = {
   branchId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
   avatarKey?: true
   isOnline?: true
@@ -96,6 +101,7 @@ export type AgentCountAggregateInputType = {
   branchId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
   avatarKey?: true
   isOnline?: true
@@ -182,6 +188,7 @@ export type AgentGroupByOutputType = {
   branchId: string
   name: string
   email: string
+  phone: string | null
   passwordHash: string
   avatarKey: string | null
   isOnline: boolean
@@ -216,6 +223,7 @@ export type AgentWhereInput = {
   branchId?: Prisma.StringFilter<"Agent"> | string
   name?: Prisma.StringFilter<"Agent"> | string
   email?: Prisma.StringFilter<"Agent"> | string
+  phone?: Prisma.StringNullableFilter<"Agent"> | string | null
   passwordHash?: Prisma.StringFilter<"Agent"> | string
   avatarKey?: Prisma.StringNullableFilter<"Agent"> | string | null
   isOnline?: Prisma.BoolFilter<"Agent"> | boolean
@@ -232,6 +240,7 @@ export type AgentOrderByWithRelationInput = {
   branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
   avatarKey?: Prisma.SortOrderInput | Prisma.SortOrder
   isOnline?: Prisma.SortOrder
@@ -251,6 +260,7 @@ export type AgentWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.AgentWhereInput | Prisma.AgentWhereInput[]
   branchId?: Prisma.StringFilter<"Agent"> | string
   name?: Prisma.StringFilter<"Agent"> | string
+  phone?: Prisma.StringNullableFilter<"Agent"> | string | null
   passwordHash?: Prisma.StringFilter<"Agent"> | string
   avatarKey?: Prisma.StringNullableFilter<"Agent"> | string | null
   isOnline?: Prisma.BoolFilter<"Agent"> | boolean
@@ -267,6 +277,7 @@ export type AgentOrderByWithAggregationInput = {
   branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
   avatarKey?: Prisma.SortOrderInput | Prisma.SortOrder
   isOnline?: Prisma.SortOrder
@@ -286,6 +297,7 @@ export type AgentScalarWhereWithAggregatesInput = {
   branchId?: Prisma.StringWithAggregatesFilter<"Agent"> | string
   name?: Prisma.StringWithAggregatesFilter<"Agent"> | string
   email?: Prisma.StringWithAggregatesFilter<"Agent"> | string
+  phone?: Prisma.StringNullableWithAggregatesFilter<"Agent"> | string | null
   passwordHash?: Prisma.StringWithAggregatesFilter<"Agent"> | string
   avatarKey?: Prisma.StringNullableWithAggregatesFilter<"Agent"> | string | null
   isOnline?: Prisma.BoolWithAggregatesFilter<"Agent"> | boolean
@@ -298,6 +310,7 @@ export type AgentCreateInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -314,6 +327,7 @@ export type AgentUncheckedCreateInput = {
   branchId: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -328,6 +342,7 @@ export type AgentUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -344,6 +359,7 @@ export type AgentUncheckedUpdateInput = {
   branchId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -359,6 +375,7 @@ export type AgentCreateManyInput = {
   branchId: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -371,6 +388,7 @@ export type AgentUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -384,6 +402,7 @@ export type AgentUncheckedUpdateManyInput = {
   branchId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -407,6 +426,7 @@ export type AgentCountOrderByAggregateInput = {
   branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
   avatarKey?: Prisma.SortOrder
   isOnline?: Prisma.SortOrder
@@ -420,6 +440,7 @@ export type AgentMaxOrderByAggregateInput = {
   branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
   avatarKey?: Prisma.SortOrder
   isOnline?: Prisma.SortOrder
@@ -433,6 +454,7 @@ export type AgentMinOrderByAggregateInput = {
   branchId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
   avatarKey?: Prisma.SortOrder
   isOnline?: Prisma.SortOrder
@@ -527,6 +549,7 @@ export type AgentCreateWithoutBranchInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -541,6 +564,7 @@ export type AgentUncheckedCreateWithoutBranchInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -585,6 +609,7 @@ export type AgentScalarWhereInput = {
   branchId?: Prisma.StringFilter<"Agent"> | string
   name?: Prisma.StringFilter<"Agent"> | string
   email?: Prisma.StringFilter<"Agent"> | string
+  phone?: Prisma.StringNullableFilter<"Agent"> | string | null
   passwordHash?: Prisma.StringFilter<"Agent"> | string
   avatarKey?: Prisma.StringNullableFilter<"Agent"> | string | null
   isOnline?: Prisma.BoolFilter<"Agent"> | boolean
@@ -597,6 +622,7 @@ export type AgentCreateWithoutConversationsInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -612,6 +638,7 @@ export type AgentUncheckedCreateWithoutConversationsInput = {
   branchId: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -641,6 +668,7 @@ export type AgentUpdateWithoutConversationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -656,6 +684,7 @@ export type AgentUncheckedUpdateWithoutConversationsInput = {
   branchId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -669,6 +698,7 @@ export type AgentCreateWithoutPushSubscriptionsInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -684,6 +714,7 @@ export type AgentUncheckedCreateWithoutPushSubscriptionsInput = {
   branchId: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -713,6 +744,7 @@ export type AgentUpdateWithoutPushSubscriptionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -728,6 +760,7 @@ export type AgentUncheckedUpdateWithoutPushSubscriptionsInput = {
   branchId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -741,6 +774,7 @@ export type AgentCreateManyBranchInput = {
   id?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
   avatarKey?: string | null
   isOnline?: boolean
@@ -753,6 +787,7 @@ export type AgentUpdateWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -767,6 +802,7 @@ export type AgentUncheckedUpdateWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -781,6 +817,7 @@ export type AgentUncheckedUpdateManyWithoutBranchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   avatarKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isOnline?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -834,6 +871,7 @@ export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   branchId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
   avatarKey?: boolean
   isOnline?: boolean
@@ -851,6 +889,7 @@ export type AgentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   branchId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
   avatarKey?: boolean
   isOnline?: boolean
@@ -865,6 +904,7 @@ export type AgentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   branchId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
   avatarKey?: boolean
   isOnline?: boolean
@@ -879,6 +919,7 @@ export type AgentSelectScalar = {
   branchId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
   avatarKey?: boolean
   isOnline?: boolean
@@ -887,7 +928,7 @@ export type AgentSelectScalar = {
   updatedAt?: boolean
 }
 
-export type AgentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "branchId" | "name" | "email" | "passwordHash" | "avatarKey" | "isOnline" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["agent"]>
+export type AgentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "branchId" | "name" | "email" | "phone" | "passwordHash" | "avatarKey" | "isOnline" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["agent"]>
 export type AgentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   branch?: boolean | Prisma.BranchDefaultArgs<ExtArgs>
   conversations?: boolean | Prisma.Agent$conversationsArgs<ExtArgs>
@@ -913,6 +954,12 @@ export type $AgentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     branchId: string
     name: string
     email: string
+    /**
+     * A number the visitor may call or message this agent on. Optional: not
+     * every agent has one to hand out, and the widget only offers it when set.
+     * Unlike an email — which is also a login — this is meant to be public.
+     */
+    phone: string | null
     passwordHash: string
     /**
      * Profile photo in the media bucket. Null shows generated initials instead.
@@ -1355,6 +1402,7 @@ export interface AgentFieldRefs {
   readonly branchId: Prisma.FieldRef<"Agent", 'String'>
   readonly name: Prisma.FieldRef<"Agent", 'String'>
   readonly email: Prisma.FieldRef<"Agent", 'String'>
+  readonly phone: Prisma.FieldRef<"Agent", 'String'>
   readonly passwordHash: Prisma.FieldRef<"Agent", 'String'>
   readonly avatarKey: Prisma.FieldRef<"Agent", 'String'>
   readonly isOnline: Prisma.FieldRef<"Agent", 'Boolean'>

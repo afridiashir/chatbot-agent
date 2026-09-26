@@ -264,7 +264,7 @@ export async function renameVisitor(
   conversationId: string,
   input: RenameVisitorBody,
   actor: Actor,
-): Promise<{ conversationIds: string[]; displayName: string | null }> {
+): Promise<{ conversationIds: string[]; displayName: string | null; name: string }> {
   if (actor.type === "VISITOR") throw forbidden("Only the team can label a client");
 
   const conversation = await prisma.conversation.findUnique({
@@ -282,8 +282,22 @@ export async function renameVisitor(
   const { phoneKey } = conversation.visitor;
   await prisma.visitor.updateMany({
     where: { phoneKey },
-    data: { displayName: input.displayName },
+    data: {
+      displayName: input.displayName,
+      // A correction, when one was sent: the name a form recorded can be a
+      // typo, and the team has to be able to fix it rather than work around it.
+      ...(input.name !== undefined ? { name: input.name } : {}),
+    },
   });
+
+  // The lead is the same person in the admin's own records, so a corrected
+  // name has to reach it too — otherwise the leads table keeps the typo.
+  if (input.name !== undefined) {
+    await prisma.lead.updateMany({
+      where: { phoneKey, companyId: conversation.agent.branch.companyId },
+      data: { name: input.name },
+    });
+  }
 
   // Every chat this person has, so each dashboard showing one can relabel its
   // row rather than wait for a refresh.
@@ -292,7 +306,16 @@ export async function renameVisitor(
     select: { id: true },
   });
 
-  return { conversationIds: affected.map((row) => row.id), displayName: input.displayName };
+  const visitor = await prisma.visitor.findUnique({
+    where: { id: conversation.visitorId },
+    select: { name: true },
+  });
+
+  return {
+    conversationIds: affected.map((row) => row.id),
+    displayName: input.displayName,
+    name: visitor?.name ?? "",
+  };
 }
 
 /**
@@ -637,6 +660,52 @@ export async function closeConversation(
   });
 
   return toConversation(closed);
+}
+
+/**
+ * Opens a closed conversation again.
+ *
+ * A chat is closed when it is finished, and sometimes it turns out not to be:
+ * the visitor writes back about the same thing, or it was ended by mistake.
+ * Reopening keeps the transcript rather than starting a second chat beside it,
+ * which is what the agent wanted and what the visitor experiences anyway.
+ *
+ * The same people who may close one: the agent it belongs to, and an admin
+ * within their scope. It counts towards that agent's load again from here.
+ */
+export async function reopenConversation(
+  conversationId: string,
+  actor: Actor,
+): Promise<Conversation> {
+  if (actor.type === "VISITOR") throw forbidden("Only the team can reopen a conversation");
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { agent: ACCESS_AGENT },
+  });
+  if (!conversation) throw notFound("Conversation not found");
+
+  await assertAccess(conversation, actor);
+
+  // Already open: nothing to do, and saying so would only be noise.
+  if (conversation.status === "ACTIVE") return toConversation(conversation);
+
+  // A deactivated agent cannot answer, so their chats are not brought back to
+  // wait in an inbox nobody opens — that is the state deactivation created.
+  const agent = await prisma.agent.findUnique({
+    where: { id: conversation.agentId },
+    select: { isActive: true, branch: { select: { isActive: true } } },
+  });
+  if (!agent?.isActive || !agent.branch.isActive) {
+    throw conflict("That agent is no longer taking chats. Hand the chat over instead.");
+  }
+
+  const reopened = await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { status: "ACTIVE", closedAt: null },
+  });
+
+  return toConversation(reopened);
 }
 
 /** The agent inbox: most recently active first. */

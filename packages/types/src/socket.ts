@@ -108,6 +108,11 @@ export interface ServerToClientEvents {
   ) => void;
   "conversation:closed": (conversation: Conversation) => void;
   /**
+   * A closed chat was opened again — ended by mistake, or the visitor came
+   * back to the same thing. The transcript is unchanged; only its status is.
+   */
+  "conversation:reopened": (conversation: Conversation) => void;
+  /**
    * An admin deleted the chat. Nothing of it survives on the server, so every
    * screen still showing it has to let it go rather than refetch.
    */
@@ -151,7 +156,12 @@ export interface ServerToClientEvents {
    * because the label belongs to the person and every row showing them changes
    * at the same moment.
    */
-  "visitor:renamed": (payload: { conversationId: string; displayName: string | null }) => void;
+  "visitor:renamed": (payload: {
+    conversationId: string;
+    displayName: string | null;
+    /** The name they gave, after an agent corrected it. */
+    name: string;
+  }) => void;
   /**
    * Whether the visitor has the chat open right now, for the staff side only.
    *
@@ -160,7 +170,12 @@ export interface ServerToClientEvents {
    * on the visitor could never manage. Sent when it changes, and once to a
    * dashboard as it joins the room, so a freshly opened inbox is not blank.
    */
-  "visitor:status": (payload: { conversationId: string; isOnline: boolean }) => void;
+  "visitor:status": (payload: {
+    conversationId: string;
+    isOnline: boolean;
+    /** When they were last in the chat, for the "last seen" line. */
+    lastSeenAt?: string | null;
+  }) => void;
   "agent:status": (payload: AgentStatusPayload) => void;
   "agent:profile": (payload: AgentProfilePayload) => void;
   "message:receipt": (payload: ReceiptPayload) => void;

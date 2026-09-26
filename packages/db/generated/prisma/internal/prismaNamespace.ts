@@ -1548,6 +1548,7 @@ export const AgentScalarFieldEnum = {
   branchId: 'branchId',
   name: 'name',
   email: 'email',
+  phone: 'phone',
   passwordHash: 'passwordHash',
   avatarKey: 'avatarKey',
   isOnline: 'isOnline',
@@ -1595,6 +1596,7 @@ export const VisitorScalarFieldEnum = {
   displayName: 'displayName',
   maritalStatus: 'maritalStatus',
   city: 'city',
+  lastSeenAt: 'lastSeenAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

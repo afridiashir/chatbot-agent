@@ -131,6 +131,7 @@ export function toAgent(row: AgentRow): Agent {
     branchId: row.branchId,
     name: row.name,
     email: row.email,
+    phone: row.phone,
     avatarUrl: avatarPath(row),
     isOnline: row.isOnline,
     isActive: row.isActive,
@@ -247,6 +248,7 @@ export function toConversationWithAgent(
     agent: {
       id: row.agent.id,
       name: row.agent.name,
+      phone: row.agent.phone,
       branchId: row.agent.branchId,
       isOnline: row.agent.isOnline,
       avatarUrl: avatarPath(row.agent),

@@ -43,7 +43,7 @@ import { useLongPress } from "@/hooks/useLongPress";
 import { copyText } from "@/lib/clipboard";
 import { isJumboEmoji } from "@/lib/emoji";
 import { quoteText, toQuote } from "@/lib/quote";
-import { formatClock, formatDateSeparator, isNewDay } from "@/lib/format";
+import { formatClock, formatDateSeparator, isNewDay, sinceWhen } from "@/lib/format";
 import { MessageText } from "@/components/MessageText";
 import { ShareColleagueDialog } from "@/components/ShareColleagueDialog";
 import { VisitorName } from "@/components/VisitorName";
@@ -81,8 +81,12 @@ interface ConversationViewProps {
   /** The signed-in agent, for offering their own colleagues to share. */
   agentId?: string;
   token?: string;
-  /** Files this client under the team's own name for them. */
-  onRenameVisitor?: (displayName: string) => Promise<void> | void;
+  /** Files this client under the team's own name for them, and corrects it. */
+  onRenameVisitor?: (displayName: string, name?: string) => Promise<void> | void;
+  /** Opens this conversation again once it has been closed. */
+  onReopen?: (conversationId: string) => Promise<void>;
+  /** When the visitor was last in the chat, shown while they are away. */
+  visitorLastSeen?: string | null;
   /** Sent but not yet stored by the server. */
   pending: QueuedMessage[];
   onSend: (content: string) => Promise<void>;
@@ -466,6 +470,8 @@ export function ConversationView({
   agentId,
   token,
   onRenameVisitor,
+  onReopen,
+  visitorLastSeen,
   pending,
   onSend,
   onSendMedia,
@@ -476,6 +482,7 @@ export function ConversationView({
 }: ConversationViewProps) {
   const [draft, setDraft] = useState("");
   const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [sharingBusy, setSharingBusy] = useState(false);
   /** The message being replied to, shown above the box until sent or dropped. */
@@ -592,6 +599,19 @@ export function ConversationView({
   }
 
   const isClosed = detail.status === "CLOSED";
+  // Captured rather than read inside the handler: a function declared here is
+  // hoisted, so it cannot lean on `detail` having been narrowed above it.
+  const openId = detail.id;
+
+  async function handleReopen() {
+    if (!onReopen) return;
+    setReopening(true);
+    try {
+      await onReopen(openId);
+    } finally {
+      setReopening(false);
+    }
+  }
 
   async function handleClose() {
     if (!detail) return;
@@ -656,6 +676,12 @@ export function ConversationView({
                 {" · "}
                 {detail.visitor.phone}
               </span>
+            </p>
+          ) : visitorOnline === false && (visitorLastSeen ?? detail.visitor.lastSeenAt) ? (
+            <p className="truncate text-xs text-chat-meta">
+              {`Last seen ${sinceWhen(visitorLastSeen ?? detail.visitor.lastSeenAt!)}`}
+              {" · "}
+              {detail.visitor.phone}
             </p>
           ) : (
             <p className="truncate text-xs text-chat-meta">
@@ -781,9 +807,19 @@ export function ConversationView({
       </div>
 
       {isClosed ? (
-        <p className="border-t bg-chat-header px-4 py-3 text-sm text-chat-meta">
-          This conversation is closed and no longer counts toward your active load.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-chat-header px-4 py-3">
+          <p className="text-sm text-chat-meta">
+            This conversation is closed and no longer counts toward your active load.
+          </p>
+          {/* Closed by mistake, or they have come back about the same thing:
+              reopening keeps the transcript rather than starting a second chat
+              beside it. */}
+          {onReopen && (
+            <Button variant="outline" size="sm" disabled={reopening} onClick={handleReopen}>
+              {reopening ? "Reopening…" : "Reopen conversation"}
+            </Button>
+          )}
+        </div>
       ) : (
         <Composer
           key={detail.id}

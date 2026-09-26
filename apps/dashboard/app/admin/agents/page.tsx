@@ -637,6 +637,7 @@ function AgentFormDialog({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [branchId, setBranchId] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -648,10 +649,12 @@ function AgentFormDialog({
     if (state.kind === "edit") {
       setName(state.agent.name);
       setEmail(state.agent.email);
+      setPhone(state.agent.phone ?? "");
       setBranchId(state.agent.branchId);
     } else {
       setName("");
       setEmail("");
+      setPhone("");
       // Preselect the branch being filtered on, or the only branch there is.
       const preferred =
         branches.find((b) => b.id === defaultBranchId) ??
@@ -674,6 +677,9 @@ function AgentFormDialog({
         ...(name.trim() !== agent.name ? { name: name.trim() } : {}),
         ...(email.trim().toLowerCase() !== agent.email ? { email: email.trim() } : {}),
         ...(branchId !== agent.branchId ? { branchId } : {}),
+        // Empty means "take my number back", which is a change like any other,
+        // so this compares against what is stored rather than against "".
+        ...(phone.trim() !== (agent.phone ?? "") ? { phone: phone.trim() || null } : {}),
       }
     : null;
 
@@ -709,7 +715,13 @@ function AgentFormDialog({
         const created = await api<Agent>("/api/admin/agents", {
           method: "POST",
           token,
-          body: JSON.stringify({ branchId, name: name.trim(), email: email.trim(), password }),
+          body: JSON.stringify({
+            branchId,
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim() || null,
+            password,
+          }),
         });
         await onSaved(`${created.name} was added and can sign in with the password you set.`);
       }
@@ -785,6 +797,21 @@ function AgentFormDialog({
             placeholder="name@acme.example"
             autoComplete="off"
             aria-invalid={Boolean(errors.email)}
+          />
+        </Field>
+
+        <Field
+          label="Phone number"
+          error={errors.phone}
+          hint="Optional. Visitors chatting with them can see and call this."
+        >
+          <Input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+92 300 1234567"
+            autoComplete="off"
+            aria-invalid={Boolean(errors.phone)}
           />
         </Field>
 

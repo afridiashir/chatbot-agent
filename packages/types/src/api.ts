@@ -44,6 +44,11 @@ export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
 export interface PublicAgentProfile {
   id: string;
   name: string;
+  /**
+   * A number the visitor may call or message them on, when they have one.
+   * Public by intent — unlike their email, which is also their login.
+   */
+  phone?: string | null;
   avatarUrl: string | null;
   isOnline: boolean;
   branch: { id: string; name: string };

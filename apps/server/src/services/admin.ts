@@ -430,6 +430,7 @@ export async function createAgent(
       name: input.name,
       email,
       passwordHash: await hashPassword(input.password),
+      phone: input.phone,
       // New agents start offline so they choose when to take chats.
       isOnline: false,
     },
@@ -477,6 +478,9 @@ export async function updateAgent(
         ...(input.branchId !== undefined ? { branchId: input.branchId } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
+        // Null is a real answer here — an agent taking their number back — so
+        // this follows `undefined` rather than falsiness.
+        ...(input.phone !== undefined ? { phone: input.phone } : {}),
         ...(deactivating ? { isOnline: false } : {}),
       },
     });

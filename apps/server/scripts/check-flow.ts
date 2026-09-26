@@ -641,6 +641,92 @@ async function main(): Promise<void> {
   );
   check("an empty label clears it", cleared.data?.displayName, null);
 
+  console.log("\n14. A closed conversation can be opened again");
+  // Ended by mistake, or they wrote back about the same thing: reopening keeps
+  // the transcript rather than starting a second chat beside it.
+  const reopenPhone = `+92 300 ${String(Date.now()).slice(-7)}`;
+  const reopenDevice = nextVisitorId();
+  const reopenVisitor = {
+    name: "Reopen Tester",
+    phone: reopenPhone,
+    maritalStatus: "SINGLE" as const,
+    city: "Karachi",
+  };
+  await setOnline(BILAL, true);
+  const toClose = await request<AssignmentResult>("/api/conversations", {
+    method: "POST",
+    body: JSON.stringify({ visitorId: reopenDevice, agentId: BILAL, visitor: reopenVisitor }),
+  });
+  const reopenId = toClose.data?.available ? toClose.data.conversation.id : "";
+  await request(`/api/conversations/${reopenId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({
+      senderType: "VISITOR",
+      visitorId: reopenDevice,
+      content: "Said before it closed",
+    }),
+  });
+  await request(`/api/conversations/${reopenId}/close`, { method: "POST", token: bilalToken });
+
+  const reopened = await request<Conversation>(`/api/conversations/${reopenId}/reopen`, {
+    method: "POST",
+    token: bilalToken,
+  });
+  check("the agent can reopen it", reopened.data?.status, "ACTIVE");
+  check("and it is no longer marked closed", reopened.data?.closedAt, null);
+
+  const kept = await request<{ messages: Message[] }>(
+    `/api/conversations/${reopenId}?visitorId=${reopenDevice}`,
+  );
+  check(
+    "the transcript came with it",
+    (kept.data?.messages ?? []).some((m) => m.content === "Said before it closed"),
+    true,
+  );
+
+  const speakingAgain = await request<Message>(`/api/conversations/${reopenId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ senderType: "VISITOR", visitorId: reopenDevice, content: "And after" }),
+  });
+  check("and the visitor can write in it again", speakingAgain.status, 201);
+
+  check(
+    "reopening an already-open chat is a no-op, not an error",
+    (
+      await request<Conversation>(`/api/conversations/${reopenId}/reopen`, {
+        method: "POST",
+        token: bilalToken,
+      })
+    ).data?.status,
+    "ACTIVE",
+  );
+  check(
+    "a visitor cannot reopen one",
+    (await request(`/api/conversations/${reopenId}/reopen`, { method: "POST" })).status,
+    401,
+  );
+
+  console.log("\n14b. The team can correct a client's name");
+  const corrected = await request<{ name: string; displayName: string | null }>(
+    `/api/conversations/${reopenId}/visitor`,
+    {
+      method: "PATCH",
+      token: bilalToken,
+      body: JSON.stringify({ displayName: "R1- LHR", name: "Rehan Tester" }),
+    },
+  );
+  check("the name they gave can be fixed", corrected.data?.name, "Rehan Tester");
+  check("and the label set at the same time", corrected.data?.displayName, "R1- LHR");
+
+  const fixedInbox = await request<ConversationSummary[]>(`/api/agents/${BILAL}/conversations`, {
+    token: bilalToken,
+  });
+  check(
+    "the inbox shows the corrected name",
+    fixedInbox.data?.find((row) => row.id === reopenId)?.visitor.name,
+    "Rehan Tester",
+  );
+
   console.log(`\n${passed} passed, ${failed} failed`);
   console.log("Run `pnpm db:seed` to restore the demo data.\n");
   if (failed > 0) process.exitCode = 1;

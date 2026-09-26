@@ -42,6 +42,8 @@ export interface Inbox {
   /** Uploads a file or voice note, then sends it. Needs a live connection. */
   sendMedia: (media: MediaSend) => Promise<void>;
   close: (conversationId: string) => Promise<void>;
+  /** Opens a closed conversation again, keeping its transcript. */
+  reopen: (conversationId: string) => Promise<void>;
   setOnline: (isOnline: boolean) => Promise<Agent>;
   /** The company's labels, for the picker on a conversation. */
   labels: Label[];
@@ -51,7 +53,7 @@ export interface Inbox {
    * What the team files this client under. Empty clears it. It follows the
    * person, so every chat of theirs is relabelled at once.
    */
-  renameVisitor: (conversationId: string, displayName: string) => Promise<void>;
+  renameVisitor: (conversationId: string, displayName: string, name?: string) => Promise<void>;
   /** Conversation ids where the visitor is currently typing. */
   typingIn: Record<string, boolean>;
   /**
@@ -60,6 +62,8 @@ export interface Inbox {
    * same as offline, and the dot is only drawn once there is an answer.
    */
   visitorOnline: Record<string, boolean>;
+  /** When each visitor was last in the chat, for the "last seen" line. */
+  visitorLastSeen: Record<string, string | null>;
   /** Called on every keystroke; throttled internally. */
   notifyTyping: () => void;
   /** Sent but not yet confirmed by the server, for the open conversation. */
@@ -93,6 +97,7 @@ export function useInbox(
 
   const [typingIn, setTypingIn] = useState<Record<string, boolean>>({});
   const [visitorOnline, setVisitorOnline] = useState<Record<string, boolean>>({});
+  const [visitorLastSeen, setVisitorLastSeen] = useState<Record<string, string | null>>({});
   const [labels, setLabels] = useState<Label[]>([]);
   // Read inside the socket handler for a newly assigned chat, which must not
   // close over a stale list.
@@ -299,23 +304,28 @@ export function useInbox(
       }
     });
 
-    socket.on("visitor:renamed", ({ conversationId, displayName }) => {
+    socket.on("visitor:renamed", ({ conversationId, displayName, name }) => {
       setConversations((current) =>
         current.map((row) =>
-          row.id === conversationId ? { ...row, visitor: { ...row.visitor, displayName } } : row,
+          row.id === conversationId
+            ? { ...row, visitor: { ...row.visitor, displayName, name } }
+            : row,
         ),
       );
       setDetail((current) =>
         current && current.id === conversationId
-          ? { ...current, visitor: { ...current.visitor, displayName } }
+          ? { ...current, visitor: { ...current.visitor, displayName, name } }
           : current,
       );
     });
 
-    socket.on("visitor:status", ({ conversationId, isOnline }) => {
+    socket.on("visitor:status", ({ conversationId, isOnline, lastSeenAt }) => {
       setVisitorOnline((current) =>
         current[conversationId] === isOnline ? current : { ...current, [conversationId]: isOnline },
       );
+      if (lastSeenAt !== undefined) {
+        setVisitorLastSeen((current) => ({ ...current, [conversationId]: lastSeenAt }));
+      }
     });
 
     socket.on("message:new", (message: Message) => {
@@ -432,6 +442,22 @@ export function useInbox(
 
     socket.on("agent:profile", (profile) => {
       if (profile.agentId === agentId) onProfileRef.current?.(profile);
+    });
+
+    // Closed by mistake, or the visitor came back to the same thing.
+    socket.on("conversation:reopened", (conversation) => {
+      setConversations((current) =>
+        current.map((row) =>
+          row.id === conversation.id
+            ? { ...row, status: conversation.status, closedAt: conversation.closedAt }
+            : row,
+        ),
+      );
+      setDetail((current) =>
+        current && current.id === conversation.id
+          ? { ...current, status: conversation.status, closedAt: conversation.closedAt }
+          : current,
+      );
     });
 
     socket.on("conversation:closed", (conversation) => {
@@ -670,6 +696,18 @@ export function useInbox(
     [token, stopTyping],
   );
 
+  const reopen = useCallback(
+    async (conversationId: string) => {
+      try {
+        await api(`/api/conversations/${conversationId}/reopen`, { method: "POST", token });
+        // The broadcast moves the row back; nothing to do here.
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Could not reopen that conversation");
+      }
+    },
+    [token],
+  );
+
   const close = useCallback(
     async (conversationId: string) => {
       await api(`/api/conversations/${conversationId}/close`, { method: "POST", token });
@@ -700,12 +738,15 @@ export function useInbox(
   );
 
   const renameVisitor = useCallback(
-    async (conversationId: string, displayName: string) => {
+    async (conversationId: string, displayName: string, name?: string) => {
       try {
         await api(`/api/conversations/${conversationId}/visitor`, {
           method: "PATCH",
           token,
-          body: JSON.stringify({ displayName: displayName.trim() || null }),
+          body: JSON.stringify({
+            displayName: displayName.trim() || null,
+            ...(name !== undefined ? { name: name.trim() } : {}),
+          }),
         });
         // The broadcast comes back to this socket too and is what updates the
         // rows, including the other chats this person has.
@@ -739,12 +780,14 @@ export function useInbox(
     sendMedia,
     react,
     close,
+    reopen,
     setOnline,
     labels,
     toggleLabel,
     renameVisitor,
     typingIn,
     visitorOnline,
+    visitorLastSeen,
     notifyTyping,
     pending: selectedId ? outbox.filter((m) => m.conversationId === selectedId) : [],
     pendingCount: outbox.length,

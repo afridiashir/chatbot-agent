@@ -95,6 +95,21 @@ export function Widget({ config }: { config: WidgetConfig }) {
                       : "away · replies when back"}
               </p>
             </div>
+
+            {/* Their number, where they have given one: a visitor who would
+                rather call than type should not have to ask for it. */}
+            {agent.phone && (
+              <a
+                href={`tel:${agent.phone.replace(/\s/g, "")}`}
+                aria-label={`Call ${agent.name} on ${agent.phone}`}
+                title={agent.phone}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+                  <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.25 1z" />
+                </svg>
+              </a>
+            )}
           </>
         ) : (
           <>

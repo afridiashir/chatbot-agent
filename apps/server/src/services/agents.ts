@@ -33,6 +33,7 @@ export async function listColleagues(
     select: {
       id: true,
       name: true,
+      phone: true,
       avatarKey: true,
       isOnline: true,
       branch: { select: { id: true, name: true } },
@@ -42,6 +43,7 @@ export async function listColleagues(
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
+    phone: row.phone,
     avatarUrl: avatarPath(row),
     isOnline: row.isOnline,
     branch: { id: row.branch.id, name: row.branch.name },
@@ -59,6 +61,7 @@ export async function getPublicAgentProfile(agentId: string): Promise<PublicAgen
       id: true,
       name: true,
       avatarKey: true,
+      phone: true,
       isOnline: true,
       isActive: true,
       branch: { select: { id: true, name: true, isActive: true } },
@@ -68,6 +71,7 @@ export async function getPublicAgentProfile(agentId: string): Promise<PublicAgen
   return {
     id: agent.id,
     name: agent.name,
+    phone: agent.phone,
     avatarUrl: avatarPath(agent),
     isOnline: agent.isOnline,
     branch: { id: agent.branch.id, name: agent.branch.name },
