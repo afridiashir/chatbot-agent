@@ -259,6 +259,52 @@ async function main(): Promise<void> {
   check("signs in with the password the admin set", newAgentLogin.status, 200);
   if (!newAgentToken) throw new Error("New agent could not sign in");
 
+  console.log("\n5a. Social accounts are kept for an agent, and only admins see them");
+  const socialPath = `/api/admin/agents/${agent.id}/social-accounts`;
+  const noSocial = await request<unknown[]>(socialPath, { token });
+  check("a new agent has none", noSocial.data, []);
+
+  const accounts = [
+    { platform: "Facebook", username: "agent.fb", password: " spaces kept " },
+    { platform: "Instagram", username: "agent.ig", password: "ig-pass" },
+  ];
+  const savedSocial = await request<unknown[]>(socialPath, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ accounts }),
+  });
+  check("an admin can save them", savedSocial.status, 200);
+  check("and reads them back as saved", (await request(socialPath, { token })).data, accounts);
+
+  const overview = await request<BranchWithAgents[]>("/api/admin/branches", { token });
+  const onCard = overview.data?.flatMap((b) => b.agents).find((a) => a.id === agent.id);
+  check("the agent list carries the platforms, for the card", onCard?.socialPlatforms, [
+    "Facebook",
+    "Instagram",
+  ]);
+  check("but not the logins", JSON.stringify(overview.data).includes("ig-pass"), false);
+
+  const halfFilled = await request(socialPath, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ accounts: [{ platform: "TikTok", username: "x", password: "" }] }),
+  });
+  check("an account without a password is refused", halfFilled.status, 400);
+
+  check(
+    "the agent cannot read them",
+    (await request(socialPath, { token: newAgentToken })).status,
+    401,
+  );
+  const ownRecord = await request<Record<string, unknown>>("/api/auth/me", {
+    token: newAgentToken,
+  });
+  check(
+    "nor are they on the agent's own record",
+    ownRecord.data && "socialAccounts" in ownRecord.data,
+    false,
+  );
+
   await request(`/api/agents/${agent.id}/status`, {
     method: "PATCH",
     token: newAgentToken,

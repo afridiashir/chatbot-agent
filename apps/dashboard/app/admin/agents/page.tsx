@@ -20,6 +20,9 @@ import {
 import type { Agent, AgentWithLoad, BranchWithAgents, DeactivateAgentResult } from "@repo/types";
 import { AdminShell } from "@/components/AdminShell";
 import { Field, PasswordInput, firstFieldErrors, selectClass } from "@/components/admin/form";
+import { SocialAccountDetailDialog } from "@/components/admin/SocialAccountDetailDialog";
+import { SocialAccountsDialog } from "@/components/admin/SocialAccountsDialog";
+import { SocialIcon } from "@/components/admin/SocialIcon";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ChatLinkDialog, type ChatLinkTarget } from "@/components/ChatLinkDialog";
 import { Avatar } from "@/components/ui/avatar";
@@ -66,6 +69,8 @@ type DialogState =
   | { kind: "create" }
   | { kind: "edit"; agent: AgentRow }
   | { kind: "password"; agent: AgentRow }
+  | { kind: "social"; agent: AgentRow; addNew?: boolean }
+  | { kind: "socialAccount"; agent: AgentRow; index: number }
   | { kind: "photo"; agent: AgentRow }
   | { kind: "deactivate"; agent: AgentRow }
   | null;
@@ -321,6 +326,8 @@ function Agents({
               busy={busyId === agent.id}
               onEdit={() => setDialog({ kind: "edit", agent })}
               onPassword={() => setDialog({ kind: "password", agent })}
+              onOpenSocial={(index) => setDialog({ kind: "socialAccount", agent, index })}
+              onAddSocial={() => setDialog({ kind: "social", agent, addNew: true })}
               onPhoto={() => setDialog({ kind: "photo", agent })}
               onChatLink={() => setChatLink({ kind: "agent", id: agent.id, name: agent.name })}
               onDeactivate={() => setDialog({ kind: "deactivate", agent })}
@@ -353,6 +360,24 @@ function Agents({
         agent={dialog?.kind === "password" ? dialog.agent : null}
         onClose={() => setDialog(null)}
         onSaved={onSaved}
+      />
+
+      <SocialAccountsDialog
+        token={token}
+        agent={dialog?.kind === "social" ? dialog.agent : null}
+        addNew={dialog?.kind === "social" && Boolean(dialog.addNew)}
+        onClose={() => setDialog(null)}
+        onSaved={onSaved}
+      />
+
+      <SocialAccountDetailDialog
+        token={token}
+        agent={dialog?.kind === "socialAccount" ? dialog.agent : null}
+        index={dialog?.kind === "socialAccount" ? dialog.index : 0}
+        onClose={() => setDialog(null)}
+        onEdit={() => {
+          if (dialog?.kind === "socialAccount") setDialog({ kind: "social", agent: dialog.agent });
+        }}
       />
 
       <ChatLinkDialog target={chatLink} onClose={() => setChatLink(null)} />
@@ -427,6 +452,8 @@ function AgentCard({
   busy,
   onEdit,
   onPassword,
+  onOpenSocial,
+  onAddSocial,
   onPhoto,
   onChatLink,
   onDeactivate,
@@ -436,6 +463,8 @@ function AgentCard({
   busy: boolean;
   onEdit: () => void;
   onPassword: () => void;
+  onOpenSocial: (index: number) => void;
+  onAddSocial: () => void;
   onPhoto: () => void;
   onChatLink: () => void;
   onDeactivate: () => void;
@@ -521,6 +550,32 @@ function AgentCard({
           <dd className="text-sm font-semibold">{agent.activeConversationCount}</dd>
         </div>
       </dl>
+
+      {/* The platforms they have a login kept for. Each opens that login; the
+          dashed one adds another. */}
+      <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+        {(agent.socialPlatforms ?? []).map((platform, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => onOpenSocial(index)}
+            aria-label={`${agent.name}'s ${platform} account`}
+            title={platform}
+            className="rounded-full transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <SocialIcon platform={platform} />
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={onAddSocial}
+          aria-label={`Add a social account for ${agent.name}`}
+          title="Add a social account"
+          className="flex size-8 items-center justify-center rounded-full border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+      </div>
 
       <p className="px-4 pt-3 pb-1 text-xs text-muted-foreground">
         Joined{" "}

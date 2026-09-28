@@ -1,3 +1,4 @@
+import type { Prisma } from "@repo/db";
 import { mediaPath } from "./media-link.js";
 import type {
   AdminRow,
@@ -25,6 +26,7 @@ import type {
   ConversationSummary,
   ConversationWithAgent,
   Message,
+  SocialAccount,
   VisitorSummary,
 } from "@repo/types";
 
@@ -138,6 +140,24 @@ export function toAgent(row: AgentRow): Agent {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/**
+ * An agent's social accounts, read back from JSON, so anything that is not a
+ * well-formed entry is dropped. Admin-only: `toAgent` never calls this.
+ */
+export function toSocialAccounts(value: Prisma.JsonValue): SocialAccount[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) =>
+    entry &&
+    typeof entry === "object" &&
+    !Array.isArray(entry) &&
+    typeof entry.platform === "string" &&
+    typeof entry.username === "string" &&
+    typeof entry.password === "string"
+      ? [{ platform: entry.platform, username: entry.username, password: entry.password }]
+      : [],
+  );
 }
 
 export function toAgentWithLoad(row: AgentRow, activeConversationCount: number): AgentWithLoad {

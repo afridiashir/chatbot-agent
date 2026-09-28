@@ -1,7 +1,7 @@
 import { prisma } from "@repo/db";
 import type { AgentWithLoad, Branch, BranchWithAgents } from "@repo/types";
 import { notFound } from "../lib/http.js";
-import { toAgentWithLoad, toBranch } from "../lib/serialize.js";
+import { toAgentWithLoad, toBranch, toSocialAccounts } from "../lib/serialize.js";
 
 /**
  * Ordering agents by `createdAt` then `id` gives every list — and the routing
@@ -61,7 +61,12 @@ export async function listBranchesWithAgents(where: {
 
   return rows.map((row) => ({
     ...toBranch(row),
-    agents: row.agents.map((agent) => toAgentWithLoad(agent, agent._count.conversations)),
+    agents: row.agents.map((agent) => ({
+      ...toAgentWithLoad(agent, agent._count.conversations),
+      // The platforms only, for the icons on each card. The logins themselves
+      // stay behind their own route and are fetched when one is opened.
+      socialPlatforms: toSocialAccounts(agent.socialAccounts).map((account) => account.platform),
+    })),
   }));
 }
 

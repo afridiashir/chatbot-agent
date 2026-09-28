@@ -15,6 +15,7 @@ import {
   loginBodySchema,
   updateAgentBodySchema,
   updateBranchBodySchema,
+  setSocialAccountsBodySchema,
   leadIdParamSchema,
   adminIdParamSchema,
   avatarUploadBodySchema,
@@ -68,14 +69,11 @@ import {
   loginAdmin,
   transferConversation,
   updateAgent,
+  getSocialAccounts,
+  setSocialAccounts,
   updateBranch,
 } from "../services/admin.js";
-import {
-  createLabel,
-  deleteLabel,
-  listLabelsWithUsage,
-  updateLabel,
-} from "../services/labels.js";
+import { createLabel, deleteLabel, listLabelsWithUsage, updateLabel } from "../services/labels.js";
 import { getAnalytics } from "../services/analytics.js";
 import { listBranchesWithAgents } from "../services/branches.js";
 
@@ -219,6 +217,32 @@ adminRouter.patch(
 );
 
 /*
+ * The social media logins kept for an agent. Admin routes only — nothing the
+ * agent signs in with can read them.
+ */
+
+/** GET /api/admin/agents/:agentId/social-accounts */
+adminRouter.get(
+  "/agents/:agentId/social-accounts",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    sendOk(res, await getSocialAccounts(agentId, currentAdmin(req)));
+  }),
+);
+
+/** PUT /api/admin/agents/:agentId/social-accounts */
+adminRouter.put(
+  "/agents/:agentId/social-accounts",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
+    const body = parseOrThrow(setSocialAccountsBodySchema, req.body, "social accounts");
+    sendOk(res, await setSocialAccounts(agentId, body, currentAdmin(req)));
+  }),
+);
+
+/*
  * An agent's profile photo, set by an admin: company admins for any agent,
  * branch admins for agents in their branch. Same upload flow as the agent's
  * own, and visitors in an open chat see the new photo straight away.
@@ -243,7 +267,10 @@ adminRouter.put(
   asyncHandler(async (req, res) => {
     const { agentId } = parseOrThrow(agentIdParamSchema, req.params, "agent id");
     const { uploadToken } = parseOrThrow(setAvatarBodySchema, req.body, "photo");
-    const agent = await setAvatar(agentId, uploadToken, { kind: "admin", admin: currentAdmin(req) });
+    const agent = await setAvatar(agentId, uploadToken, {
+      kind: "admin",
+      admin: currentAdmin(req),
+    });
     emitAgentProfile(agent, await openConversationIds(agentId));
     sendOk(res, agent);
   }),

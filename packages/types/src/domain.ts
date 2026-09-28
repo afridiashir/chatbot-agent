@@ -71,9 +71,29 @@ export interface Agent {
   updatedAt: string;
 }
 
+/**
+ * A social media login the company keeps for an agent.
+ *
+ * Admin-only. It is deliberately not a field of `Agent`, which is also what the
+ * agent's own session and their colleagues are sent; it is only ever returned
+ * by the admin social-accounts routes.
+ */
+export interface SocialAccount {
+  /** Where the account is — "Facebook", "Instagram", "TikTok" and so on. */
+  platform: string;
+  username: string;
+  password: string;
+}
+
 /** An agent plus its live workload, used by routing and the admin view. */
 export interface AgentWithLoad extends Agent {
   activeConversationCount: number;
+  /**
+   * The platforms of the agent's social accounts, in the order they are kept,
+   * for the icons on the admin's agent cards. Admin overview only, and never
+   * the logins themselves.
+   */
+  socialPlatforms?: string[];
 }
 
 /** The person chatting, with the details they gave in the pre-chat form. */

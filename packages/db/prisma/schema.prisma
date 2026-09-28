@@ -101,22 +101,26 @@ model Branch {
 }
 
 model Agent {
-  id           String   @id @default(cuid())
-  branchId     String
-  name         String
-  email        String   @unique
+  id             String   @id @default(cuid())
+  branchId       String
+  name           String
+  email          String   @unique
   /// A number the visitor may call or message this agent on. Optional: not
   /// every agent has one to hand out, and the widget only offers it when set.
   /// Unlike an email — which is also a login — this is meant to be public.
-  phone        String?
-  passwordHash String
+  phone          String?
+  passwordHash   String
   /// Profile photo in the media bucket. Null shows generated initials instead.
-  avatarKey    String?
-  isOnline     Boolean  @default(false)
+  avatarKey      String?
+  /// Social media logins the company keeps for this agent, as
+  /// `[{ platform, username, password }]`. Admin-only: never serialised onto
+  /// the agent's own record, only through the admin social-accounts routes.
+  socialAccounts Json     @default("[]")
+  isOnline       Boolean  @default(false)
   /// Soft delete. An inactive agent cannot sign in and is never routed to.
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
   conversations Conversation[]

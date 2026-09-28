@@ -152,6 +152,21 @@ export const createAgentBodySchema = z.object({
   phone: agentPhoneSchema,
 });
 
+/**
+ * The social media logins kept for an agent, replaced as a whole on each save.
+ * The password is kept as typed — it is there to be read back and used, so
+ * nothing about it is trimmed or checked beyond being present.
+ */
+export const socialAccountSchema = z.object({
+  platform: z.string().trim().min(1, "Enter the platform").max(40, "That name is too long"),
+  username: z.string().trim().min(1, "Enter the username").max(200, "That username is too long"),
+  password: z.string().min(1, "Enter the password").max(200, "That password is too long"),
+});
+
+export const setSocialAccountsBodySchema = z.object({
+  accounts: z.array(socialAccountSchema).max(50, "That is too many accounts for one agent"),
+});
+
 export const updateAgentBodySchema = z
   .object({
     name: nameSchema.optional(),
@@ -515,6 +530,7 @@ export type CreateBranchBody = z.infer<typeof createBranchBodySchema>;
 export type UpdateBranchBody = z.infer<typeof updateBranchBodySchema>;
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;
 export type UpdateAgentBody = z.infer<typeof updateAgentBodySchema>;
+export type SetSocialAccountsBody = z.infer<typeof setSocialAccountsBodySchema>;
 export type ListAdminConversationsQuery = z.infer<typeof listAdminConversationsQuerySchema>;
 export type ListLeadsQuery = z.infer<typeof listLeadsQuerySchema>;
 export type LeadsTableQuery = z.infer<typeof leadsTableQuerySchema>;

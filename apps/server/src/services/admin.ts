@@ -17,6 +17,7 @@ import type {
   LeadDetail,
   LeadTablePage,
   MaritalStatus,
+  SocialAccount,
 } from "@repo/types";
 import type {
   AdminSearchQuery,
@@ -30,6 +31,7 @@ import type {
   ListLeadsQuery,
   LeadsTableQuery,
   LoginBody,
+  SetSocialAccountsBody,
   UpdateAgentBody,
   UpdateBranchBody,
 } from "@repo/validation";
@@ -49,6 +51,7 @@ import {
   toAdmin,
   toAgent,
   toBranch,
+  toSocialAccounts,
   toConversation,
   toConversationDetail,
   toConversationWithAgent,
@@ -510,6 +513,45 @@ export async function updateAgent(
     closedConversations: closed.length,
     closed: closed.map(toConversation),
   };
+}
+
+/*
+ * The social media logins kept for an agent. Their own record never carries
+ * them — `toAgent` is also what the agent and their colleagues are sent — so
+ * these two are the only way in or out, and both are admin routes.
+ */
+
+async function socialAccountsAgent(agentId: string, actor: AdminTokenPayload) {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { branchId: true, socialAccounts: true, branch: { select: { companyId: true } } },
+  });
+  if (!agent || agent.branch.companyId !== actor.companyId) throw notFound("Agent not found");
+  // Same rule as editing them: a branch admin only reaches their own agents.
+  if (actor.branchId && agent.branchId !== actor.branchId) throw notFound("Agent not found");
+  return agent;
+}
+
+export async function getSocialAccounts(
+  agentId: string,
+  actor: AdminTokenPayload,
+): Promise<SocialAccount[]> {
+  return toSocialAccounts((await socialAccountsAgent(agentId, actor)).socialAccounts);
+}
+
+/** Replaces the whole list: what the admin saved is what is kept. */
+export async function setSocialAccounts(
+  agentId: string,
+  input: SetSocialAccountsBody,
+  actor: AdminTokenPayload,
+): Promise<SocialAccount[]> {
+  await socialAccountsAgent(agentId, actor);
+  const updated = await prisma.agent.update({
+    where: { id: agentId },
+    data: { socialAccounts: input.accounts },
+    select: { socialAccounts: true },
+  });
+  return toSocialAccounts(updated.socialAccounts);
 }
 
 /* ------------------------------- conversations ------------------------------ */
