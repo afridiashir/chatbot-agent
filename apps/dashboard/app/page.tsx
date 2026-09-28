@@ -11,6 +11,7 @@ import {
   Link2,
   MailWarning,
   Search,
+  Tag,
 } from "lucide-react";
 import { ChatLinkDialog } from "@/components/ChatLinkDialog";
 import { isMuted, playChime, setMuted, unlockSound } from "@/lib/sound";
@@ -110,6 +111,8 @@ function Dashboard({
   }
   const [tab, setTab] = useState<"ACTIVE" | "CLOSED">("ACTIVE");
   const [sort, setSort] = useState<"recent" | "unread">("recent");
+  /** A label id, "none" for chats with no label, or "" for all of them. */
+  const [labelFilter, setLabelFilter] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   // Re-read after any send or selection change so the list’s draft hints
@@ -127,17 +130,35 @@ function Dashboard({
     }
   }
 
+  // A label deleted by an admin while it was picked would otherwise leave the
+  // list filtered by something nobody can see or unpick.
+  useEffect(() => {
+    if (labelFilter && labelFilter !== "none" && !inbox.labels.some((l) => l.id === labelFilter)) {
+      setLabelFilter("");
+    }
+  }, [inbox.labels, labelFilter]);
+
+  /*
+   * Applied before the tabs rather than inside them, so the Open and Closed
+   * counts are counts of what the filter shows — not of chats it has hidden.
+   */
+  const labelled = useMemo(() => {
+    if (!labelFilter) return inbox.conversations;
+    if (labelFilter === "none") return inbox.conversations.filter((row) => row.labels.length === 0);
+    return inbox.conversations.filter((row) => row.labels.some((l) => l.id === labelFilter));
+  }, [inbox.conversations, labelFilter]);
+
   const counts = useMemo(
     () => ({
-      ACTIVE: inbox.conversations.filter((row) => row.status === "ACTIVE").length,
-      CLOSED: inbox.conversations.filter((row) => row.status === "CLOSED").length,
+      ACTIVE: labelled.filter((row) => row.status === "ACTIVE").length,
+      CLOSED: labelled.filter((row) => row.status === "CLOSED").length,
     }),
-    [inbox.conversations],
+    [labelled],
   );
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const inTab = inbox.conversations.filter((row) => row.status === tab);
+    const inTab = labelled.filter((row) => row.status === tab);
     const matched = needle
       ? inTab.filter(
           (row) =>
@@ -161,14 +182,14 @@ function Dashboard({
     const unreadOf = (row: (typeof matched)[number]) =>
       row.id === inbox.selectedId ? 0 : row.unreadCount;
     return matched.slice().sort((a, b) => Number(unreadOf(b) > 0) - Number(unreadOf(a) > 0));
-  }, [inbox.conversations, inbox.selectedId, query, tab, sort]);
+  }, [labelled, inbox.selectedId, query, tab, sort]);
 
   const unreadInTab = useMemo(
     () =>
-      inbox.conversations.filter(
+      labelled.filter(
         (row) => row.status === tab && row.id !== inbox.selectedId && row.unreadCount > 0,
       ).length,
-    [inbox.conversations, inbox.selectedId, tab],
+    [labelled, inbox.selectedId, tab],
   );
 
   return (
@@ -331,6 +352,31 @@ function Dashboard({
               )}
             </button>
           </div>
+
+          {/* Only once the company has labels: an empty picker is a question
+              with no answers. */}
+          {inbox.labels.length > 0 && (
+            <label className="mt-2 flex items-center gap-1.5 text-xs text-chat-meta">
+              <Tag className="size-3.5 shrink-0" aria-hidden />
+              <select
+                value={labelFilter}
+                onChange={(e) => setLabelFilter(e.target.value)}
+                aria-label="Filter by label"
+                className={cn(
+                  "min-w-0 flex-1 rounded-full border border-input bg-background px-2.5 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none",
+                  labelFilter && "border-success text-success",
+                )}
+              >
+                <option value="">All labels</option>
+                {inbox.labels.map((label) => (
+                  <option key={label.id} value={label.id}>
+                    {label.name}
+                  </option>
+                ))}
+                <option value="none">No label</option>
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -340,9 +386,11 @@ function Dashboard({
             <p className="p-4 text-sm text-chat-meta">
               {query.trim()
                 ? "No conversations match that search."
-                : tab === "ACTIVE"
-                  ? "Nothing open. New chats appear here the moment they are assigned."
-                  : "No closed conversations yet. Chats you close are kept here."}
+                : labelFilter
+                  ? "No conversations with that label here."
+                  : tab === "ACTIVE"
+                    ? "Nothing open. New chats appear here the moment they are assigned."
+                    : "No closed conversations yet. Chats you close are kept here."}
             </p>
           ) : (
             visible.map((conversation) => {

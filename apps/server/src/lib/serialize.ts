@@ -223,7 +223,9 @@ export function toVisitorSummary(row: VisitorRow, forStaff = false): VisitorSumm
     phone: row.phone,
     maritalStatus: row.maritalStatus,
     city: row.city,
-    ...(forStaff ? { displayName: row.displayName } : {}),
+    ...(forStaff
+      ? { displayName: row.displayName, lastSeenAt: row.lastSeenAt?.toISOString() ?? null }
+      : {}),
   };
 }
 

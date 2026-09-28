@@ -496,6 +496,17 @@ export function ConversationView({
   const endRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
 
+  // "Last seen just now" has to become "5 minutes ago" without anything else
+  // happening in the chat, so the line is redrawn once a minute while shown.
+  const showsLastSeen =
+    visitorOnline === false && Boolean(visitorLastSeen ?? detail?.visitor.lastSeenAt);
+  const [, setMinute] = useState(0);
+  useEffect(() => {
+    if (!showsLastSeen) return;
+    const timer = setInterval(() => setMinute((tick) => tick + 1), 60_000);
+    return () => clearInterval(timer);
+  }, [showsLastSeen]);
+
   const registerRef = useCallback((messageId: string, element: HTMLDivElement | null) => {
     if (element) bubbleRefs.current.set(messageId, element);
     else bubbleRefs.current.delete(messageId);
@@ -677,7 +688,7 @@ export function ConversationView({
                 {detail.visitor.phone}
               </span>
             </p>
-          ) : visitorOnline === false && (visitorLastSeen ?? detail.visitor.lastSeenAt) ? (
+          ) : showsLastSeen ? (
             <p className="truncate text-xs text-chat-meta">
               {`Last seen ${sinceWhen(visitorLastSeen ?? detail.visitor.lastSeenAt!)}`}
               {" · "}
