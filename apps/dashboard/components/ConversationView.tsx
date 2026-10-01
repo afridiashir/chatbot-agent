@@ -7,6 +7,7 @@ import {
   FileAudio,
   FileText,
   Film,
+  Info,
   Mic,
   Paperclip,
   Reply,
@@ -14,7 +15,6 @@ import {
   ShieldAlert,
   Smile,
   Trash2,
-  UserRoundPlus,
   X,
 } from "lucide-react";
 import {
@@ -46,6 +46,7 @@ import { quoteText, toQuote } from "@/lib/quote";
 import { formatClock, formatDateSeparator, isNewDay, sinceWhen } from "@/lib/format";
 import { MessageText } from "@/components/MessageText";
 import { ShareColleagueDialog } from "@/components/ShareColleagueDialog";
+import { VisitorInfoPanel } from "@/components/VisitorInfoPanel";
 import { VisitorName } from "@/components/VisitorName";
 import { ReceiptTicks } from "@/components/ReceiptTicks";
 import { checkFile } from "@/lib/media";
@@ -485,6 +486,8 @@ export function ConversationView({
   const [reopening, setReopening] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [sharingBusy, setSharingBusy] = useState(false);
+  /** The contact info panel, which also holds sharing and closing. */
+  const [infoOpen, setInfoOpen] = useState(false);
   /** The message being replied to, shown above the box until sent or dropped. */
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   /** Briefly highlighted after jumping to it from a quote. */
@@ -506,6 +509,12 @@ export function ConversationView({
     const timer = setInterval(() => setMinute((tick) => tick + 1), 60_000);
     return () => clearInterval(timer);
   }, [showsLastSeen]);
+
+  // Another chat is another person: their panel starts shut.
+  const detailId = detail?.id;
+  useEffect(() => {
+    setInfoOpen(false);
+  }, [detailId]);
 
   const registerRef = useCallback((messageId: string, element: HTMLDivElement | null) => {
     if (element) bubbleRefs.current.set(messageId, element);
@@ -635,225 +644,244 @@ export function ConversationView({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="flex items-center gap-3 border-b bg-chat-header px-3 py-2.5 md:px-4">
-        {/* Phone only: the list is a separate screen there, so there has to be
+    <div className="relative flex min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex items-center gap-3 border-b bg-chat-header px-3 py-2.5 md:px-4">
+          {/* Phone only: the list is a separate screen there, so there has to be
             a way back to it. From `md` up both panes are visible at once. */}
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to conversations"
-            className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta hover:bg-accent md:hidden"
-          >
-            <ArrowLeft className="size-5" />
-          </button>
-        )}
-        <span className="relative shrink-0">
-          <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
-          {visitorOnline !== undefined && (
-            <span
-              // Ringed in the header's own colour so it reads as a badge on the
-              // avatar rather than a dot floating beside it.
-              className={cn(
-                "absolute right-0 bottom-0 size-3 rounded-full ring-2 ring-chat-header",
-                visitorOnline ? "bg-online" : "bg-muted-foreground/50",
-              )}
-              title={visitorOnline ? "In the chat now" : "Not in the chat"}
-              aria-label={visitorOnline ? "Visitor is online" : "Visitor is offline"}
-            />
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to conversations"
+              className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta hover:bg-accent md:hidden"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
           )}
-        </span>
+          <span className="relative shrink-0">
+            <Avatar name={detail.visitor.name} seed={detail.visitor.id} size="md" />
+            {visitorOnline !== undefined && (
+              <span
+                // Ringed in the header's own colour so it reads as a badge on the
+                // avatar rather than a dot floating beside it.
+                className={cn(
+                  "absolute right-0 bottom-0 size-3 rounded-full ring-2 ring-chat-header",
+                  visitorOnline ? "bg-online" : "bg-muted-foreground/50",
+                )}
+                title={visitorOnline ? "In the chat now" : "Not in the chat"}
+                aria-label={visitorOnline ? "Visitor is online" : "Visitor is offline"}
+              />
+            )}
+          </span>
 
-        <div className="min-w-0 flex-1">
-          {onRenameVisitor ? (
-            <VisitorName
-              name={detail.visitor.name}
-              displayName={detail.visitor.displayName}
-              onRename={onRenameVisitor}
-              className="text-sm font-semibold"
-            />
-          ) : (
-            <p className="truncate text-sm font-semibold">
-              {detail.visitor.displayName || detail.visitor.name}
-            </p>
-          )}
-          {visitorTyping ? (
-            <p className="text-xs font-medium text-success">typing...</p>
-          ) : visitorOnline ? (
-            <p className="truncate text-xs">
-              <span className="font-medium text-success">Online</span>
-              <span className="text-chat-meta">
+          <div className="min-w-0 flex-1">
+            {onRenameVisitor ? (
+              <VisitorName
+                name={detail.visitor.name}
+                displayName={detail.visitor.displayName}
+                onRename={onRenameVisitor}
+                className="text-sm font-semibold"
+              />
+            ) : (
+              <p className="truncate text-sm font-semibold">
+                {detail.visitor.displayName || detail.visitor.name}
+              </p>
+            )}
+            {visitorTyping ? (
+              <p className="text-xs font-medium text-success">typing...</p>
+            ) : visitorOnline ? (
+              <p className="truncate text-xs">
+                <span className="font-medium text-success">Online</span>
+                <span className="text-chat-meta">
+                  {" · "}
+                  {detail.visitor.phone}
+                </span>
+              </p>
+            ) : showsLastSeen ? (
+              <p className="truncate text-xs text-chat-meta">
+                {`Last seen ${sinceWhen(visitorLastSeen ?? detail.visitor.lastSeenAt!)}`}
                 {" · "}
                 {detail.visitor.phone}
-              </span>
-            </p>
-          ) : showsLastSeen ? (
-            <p className="truncate text-xs text-chat-meta">
-              {`Last seen ${sinceWhen(visitorLastSeen ?? detail.visitor.lastSeenAt!)}`}
-              {" · "}
-              {detail.visitor.phone}
-            </p>
-          ) : (
-            <p className="truncate text-xs text-chat-meta">
-              <a href={`tel:${detail.visitor.phone}`} className="hover:underline">
-                {detail.visitor.phone}
-              </a>
-              {detail.visitor.city && ` · ${detail.visitor.city}`}
-              {detail.visitor.maritalStatus &&
-                ` · ${MARITAL_STATUS_LABELS[detail.visitor.maritalStatus]}`}
-            </p>
-          )}
-        </div>
+              </p>
+            ) : (
+              <p className="truncate text-xs text-chat-meta">
+                <a href={`tel:${detail.visitor.phone}`} className="hover:underline">
+                  {detail.visitor.phone}
+                </a>
+                {detail.visitor.city && ` · ${detail.visitor.city}`}
+                {detail.visitor.maritalStatus &&
+                  ` · ${MARITAL_STATUS_LABELS[detail.visitor.maritalStatus]}`}
+              </p>
+            )}
+          </div>
 
-        {/* Kept in the header rather than a side panel: the label is part of
+          {/* Kept in the header rather than a side panel: the label is part of
             knowing what this chat is, the same as who it is with. */}
-        <LabelBar
-          labels={labels}
-          available={availableLabels}
-          onToggle={onToggleLabel}
-          className="hidden shrink-0 justify-end md:flex md:max-w-80"
-        />
+          <LabelBar
+            labels={labels}
+            available={availableLabels}
+            onToggle={onToggleLabel}
+            className="hidden shrink-0 justify-end md:flex md:max-w-80"
+          />
 
-        {!isClosed && agentId && token && (
+          {/* Who they are, and the actions on the chat itself — sharing a
+            colleague, closing — live behind this rather than in the header,
+            which on a phone has no room for them. */}
           <button
             type="button"
-            onClick={() => setSharing(true)}
-            aria-label="Share a colleague"
-            title="Share a colleague"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => setInfoOpen((open) => !open)}
+            aria-label="Contact info"
+            aria-pressed={infoOpen}
+            title="Contact info"
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-full text-chat-meta transition-colors hover:bg-accent hover:text-foreground",
+              infoOpen && "bg-accent text-foreground",
+            )}
           >
-            <UserRoundPlus className="size-5" />
+            <Info className="size-5" />
           </button>
+        </header>
+
+        {agentId && token && (
+          <ShareColleagueDialog
+            open={sharing}
+            agentId={agentId}
+            token={token}
+            sending={sharingBusy}
+            onClose={() => (sharingBusy ? undefined : setSharing(false))}
+            onSend={async (message) => {
+              setSharingBusy(true);
+              try {
+                // Sent as an ordinary message, because that is what it is: the
+                // link is made tappable by the same rule as any other.
+                await onSend(message);
+                setSharing(false);
+              } finally {
+                setSharingBusy(false);
+              }
+            }}
+          />
         )}
 
-        {!isClosed && (
-          <Button variant="outline" size="sm" onClick={handleClose} disabled={closing}>
-            {closing ? "Closing..." : "Close conversation"}
-          </Button>
-        )}
-      </header>
-
-      {agentId && token && (
-        <ShareColleagueDialog
-          open={sharing}
-          agentId={agentId}
-          token={token}
-          sending={sharingBusy}
-          onClose={() => (sharingBusy ? undefined : setSharing(false))}
-          onSend={async (message) => {
-            setSharingBusy(true);
-            try {
-              // Sent as an ordinary message, because that is what it is: the
-              // link is made tappable by the same rule as any other.
-              await onSend(message);
-              setSharing(false);
-            } finally {
-              setSharingBusy(false);
-            }
-          }}
-        />
-      )}
-
-      {/*
+        {/*
         The same bar again, on its own row, for phones. The header has a back
         arrow, an avatar, two lines of contact detail and a close button on it
         already — there is no room left for chips, and hiding labelling behind a
         breakpoint would mean an agent working from their phone simply cannot do
         it. One row of its own is cheaper than that.
       */}
-      <div className="flex items-center gap-2 border-b bg-chat-header px-3 py-1.5 md:hidden">
-        <LabelBar labels={labels} available={availableLabels} onToggle={onToggleLabel} />
-      </div>
+        <div className="flex items-center gap-2 border-b bg-chat-header px-3 py-1.5 md:hidden">
+          <LabelBar labels={labels} available={availableLabels} onToggle={onToggleLabel} />
+        </div>
 
-      <div className="chat-canvas flex flex-1 flex-col gap-1.5 overflow-y-auto px-4 py-3">
-        {detail.messages.map((message, index) => (
-          <div key={message.id} className="flex flex-col gap-1.5">
-            {isNewDay(message.createdAt, detail.messages[index - 1]?.createdAt) && (
-              <DaySeparator iso={message.createdAt} />
-            )}
-            <Bubble
+        <div className="chat-canvas flex flex-1 flex-col gap-1.5 overflow-y-auto px-4 py-3">
+          {detail.messages.map((message, index) => (
+            <div key={message.id} className="flex flex-col gap-1.5">
+              {isNewDay(message.createdAt, detail.messages[index - 1]?.createdAt) && (
+                <DaySeparator iso={message.createdAt} />
+              )}
+              <Bubble
+                message={message}
+                names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+                author={detail.adminAuthored?.[message.id]}
+                flash={flashId === message.id}
+                onReply={isClosed ? undefined : setReplyTo}
+                reacting={reactingId === message.id}
+                onReact={isClosed ? undefined : onReact}
+                onOpenReactions={isClosed ? undefined : setReactingId}
+                onCloseReactions={closeReactions}
+                onMoreEmoji={moreEmoji}
+                onJumpTo={jumpTo}
+                registerRef={registerRef}
+                sender={
+                  message.senderType === "AGENT"
+                    ? {
+                        name: detail.agent.name,
+                        seed: detail.agent.id,
+                        photo: detail.agent.avatarUrl,
+                      }
+                    : { name: detail.visitor.name, seed: detail.visitor.id }
+                }
+              />
+            </div>
+          ))}
+
+          {pending.map((message) => (
+            <PendingBubble
+              key={message.clientId}
               message={message}
               names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
-              author={detail.adminAuthored?.[message.id]}
-              flash={flashId === message.id}
-              onReply={isClosed ? undefined : setReplyTo}
-              reacting={reactingId === message.id}
-              onReact={isClosed ? undefined : onReact}
-              onOpenReactions={isClosed ? undefined : setReactingId}
-              onCloseReactions={closeReactions}
-              onMoreEmoji={moreEmoji}
-              onJumpTo={jumpTo}
-              registerRef={registerRef}
-              sender={
-                message.senderType === "AGENT"
-                  ? {
-                      name: detail.agent.name,
-                      seed: detail.agent.id,
-                      photo: detail.agent.avatarUrl,
-                    }
-                  : { name: detail.visitor.name, seed: detail.visitor.id }
-              }
             />
-          </div>
-        ))}
+          ))}
 
-        {pending.map((message) => (
-          <PendingBubble
-            key={message.clientId}
-            message={message}
-            names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
-          />
-        ))}
-
-        {visitorTyping && (
-          <div className="flex justify-start" aria-live="polite">
-            <div className="chat-bubble-in flex items-center gap-2 px-3 py-2 shadow-sm">
-              <TypingDots />
-              <span className="text-xs text-chat-meta">{detail.visitor.name} is typing</span>
+          {visitorTyping && (
+            <div className="flex justify-start" aria-live="polite">
+              <div className="chat-bubble-in flex items-center gap-2 px-3 py-2 shadow-sm">
+                <TypingDots />
+                <span className="text-xs text-chat-meta">{detail.visitor.name} is typing</span>
+              </div>
             </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
+          )}
+          <div ref={endRef} />
+        </div>
 
-      {isClosed ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-chat-header px-4 py-3">
-          <p className="text-sm text-chat-meta">
-            This conversation is closed and no longer counts toward your active load.
-          </p>
-          {/* Closed by mistake, or they have come back about the same thing:
+        {isClosed ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-chat-header px-4 py-3">
+            <p className="text-sm text-chat-meta">
+              This conversation is closed and no longer counts toward your active load.
+            </p>
+            {/* Closed by mistake, or they have come back about the same thing:
               reopening keeps the transcript rather than starting a second chat
               beside it. */}
-          {onReopen && (
-            <Button variant="outline" size="sm" disabled={reopening} onClick={handleReopen}>
-              {reopening ? "Reopening…" : "Reopen conversation"}
-            </Button>
-          )}
-        </div>
-      ) : (
-        <Composer
-          key={detail.id}
-          conversationId={detail.id}
-          draft={draft}
-          onDraftChange={(value) => {
-            setDraft(value);
-            saveDraft(detail.id, value);
-            onTyping();
-          }}
-          connected={connected}
-          onActivity={scrollToLatest}
-          reactionTarget={reactionTarget}
-          onReaction={(messageId, emoji) => {
-            onReact?.(messageId, emoji);
-            setReactionTarget(null);
-          }}
-          onReactionCancel={() => setReactionTarget(null)}
-          replyTo={replyTo}
-          names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
-          onCancelReply={() => setReplyTo(null)}
-          onSend={onSend}
-          onSendMedia={onSendMedia}
+            {onReopen && (
+              <Button variant="outline" size="sm" disabled={reopening} onClick={handleReopen}>
+                {reopening ? "Reopening…" : "Reopen conversation"}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Composer
+            key={detail.id}
+            conversationId={detail.id}
+            draft={draft}
+            onDraftChange={(value) => {
+              setDraft(value);
+              saveDraft(detail.id, value);
+              onTyping();
+            }}
+            connected={connected}
+            onActivity={scrollToLatest}
+            reactionTarget={reactionTarget}
+            onReaction={(messageId, emoji) => {
+              onReact?.(messageId, emoji);
+              setReactionTarget(null);
+            }}
+            onReactionCancel={() => setReactionTarget(null)}
+            replyTo={replyTo}
+            names={{ agent: detail.agent.name, visitor: detail.visitor.name }}
+            onCancelReply={() => setReplyTo(null)}
+            onSend={onSend}
+            onSendMedia={onSendMedia}
+          />
+        )}
+      </div>
+
+      {infoOpen && (
+        <VisitorInfoPanel
+          detail={detail}
+          visitorOnline={visitorOnline}
+          visitorTyping={visitorTyping}
+          lastSeenAt={visitorLastSeen ?? detail.visitor.lastSeenAt ?? null}
+          labels={labels}
+          availableLabels={availableLabels}
+          onToggleLabel={onToggleLabel}
+          onShare={agentId && token ? () => setSharing(true) : undefined}
+          onCloseConversation={() => void handleClose()}
+          closing={closing}
+          onReopen={onReopen ? () => void handleReopen() : undefined}
+          reopening={reopening}
+          onDismiss={() => setInfoOpen(false)}
         />
       )}
     </div>
